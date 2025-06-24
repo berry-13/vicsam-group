@@ -1,7 +1,7 @@
-require('dotenv').config({ path: '.env.test' });
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '..', '.env.test') });
 const request = require('supertest');
 const express = require('express');
-const path = require('path');
 const fs = require('fs');
 
 // Import dell'app per i test

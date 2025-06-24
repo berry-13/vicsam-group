@@ -6,31 +6,23 @@ const { successResponse, errorResponse } = require('../utils/helpers');
  */
 const authenticate = async (req, res, next) => {
   try {
-    const { password } = req.body;
+    // A questo punto la password è già stata validata dal middleware authenticatePassword
+    // Genera un JWT token per future implementazioni
+    const token = generateToken({ 
+      authenticated: true,
+      timestamp: Date.now()
+    });
     
-    // Verifica password (già validata dal middleware di autenticazione)
-    if (password === process.env.API_PASSWORD) {
-      // Genera un JWT token per future implementazioni
-      const token = generateToken({ 
-        authenticated: true,
-        timestamp: Date.now()
-      });
-      
-      res.json(
-        successResponse(
-          { 
-            token,
-            bearerToken: process.env.BEARER_TOKEN,
-            expiresIn: process.env.JWT_EXPIRES_IN
-          },
-          'Autenticazione completata con successo'
-        )
-      );
-    } else {
-      res.status(401).json(
-        errorResponse('Credenziali non valide', 401)
-      );
-    }
+    res.json(
+      successResponse(
+        { 
+          token,
+          bearerToken: process.env.BEARER_TOKEN,
+          expiresIn: process.env.JWT_EXPIRES_IN
+        },
+        'Autenticazione completata con successo'
+      )
+    );
   } catch (error) {
     next(error);
   }
