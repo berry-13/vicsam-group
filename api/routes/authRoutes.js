@@ -2,7 +2,9 @@ const express = require('express');
 const {
   authenticate,
   verifyAuth,
-  getApiInfo
+  getApiInfo,
+  debugAuth,
+  testAuthErrors
 } = require('../controllers/authController');
 const { authenticatePassword, authenticateBearer } = require('../middleware/auth');
 const { validate, authSchema } = require('../utils/validation');
@@ -29,5 +31,19 @@ router.get('/verify', authenticateBearer, verifyAuth);
  * @access Public
  */
 router.get('/info', getApiInfo);
+
+/**
+ * @route GET /api/auth/debug
+ * @desc Debug informazioni autenticazione (pubbliche)
+ * @access Public
+ */
+router.get('/debug', debugAuth);
+
+/**
+ * @route GET /api/auth/test-errors
+ * @desc Test scenari di errore per debug (pubbliche)
+ * @access Public
+ */
+router.get('/test-errors', testAuthErrors);
 
 module.exports = router;

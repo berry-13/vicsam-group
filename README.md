@@ -86,6 +86,45 @@ flowchart TD
 
 ## ⚡ Quick Start
 
+### GitHub Codespaces (Consigliato) ☁️
+```bash
+# Avvio automatico con configurazione Codespaces
+./start-codespaces.sh
+```
+
+### Sviluppo Locale 💻
+```bash
+# Installa le dipendenze
+npm install
+
+# Avvia il server in modalità sviluppo
+npm run dev
+
+# Oppure avvia il server in produzione
+npm start
+```
+
+L'API sarà disponibile su `http://localhost:3000`
+
+### Frontend React 🎨
+```bash
+cd client
+npm install
+npm run dev
+```
+
+Il frontend sarà disponibile su `http://localhost:5173`
+
+## ⚙️ Configurazione per GitHub Codespaces
+
+Il progetto include supporto completo per GitHub Codespaces con:
+- Auto-rilevamento dell'ambiente Codespaces
+- Configurazione automatica dell'URL del backend
+- Script di avvio automatico (`start-codespaces.sh`)
+- Banner di configurazione intelligente nel frontend
+
+Vedi [client/CODESPACES_CONFIG.md](./client/CODESPACES_CONFIG.md) per dettagli.
+
 ### Installazione
 ```bash
 # Clona il repository

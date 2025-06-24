@@ -14,6 +14,19 @@ const apiRoutes = require('./api/routes');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Verifica configurazione all'avvio
+console.log('\n🔧 ===== CONFIGURAZIONE SERVER =====');
+console.log('🔧 [CONFIG] NODE_ENV:', process.env.NODE_ENV);
+console.log('🔧 [CONFIG] PORT:', PORT);
+console.log('🔧 [CONFIG] JWT_SECRET:', process.env.JWT_SECRET ? 'CONFIGURATO' : '❌ MANCANTE');
+console.log('🔧 [CONFIG] JWT_EXPIRES_IN:', process.env.JWT_EXPIRES_IN);
+console.log('🔧 [CONFIG] API_PASSWORD:', process.env.API_PASSWORD ? 'CONFIGURATO' : '❌ MANCANTE');
+console.log('🔧 [CONFIG] BEARER_TOKEN:', process.env.BEARER_TOKEN ? `CONFIGURATO (${process.env.BEARER_TOKEN.length} caratteri)` : '❌ MANCANTE');
+console.log('🔧 [CONFIG] RATE_LIMIT_WINDOW_MS:', process.env.RATE_LIMIT_WINDOW_MS);
+console.log('🔧 [CONFIG] RATE_LIMIT_MAX_REQUESTS:', process.env.RATE_LIMIT_MAX_REQUESTS);
+console.log('🔧 [CONFIG] CORS_ORIGIN:', process.env.CORS_ORIGIN);
+console.log('🔧 ===================================\n');
+
 // Security middleware
 app.use(helmet({
   contentSecurityPolicy: false, // Disabilita CSP per consentire il serving di file statici
@@ -42,6 +55,22 @@ app.use('/api', limiter);
 if (process.env.NODE_ENV !== 'production') {
   app.use(requestLogger);
 }
+
+// Debug middleware per l'autenticazione
+app.use('/api/auth', (req, res, next) => {
+  console.log('\n🚀 ===== RICHIESTA AUTENTICAZIONE =====');
+  console.log('🚀 [AUTH REQUEST] Timestamp:', new Date().toISOString());
+  console.log('🚀 [AUTH REQUEST] Method:', req.method);
+  console.log('🚀 [AUTH REQUEST] URL:', req.url);
+  console.log('🚀 [AUTH REQUEST] Full URL:', req.originalUrl);
+  console.log('🚀 [AUTH REQUEST] Headers:', JSON.stringify(req.headers, null, 2));
+  console.log('🚀 [AUTH REQUEST] Body:', JSON.stringify(req.body, null, 2));
+  console.log('🚀 [AUTH REQUEST] Query:', JSON.stringify(req.query, null, 2));
+  console.log('🚀 [AUTH REQUEST] IP:', req.ip);
+  console.log('🚀 [AUTH REQUEST] User Agent:', req.get('User-Agent'));
+  console.log('🚀 =====================================\n');
+  next();
+});
 
 // Body parsing
 app.use(express.json({ limit: '10mb' }));

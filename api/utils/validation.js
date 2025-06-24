@@ -48,14 +48,33 @@ const authSchema = Joi.object({
  */
 const validate = (schema, property = 'body') => {
   return (req, res, next) => {
-    const { error } = schema.validate(req[property]);
+    console.log('📝 [VALIDATION DEBUG] Iniziando validazione...');
+    console.log('📝 [VALIDATION DEBUG] Property da validare:', property);
+    console.log('📝 [VALIDATION DEBUG] Dati da validare:', JSON.stringify(req[property], null, 2));
+    console.log('📝 [VALIDATION DEBUG] Schema name:', schema._type || 'unknown');
+    
+    const { error, value } = schema.validate(req[property]);
+    
     if (error) {
+      console.log('❌ [VALIDATION ERROR] Validazione fallita!');
+      console.log('❌ [VALIDATION ERROR] Errore:', error.message);
+      console.log('❌ [VALIDATION ERROR] Dettagli:', error.details);
+      
       return res.status(400).json({
         success: false,
-        error: 'Dati non validi',
-        details: error.details.map(detail => detail.message)
+        error: '🚨 DATI NON VALIDI! Controlla i campi richiesti',
+        details: error.details.map(detail => ({
+          field: detail.path.join('.'),
+          message: detail.message,
+          receivedValue: detail.context?.value
+        })),
+        receivedData: req[property],
+        hint: 'Verifica che tutti i campi obbligatori siano presenti e abbiano il formato corretto'
       });
     }
+    
+    console.log('✅ [VALIDATION SUCCESS] Validazione completata con successo!');
+    console.log('📝 [VALIDATION DEBUG] Valore validato:', value);
     next();
   };
 };

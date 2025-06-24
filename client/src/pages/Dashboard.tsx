@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { apiService } from '../services/api';
 import type { DataStats, ApiInfo } from '../services/api';
+import { CodespacesBanner } from '../components/CodespacesBanner';
 import { 
   BarChart3, 
   FileText, 
@@ -108,6 +109,9 @@ export const Dashboard: React.FC = () => {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        {/* Codespaces Configuration Banner */}
+        <CodespacesBanner />
+        
         {/* Stats Cards */}
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
           <div className="bg-white overflow-hidden shadow rounded-lg">
@@ -220,7 +224,10 @@ export const Dashboard: React.FC = () => {
                   <BarChart3 className="h-4 w-4 mr-2" />
                   Statistiche
                 </button>
-                <button className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                <button 
+                  onClick={() => navigate('/settings')}
+                  className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
                   <Settings className="h-4 w-4 mr-2" />
                   Impostazioni
                 </button>

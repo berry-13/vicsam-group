@@ -7,6 +7,7 @@ import { Dashboard } from './pages/Dashboard';
 import { FilesPage } from './pages/FilesPage';
 import { SaveDataPage } from './pages/SaveDataPage';
 import { StatsPage } from './pages/StatsPage';
+import { SettingsPage } from './pages/SettingsPage';
 import './App.css';
 
 function App() {
@@ -24,6 +25,7 @@ function App() {
             <Route path="files" element={<FilesPage />} />
             <Route path="save-data" element={<SaveDataPage />} />
             <Route path="stats" element={<StatsPage />} />
+            <Route path="settings" element={<SettingsPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

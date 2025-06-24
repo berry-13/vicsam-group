@@ -47,10 +47,20 @@ export interface DataStats {
 class ApiService {
   private api: AxiosInstance;
   private bearerToken: string | null = null;
+  private currentBaseUrl: string;
 
   constructor() {
+    // Get base URL from settings or environment
+    // In Codespaces, use relative URLs to avoid SSL certificate issues
+    this.currentBaseUrl = this.getStoredBaseUrl() || import.meta.env.VITE_API_BASE_URL || '/api';
+    
+    // Log della configurazione per debug
+    console.log('🔧 [API CONFIG] Current window location:', window.location.href);
+    console.log('🔧 [API CONFIG] Environment:', import.meta.env.MODE);
+    console.log('🔧 [API CONFIG] Configured base URL:', this.currentBaseUrl);
+    
     this.api = axios.create({
-      baseURL: import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? '/api' : 'http://localhost:3000/api'),
+      baseURL: this.currentBaseUrl,
       timeout: 10000,
       headers: {
         'Content-Type': 'application/json',
@@ -167,6 +177,32 @@ class ApiService {
         this.clearAuth();
       }
     }
+  }
+
+  // Recupera l'URL base dalle impostazioni salvate
+  private getStoredBaseUrl(): string | null {
+    try {
+      const settings = localStorage.getItem('vicsam-app-settings');
+      if (settings) {
+        const parsed = JSON.parse(settings);
+        return parsed.apiBaseUrl;
+      }
+    } catch (error) {
+      console.warn('Errore nel caricamento URL dalle impostazioni:', error);
+    }
+    return null;
+  }
+
+  // Metodo per aggiornare l'URL base
+  public updateBaseUrl(newBaseUrl: string) {
+    const cleanUrl = newBaseUrl.replace(/\/api$/, ''); // Remove /api suffix if present
+    this.currentBaseUrl = cleanUrl;
+    this.api.defaults.baseURL = cleanUrl;
+  }
+
+  // Metodo per ottenere l'URL base corrente
+  public getBaseUrl(): string {
+    return this.currentBaseUrl;
   }
 
   clearAuth(): void {
