@@ -1,27 +1,34 @@
 # Multi-stage build per ottimizzare l'immagine
 FROM node:20-alpine AS builder
 
+# Install build dependencies
+RUN apk add --no-cache python3 make g++
+
 # Set working directory
 WORKDIR /app
 
 # Copy package files for server
 COPY package*.json ./
 
-# Install server dependencies
-RUN npm ci --only=production
+# Install server dependencies (including dev dependencies for build)
+RUN npm ci && npm cache clean --force
 
 # Copy client package files
 COPY client/package*.json ./client/
 
 # Install client dependencies
 WORKDIR /app/client
-RUN npm ci
+RUN npm ci && npm cache clean --force
 
 # Copy client source code
 COPY client/ ./
 
 # Build client
 RUN npm run build
+
+# Install production dependencies for server
+WORKDIR /app
+RUN npm ci --only=production && npm cache clean --force
 
 # Production stage
 FROM node:20-alpine AS production

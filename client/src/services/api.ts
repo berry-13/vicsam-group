@@ -19,7 +19,7 @@ export interface FileData {
   name: string;
   size: number;
   modified: string;
-  type: string;
+  type?: string;
 }
 
 export interface ApiInfo {

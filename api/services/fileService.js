@@ -68,7 +68,8 @@ class FileService {
             name: file,
             size: stats.size,
             created: stats.birthtime,
-            modified: stats.mtime
+            modified: stats.mtime,
+            type: file.endsWith('.json') ? 'application/json' : 'unknown'
           };
         })
       );

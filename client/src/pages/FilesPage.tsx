@@ -87,13 +87,13 @@ export const FilesPage: React.FC = () => {
     return new Date(dateString).toLocaleString('it-IT');
   };
 
-  const getFileIcon = (type: string) => {
-    if (type.includes('json')) return <FileText className="h-4 w-4 text-blue-500" />;
+  const getFileIcon = (type?: string) => {
+    if (type && type.includes('json')) return <FileText className="h-4 w-4 text-blue-500" />;
     return <FileText className="h-4 w-4 text-gray-500" />;
   };
 
   const filteredFiles = files.filter(file =>
-    file.name.toLowerCase().includes(searchTerm.toLowerCase())
+    file?.name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (loading) {
@@ -190,7 +190,7 @@ export const FilesPage: React.FC = () => {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline">{file.type}</Badge>
+                      <Badge variant="outline">{file.type || 'unknown'}</Badge>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
