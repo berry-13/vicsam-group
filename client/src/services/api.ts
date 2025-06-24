@@ -59,22 +59,10 @@ class ApiService {
     const isDevelopment = import.meta.env.DEV;
     const isHTTPS = window.location.protocol === 'https:';
     
-    // Intelligent base URL configuration
-    let defaultBaseUrl = '/api';
-    
-    if (!isDevelopment && !isCodespaces && !isHTTPS) {
-      // Production environment with HTTP
-      defaultBaseUrl = 'http://localhost:3000/api';
-    } else if (!isDevelopment && isHTTPS && !isCodespaces) {
-      // Production environment with HTTPS
-      defaultBaseUrl = `${window.location.protocol}//${window.location.hostname}:3000/api`;
-    }
-    // For development and Codespaces, always use relative URLs with proxy
-    
-    // Usa URL relativo in Codespaces per evitare errori SSL, altrimenti usa stored/env/default
-    this.currentBaseUrl = isCodespaces
-      ? defaultBaseUrl
-      : (this.getStoredBaseUrl() || import.meta.env.VITE_API_BASE_URL || defaultBaseUrl);
+    // Intelligent base URL configuration: always use env override or relative API path
+    const defaultBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api';
+    // Set current base URL, preferring stored settings
+    this.currentBaseUrl = this.getStoredBaseUrl() || defaultBaseUrl;
     
     // Log della configurazione per debug
     console.log('🔧 [API CONFIG] Environment Detection:');
