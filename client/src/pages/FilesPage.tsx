@@ -10,8 +10,16 @@ import {
   Search,
   Calendar,
   HardDrive,
-  AlertTriangle
+  AlertTriangle,
+  Loader2
 } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export const FilesPage: React.FC = () => {
   const [files, setFiles] = useState<FileData[]>([]);
@@ -19,8 +27,6 @@ export const FilesPage: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFile, setSelectedFile] = useState<{ name: string; content: unknown } | null>(null);
-  const [viewModalOpen, setViewModalOpen] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   const loadFiles = async () => {
     try {
@@ -47,7 +53,6 @@ export const FilesPage: React.FC = () => {
     try {
       const data = await apiService.getFileContent(filename);
       setSelectedFile({ name: data.filename, content: data.content });
-      setViewModalOpen(true);
     } catch (error) {
       console.error('Errore nel caricamento contenuto file:', error);
     }
@@ -65,7 +70,6 @@ export const FilesPage: React.FC = () => {
     try {
       await apiService.deleteFile(filename);
       setFiles(files.filter(f => f.name !== filename));
-      setDeleteConfirm(null);
     } catch (error) {
       console.error('Errore nella cancellazione file:', error);
     }
@@ -83,195 +87,177 @@ export const FilesPage: React.FC = () => {
     return new Date(dateString).toLocaleString('it-IT');
   };
 
+  const getFileIcon = (type: string) => {
+    if (type.includes('json')) return <FileText className="h-4 w-4 text-blue-500" />;
+    return <FileText className="h-4 w-4 text-gray-500" />;
+  };
+
   const filteredFiles = files.filter(file =>
     file.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">Caricamento file...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center">
-              <FileText className="h-8 w-8 text-blue-600 mr-3" />
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Gestione File</h1>
-                <p className="text-sm text-gray-500">
-                  {files.length} file{files.length !== 1 ? 's' : ''} disponibili
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={handleRefresh}
-              disabled={refreshing}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-              Aggiorna
-            </button>
-          </div>
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+      <div className="flex items-center justify-between space-y-2">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">Gestione File</h2>
+          <p className="text-muted-foreground">
+            Visualizza, scarica ed elimina i file salvati nel sistema
+          </p>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Button onClick={handleRefresh} disabled={refreshing} variant="outline">
+            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            Aggiorna
+          </Button>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        {/* Search */}
-        <div className="mb-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Cerca file..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full sm:w-96"
-            />
-          </div>
+      {/* Search and Stats */}
+      <div className="flex items-center space-x-2">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Cerca file..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-8"
+          />
         </div>
+        <Badge variant="secondary">
+          {filteredFiles.length} file{filteredFiles.length !== 1 ? 's' : ''}
+        </Badge>
+      </div>
 
-        {/* Files List */}
-        <div className="bg-white shadow overflow-hidden sm:rounded-md">
+      {/* Files Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <HardDrive className="h-5 w-5" />
+            File Salvati
+          </CardTitle>
+          <CardDescription>
+            Elenco di tutti i file disponibili nel sistema
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
           {filteredFiles.length === 0 ? (
-            <div className="text-center py-12">
-              <FileText className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">Nessun file trovato</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                {searchTerm ? 'Prova a modificare i criteri di ricerca.' : 'Non ci sono file da visualizzare.'}
+            <div className="flex flex-col items-center justify-center py-8">
+              <AlertTriangle className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold text-muted-foreground">
+                {searchTerm ? 'Nessun file trovato' : 'Nessun file disponibile'}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {searchTerm ? 'Prova a modificare i termini di ricerca' : 'I file salvati appariranno qui'}
               </p>
             </div>
           ) : (
-            <ul className="divide-y divide-gray-200">
-              {filteredFiles.map((file) => (
-                <li key={file.name} className="px-6 py-4 hover:bg-gray-50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <FileText className="h-5 w-5 text-gray-400" />
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{file.name}</p>
-                        <div className="flex items-center space-x-4 text-xs text-gray-500">
-                          <span className="flex items-center">
-                            <HardDrive className="h-3 w-3 mr-1" />
-                            {formatBytes(file.size)}
-                          </span>
-                          <span className="flex items-center">
-                            <Calendar className="h-3 w-3 mr-1" />
-                            {formatDate(file.modified)}
-                          </span>
-                        </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome File</TableHead>
+                  <TableHead>Dimensione</TableHead>
+                  <TableHead>Data Modifica</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead className="text-right">Azioni</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredFiles.map((file) => (
+                  <TableRow key={file.name}>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        {getFileIcon(file.type)}
+                        <span>{file.name}</span>
                       </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => handleViewFile(file.name)}
-                        className="inline-flex items-center px-3 py-1 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                      >
-                        <Eye className="h-3 w-3 mr-1" />
-                        Visualizza
-                      </button>
-                      <button
-                        onClick={() => handleDownload(file.name)}
-                        className="inline-flex items-center px-3 py-1 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                      >
-                        <Download className="h-3 w-3 mr-1" />
-                        Download
-                      </button>
-                      <button
-                        onClick={() => setDeleteConfirm(file.name)}
-                        className="inline-flex items-center px-3 py-1 border border-red-300 shadow-sm text-xs font-medium rounded text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                      >
-                        <Trash2 className="h-3 w-3 mr-1" />
-                        Elimina
-                      </button>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
+                    </TableCell>
+                    <TableCell>{formatBytes(file.size)}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        {formatDate(file.modified)}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{file.type}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleViewFile(file.name)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                            <DialogHeader>
+                              <DialogTitle>Contenuto del file: {selectedFile?.name}</DialogTitle>
+                              <DialogDescription>
+                                Visualizzazione del contenuto del file selezionato
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="mt-4">
+                              <pre className="bg-muted p-4 rounded-md text-sm overflow-x-auto">
+                                {selectedFile ? JSON.stringify(selectedFile.content, null, 2) : 'Caricamento...'}
+                              </pre>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                        
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDownload(file.name)}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                        
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Conferma eliminazione</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Sei sicuro di voler eliminare il file "{file.name}"? 
+                                Questa azione non può essere annullata.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Annulla</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDelete(file.name)}>
+                                Elimina
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
-        </div>
-      </div>
-
-      {/* View Modal */}
-      {viewModalOpen && selectedFile && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium text-gray-900">
-                  Contenuto: {selectedFile.name}
-                </h3>
-                <button
-                  onClick={() => setViewModalOpen(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <span className="sr-only">Chiudi</span>
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              <div className="bg-gray-50 p-4 rounded-md max-h-96 overflow-auto">
-                <pre className="text-sm text-gray-800 whitespace-pre-wrap">
-                  {JSON.stringify(selectedFile.content, null, 2)}
-                </pre>
-              </div>
-              <div className="mt-4 flex justify-end">
-                <button
-                  onClick={() => setViewModalOpen(false)}
-                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500"
-                >
-                  Chiudi
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {deleteConfirm && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3 text-center">
-              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
-                <AlertTriangle className="h-6 w-6 text-red-600" />
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 mt-4">
-                Conferma Eliminazione
-              </h3>
-              <div className="mt-2 px-7 py-3">
-                <p className="text-sm text-gray-500">
-                  Sei sicuro di voler eliminare il file <strong>{deleteConfirm}</strong>?
-                  Questa azione non può essere annullata.
-                </p>
-              </div>
-              <div className="flex justify-center space-x-4 mt-4">
-                <button
-                  onClick={() => setDeleteConfirm(null)}
-                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500"
-                >
-                  Annulla
-                </button>
-                <button
-                  onClick={() => handleDelete(deleteConfirm)}
-                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
-                >
-                  Elimina
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+        </CardContent>
+      </Card>
     </div>
   );
 };

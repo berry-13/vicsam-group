@@ -4,18 +4,21 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { apiService } from '../services/api';
 import { Save, AlertCircle, CheckCircle, Database, Plus, Trash2 } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
 // Schema di validazione per i dati
 const saveDataSchema = z.object({
   name: z.string().min(1, 'Il nome è obbligatorio'),
-  email: z.string().email('Email non valida').optional(),
+  email: z.string().email('Email non valida').optional().or(z.literal('')),
   phone: z.string().optional(),
   company: z.string().optional(),
   notes: z.string().optional(),
-  customFields: z.array(z.object({
-    key: z.string().min(1, 'La chiave è obbligatoria'),
-    value: z.string().min(1, 'Il valore è obbligatorio')
-  })).optional()
 });
 
 type SaveDataForm = z.infer<typeof saveDataSchema>;
@@ -26,13 +29,15 @@ export const SaveDataPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [customFields, setCustomFields] = useState<{ key: string; value: string }[]>([]);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    reset
-  } = useForm<SaveDataForm>({
-    resolver: zodResolver(saveDataSchema)
+  const form = useForm<SaveDataForm>({
+    resolver: zodResolver(saveDataSchema),
+    defaultValues: {
+      name: '',
+      email: '',
+      phone: '',
+      company: '',
+      notes: '',
+    }
   });
 
   const addCustomField = () => {
@@ -64,7 +69,7 @@ export const SaveDataPage: React.FC = () => {
 
       const result = await apiService.saveData(dataToSave);
       setSuccess(`Dati salvati con successo nel file: ${result.fileName}`);
-      reset();
+      form.reset();
       setCustomFields([]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Errore durante il salvataggio');
@@ -74,197 +79,172 @@ export const SaveDataPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="py-6">
-            <div className="flex items-center">
-              <Database className="h-8 w-8 text-blue-600 mr-3" />
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Salva Nuovi Dati</h1>
-                <p className="text-sm text-gray-500">
-                  Inserisci e salva nuovi dati nel sistema
-                </p>
-              </div>
-            </div>
-          </div>
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+      <div className="flex items-center justify-between space-y-2">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">Salva Nuovi Dati</h2>
+          <p className="text-muted-foreground">
+            Inserisci e salva nuovi dati nel sistema
+          </p>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="max-w-4xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-4 py-5 sm:p-6">
+      <div className="max-w-2xl mx-auto">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Database className="h-5 w-5" />
+              Inserimento Dati
+            </CardTitle>
+            <CardDescription>
+              Compila il form sottostante per salvare i dati nel sistema
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
             {/* Success/Error Messages */}
             {success && (
-              <div className="mb-6 flex items-center space-x-2 text-green-600 bg-green-50 p-4 rounded-md">
-                <CheckCircle className="h-5 w-5" />
-                <span className="text-sm">{success}</span>
-              </div>
+              <Alert className="mb-6">
+                <CheckCircle className="h-4 w-4" />
+                <AlertDescription>{success}</AlertDescription>
+              </Alert>
             )}
 
             {error && (
-              <div className="mb-6 flex items-center space-x-2 text-red-600 bg-red-50 p-4 rounded-md">
-                <AlertCircle className="h-5 w-5" />
-                <span className="text-sm">{error}</span>
-              </div>
+              <Alert variant="destructive" className="mb-6">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
             )}
 
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-              {/* Basic Fields */}
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                    Nome *
-                  </label>
-                  <input
-                    {...register('name')}
-                    type="text"
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                    placeholder="Inserisci il nome"
-                  />
-                  {errors.name && (
-                    <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                {/* Campo Nome */}
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nome *</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Inserisci il nome" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
                   )}
-                </div>
-
-                <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                    Email
-                  </label>
-                  <input
-                    {...register('email')}
-                    type="email"
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                    placeholder="esempio@email.com"
-                  />
-                  {errors.email && (
-                    <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-                    Telefono
-                  </label>
-                  <input
-                    {...register('phone')}
-                    type="tel"
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                    placeholder="+39 123 456 7890"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="company" className="block text-sm font-medium text-gray-700">
-                    Azienda
-                  </label>
-                  <input
-                    {...register('company')}
-                    type="text"
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                    placeholder="Nome azienda"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="notes" className="block text-sm font-medium text-gray-700">
-                  Note
-                </label>
-                <textarea
-                  {...register('notes')}
-                  rows={4}
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  placeholder="Note aggiuntive..."
                 />
-              </div>
 
-              {/* Custom Fields */}
-              <div className="border-t pt-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-medium text-gray-900">Campi Personalizzati</h3>
-                  <button
-                    type="button"
-                    onClick={addCustomField}
-                    className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Aggiungi Campo
-                  </button>
+                {/* Campo Email */}
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <Input type="email" placeholder="email@esempio.com" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Campo Telefono */}
+                <FormField
+                  control={form.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Telefono</FormLabel>
+                      <FormControl>
+                        <Input placeholder="+39 123 456 7890" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Campo Azienda */}
+                <FormField
+                  control={form.control}
+                  name="company"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Azienda</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Nome dell'azienda" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Campo Note */}
+                <FormField
+                  control={form.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Note</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Note aggiuntive..." 
+                          className="min-h-[100px]"
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Campi Personalizzati */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-medium">Campi Personalizzati</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addCustomField}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Aggiungi Campo
+                    </Button>
+                  </div>
+
+                  {customFields.map((field, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <Input
+                        placeholder="Chiave"
+                        value={field.key}
+                        onChange={(e) => updateCustomField(index, 'key', e.target.value)}
+                      />
+                      <Input
+                        placeholder="Valore"
+                        value={field.value}
+                        onChange={(e) => updateCustomField(index, 'value', e.target.value)}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeCustomField(index)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
                 </div>
 
-                {customFields.length > 0 && (
-                  <div className="space-y-4">
-                    {customFields.map((field, index) => (
-                      <div key={index} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-md">
-                        <div className="flex-1">
-                          <input
-                            type="text"
-                            placeholder="Chiave (es. 'categoria')"
-                            value={field.key}
-                            onChange={(e) => updateCustomField(index, 'key', e.target.value)}
-                            className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                          />
-                        </div>
-                        <div className="flex-1">
-                          <input
-                            type="text"
-                            placeholder="Valore (es. 'VIP')"
-                            value={field.value}
-                            onChange={(e) => updateCustomField(index, 'value', e.target.value)}
-                            className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                          />
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => removeCustomField(index)}
-                          className="inline-flex items-center p-2 border border-red-300 shadow-sm text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Submit Button */}
-              <div className="flex justify-end space-x-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    reset();
-                    setCustomFields([]);
-                    setSuccess(null);
-                    setError(null);
-                  }}
-                  className="px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  Reset
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? (
-                    <div className="flex items-center">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Salvataggio...
-                    </div>
-                  ) : (
-                    <>
-                      <Save className="h-4 w-4 mr-2" />
-                      Salva Dati
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+                {/* Submit Button */}
+                <Button type="submit" className="w-full" disabled={loading}>
+                  <Save className="h-4 w-4 mr-2" />
+                  {loading ? 'Salvataggio in corso...' : 'Salva Dati'}
+                </Button>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

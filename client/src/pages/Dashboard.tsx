@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
 import { apiService } from '../services/api';
 import type { DataStats, ApiInfo } from '../services/api';
 import { CodespacesBanner } from '../components/CodespacesBanner';
@@ -9,14 +8,16 @@ import {
   FileText, 
   Database, 
   Activity, 
-  LogOut, 
   RefreshCw,
   Settings,
-  Info
+  Info,
+  Loader2
 } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 export const Dashboard: React.FC = () => {
-  const { logout, user } = useAuth();
   const navigate = useNavigate();
   const [stats, setStats] = useState<DataStats | null>(null);
   const [apiInfo, setApiInfo] = useState<ApiInfo | null>(null);
@@ -63,250 +64,138 @@ export const Dashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">Caricamento dashboard...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center">
-              <Database className="h-8 w-8 text-blue-600 mr-3" />
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">
-                  {apiInfo?.name || 'VicSam Group API'}
-                </h1>
-                <p className="text-sm text-gray-500">
-                  {apiInfo?.description || 'Dashboard di gestione'}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={handleRefresh}
-                disabled={refreshing}
-                className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-                Aggiorna
-              </button>
-              <button
-                onClick={logout}
-                className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                Logout
-              </button>
-            </div>
-          </div>
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+      <CodespacesBanner />
+      
+      <div className="flex items-center justify-between space-y-2">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
+          <p className="text-muted-foreground">
+            Panoramica generale del sistema VicSam Group
+          </p>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Button onClick={handleRefresh} disabled={refreshing} variant="outline">
+            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            Aggiorna
+          </Button>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        {/* Codespaces Configuration Banner */}
-        <CodespacesBanner />
+      {/* Stats Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">File Totali</CardTitle>
+            <FileText className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats?.totalFiles || 0}</div>
+          </CardContent>
+        </Card>
         
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <FileText className="h-6 w-6 text-gray-400" />
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">
-                      File Totali
-                    </dt>
-                    <dd className="text-lg font-medium text-gray-900">
-                      {stats?.totalFiles || 0}
-                    </dd>
-                  </dl>
-                </div>
-              </div>
-            </div>
-          </div>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Spazio Utilizzato</CardTitle>
+            <Database className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatBytes(stats?.totalSize || 0)}</div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Dati Generali</CardTitle>
+            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats?.generalDataCount || 0}</div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Ultimo Aggiornamento</CardTitle>
+            <Activity className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-sm font-medium">{formatDate(stats?.lastUpdate || null)}</div>
+          </CardContent>
+        </Card>
+      </div>
 
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <BarChart3 className="h-6 w-6 text-gray-400" />
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">
-                      Dimensione Totale
-                    </dt>
-                    <dd className="text-lg font-medium text-gray-900">
-                      {formatBytes(stats?.totalSize || 0)}
-                    </dd>
-                  </dl>
-                </div>
-              </div>
+      {/* API Info Card */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+        <Card className="col-span-4">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Info className="h-5 w-5" />
+              Informazioni API
+            </CardTitle>
+            <CardDescription>
+              Dettagli sul servizio API attualmente in uso
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Nome:</span>
+              <span className="text-sm">{apiInfo?.name || 'N/A'}</span>
             </div>
-          </div>
-
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <Database className="h-6 w-6 text-gray-400" />
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">
-                      Dati Generali
-                    </dt>
-                    <dd className="text-lg font-medium text-gray-900">
-                      {stats?.generalDataCount || 0}
-                    </dd>
-                  </dl>
-                </div>
-              </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Versione:</span>
+              <Badge variant="secondary">{apiInfo?.version || 'N/A'}</Badge>
             </div>
-          </div>
-
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <Activity className="h-6 w-6 text-gray-400" />
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">
-                      Ultimo Aggiornamento
-                    </dt>
-                    <dd className="text-sm font-medium text-gray-900">
-                      {formatDate(stats?.lastUpdate || null)}
-                    </dd>
-                  </dl>
-                </div>
-              </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Autenticazione:</span>
+              <Badge variant="outline">{apiInfo?.authentication || 'N/A'}</Badge>
             </div>
-          </div>
-        </div>
+            <div className="space-y-2">
+              <span className="text-sm font-medium">Descrizione:</span>
+              <p className="text-sm text-muted-foreground">
+                {apiInfo?.description || 'Nessuna descrizione disponibile'}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 mb-8">
-          <div className="bg-white shadow rounded-lg">
-            <div className="px-4 py-5 sm:p-6">
-              <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
-                Azioni Rapide
-              </h3>
-              <div className="grid grid-cols-2 gap-4">
-                <button 
-                  onClick={() => navigate('/files')}
-                  className="inline-flex items-center justify-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  <FileText className="h-4 w-4 mr-2" />
-                  Gestisci File
-                </button>
-                <button 
-                  onClick={() => navigate('/save-data')}
-                  className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  <Database className="h-4 w-4 mr-2" />
-                  Salva Dati
-                </button>
-                <button 
-                  onClick={() => navigate('/stats')}
-                  className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  <BarChart3 className="h-4 w-4 mr-2" />
-                  Statistiche
-                </button>
-                <button 
-                  onClick={() => navigate('/settings')}
-                  className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  <Settings className="h-4 w-4 mr-2" />
-                  Impostazioni
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white shadow rounded-lg">
-            <div className="px-4 py-5 sm:p-6">
-              <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
-                Informazioni API
-              </h3>
-              {apiInfo && (
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-500">Versione:</span>
-                    <span className="text-sm font-medium text-gray-900">{apiInfo.version}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-500">Autenticazione:</span>
-                    <span className="text-sm font-medium text-gray-900">{apiInfo.authentication}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-500">Rate Limit:</span>
-                    <span className="text-sm font-medium text-gray-900">
-                      {apiInfo.rateLimit?.maxRequests}/min
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-500">Token:</span>
-                    <span className="text-sm font-mono text-gray-600 truncate max-w-32">
-                      {user?.bearerToken.substring(0, 20)}...
-                    </span>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* API Endpoints */}
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-4 py-5 sm:p-6">
-            <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4 flex items-center">
-              <Info className="h-5 w-5 mr-2" />
-              Endpoint API Disponibili
-            </h3>
-            {apiInfo && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div>
-                  <h4 className="text-md font-medium text-gray-800 mb-2">Autenticazione</h4>
-                  <div className="space-y-2">
-                    {Object.entries(apiInfo.endpoints.auth).map(([endpoint, description]) => (
-                      <div key={endpoint} className="flex items-center text-sm">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mr-3">
-                          {endpoint.split(' ')[0]}
-                        </span>
-                        <span className="text-gray-600">{description}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <h4 className="text-md font-medium text-gray-800 mb-2">Gestione Dati</h4>
-                  <div className="space-y-2">
-                    {Object.entries(apiInfo.endpoints.data).map(([endpoint, description]) => (
-                      <div key={endpoint} className="flex items-center text-sm">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 mr-3">
-                          {endpoint.split(' ')[0]}
-                        </span>
-                        <span className="text-gray-600 truncate">{description}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+        <Card className="col-span-3">
+          <CardHeader>
+            <CardTitle>Azioni Rapide</CardTitle>
+            <CardDescription>
+              Accesso rapido alle funzioni principali
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Button onClick={() => navigate('/files')} className="w-full justify-start">
+              <FileText className="mr-2 h-4 w-4" />
+              Gestione File
+            </Button>
+            <Button onClick={() => navigate('/save-data')} className="w-full justify-start" variant="outline">
+              <Database className="mr-2 h-4 w-4" />
+              Salva Dati
+            </Button>
+            <Button onClick={() => navigate('/stats')} className="w-full justify-start" variant="outline">
+              <BarChart3 className="mr-2 h-4 w-4" />
+              Statistiche
+            </Button>
+            <Button onClick={() => navigate('/settings')} className="w-full justify-start" variant="outline">
+              <Settings className="mr-2 h-4 w-4" />
+              Impostazioni
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

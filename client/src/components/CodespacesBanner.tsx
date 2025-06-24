@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useSettings } from '../hooks/useSettings';
 import { Settings, X, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 
 export const CodespacesBanner: React.FC = () => {
   const { settings, detectCodespaceUrl, autoConfigureForCodespaces } = useSettings();
@@ -51,44 +53,30 @@ export const CodespacesBanner: React.FC = () => {
   }
 
   return (
-    <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
-      <div className="flex">
-        <div className="flex-shrink-0">
-          <AlertCircle className="h-5 w-5 text-blue-400" />
+    <Alert className="mb-6 relative">
+      <AlertCircle className="h-5 w-5" />
+      <AlertTitle>GitHub Codespaces Rilevato!</AlertTitle>
+      <AlertDescription>
+        <p className="pr-8">
+          Sembra che tu stia usando GitHub Codespaces. L'URL del backend potrebbe dover essere configurato per funzionare correttamente.
+        </p>
+        <div className="mt-4 flex gap-4">
+          <Button onClick={handleAutoConfig} size="sm">
+            Configura Automaticamente
+          </Button>
+          <Button onClick={handleManualConfig} variant="outline" size="sm">
+            <Settings className="h-4 w-4 mr-2" />
+            Configura Manualmente
+          </Button>
         </div>
-        <div className="ml-3 flex-1">
-          <p className="text-sm text-blue-700">
-            <strong>GitHub Codespaces rilevato!</strong> Sembra che tu stia usando GitHub Codespaces. 
-            L'URL del backend potrebbe dover essere configurato per funzionare correttamente.
-          </p>
-          <div className="mt-3 flex space-x-3">
-            <button
-              onClick={handleAutoConfig}
-              className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              Configura Automaticamente
-            </button>
-            <button
-              onClick={handleManualConfig}
-              className="inline-flex items-center px-3 py-1.5 border border-blue-300 text-xs font-medium rounded text-blue-700 bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              <Settings className="h-3 w-3 mr-1" />
-              Configura Manualmente
-            </button>
-          </div>
-        </div>
-        <div className="ml-auto pl-3">
-          <div className="-mx-1.5 -my-1.5">
-            <button
-              onClick={handleDismiss}
-              className="inline-flex rounded-md p-1.5 text-blue-500 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-blue-50 focus:ring-blue-600"
-            >
-              <span className="sr-only">Dismiss</span>
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+      </AlertDescription>
+      <button
+        onClick={handleDismiss}
+        className="absolute top-2 right-2 p-1.5 rounded-md text-foreground/50 hover:text-foreground focus:outline-none"
+      >
+        <span className="sr-only">Dismiss</span>
+        <X className="h-4 w-4" />
+      </button>
+    </Alert>
   );
 };

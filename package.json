@@ -30,6 +30,7 @@
     "axios": "^1.10.0",
     "jest": "^29.7.0",
     "nodemon": "^3.0.2",
+    "shadcn-ui": "^0.9.5",
     "supertest": "^6.3.3"
   },
   "jest": {
