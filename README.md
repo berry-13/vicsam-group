@@ -43,43 +43,51 @@ graph TB
 ## 🚦 Endpoints API
 
 ```mermaid
-graph LR
-    A[/api] --> B[/auth]
-    A --> C[/data]
-    A --> D[/health]
+flowchart TD
+    A["/api"] --> B["/auth"]
+    A --> C["/data"]
+    A --> D["/health"]
     
-    B --> E[POST /login]
-    B --> F[POST /register]
+    B --> E["POST /login"]
+    B --> F["POST /register"]
+    B --> G["GET /verify"]
     
-    C --> G[GET /]
-    C --> H[POST /]
-    C --> I[PUT /:id]
-    C --> J[DELETE /:id]
+    C --> H["POST /save"]
+    C --> I["GET /files"]
+    C --> J["GET /file/:filename"]
+    C --> K["DELETE /file/:filename"]
+    C --> L["GET /stats"]
     
-    D --> K[GET /]
+    D --> M["GET /"]
+    
+    style A fill:#e1f5fe
+    style B fill:#f3e5f5
+    style C fill:#e8f5e8
+    style D fill:#fff3e0
 ```
 
 ### 🔐 Autenticazione
 
-| Endpoint | Metodo | Descrizione |
-|----------|--------|-------------|
-| `/api/auth/login` | POST | Login utente |
-| `/api/auth/register` | POST | Registrazione utente |
+| Endpoint | Metodo | Descrizione | Auth |
+|----------|--------|-------------|------|
+| `/api/auth/login` | POST | Login con password | ❌ |
+| `/api/auth/verify` | GET | Verifica token Bearer | ✅ |
 
 ### 📊 Gestione Dati
 
 | Endpoint | Metodo | Descrizione | Auth |
 |----------|--------|-------------|------|
-| `/api/data` | GET | Ottieni tutti i dati | ✅ |
-| `/api/data` | POST | Crea nuovo dato | ✅ |
-| `/api/data/:id` | PUT | Aggiorna dato | ✅ |
-| `/api/data/:id` | DELETE | Elimina dato | ✅ |
+| `/api/data/save` | POST | Salva nuovi dati | ✅ |
+| `/api/data/files` | GET | Lista tutti i file | ✅ |
+| `/api/data/file/:filename` | GET | Contenuto di un file | ✅ |
+| `/api/data/file/:filename` | DELETE | Elimina un file | ✅ |
+| `/api/data/stats` | GET | Statistiche sui dati | ✅ |
 
 ### 🏥 Monitoraggio
 
-| Endpoint | Metodo | Descrizione |
-|----------|--------|-------------|
-| `/api/health` | GET | Stato del server |
+| Endpoint | Metodo | Descrizione | Auth |
+|----------|--------|-------------|------|
+| `/health` | GET | Stato del server | ❌ |
 
 ## ⚡ Quick Start
 
