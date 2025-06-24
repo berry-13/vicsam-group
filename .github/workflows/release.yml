@@ -20,6 +20,7 @@ permissions:
   contents: write
   issues: write
   pull-requests: write
+  packages: write
 
 jobs:
   create-release:
@@ -136,7 +137,7 @@ jobs:
         prerelease: false
 
   docker-build:
-    name: Build Docker Image
+    name: Build and Push Docker Image
     runs-on: ubuntu-latest
     needs: create-release
     if: success()
@@ -148,15 +149,51 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
     
-    - name: Build Docker image
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ghcr.io/${{ github.repository }}
+        tags: |
+          type=semver,pattern={{version}},value=${{ needs.create-release.outputs.version }}
+          type=semver,pattern={{major}}.{{minor}},value=${{ needs.create-release.outputs.version }}
+          type=semver,pattern={{major}},value=${{ needs.create-release.outputs.version }}
+          type=raw,value=latest
+    
+    - name: Build and push Docker image
       uses: docker/build-push-action@v5
       with:
         context: .
-        push: false
-        tags: |
-          vicsam/api:latest
-          vicsam/api:${{ needs.create-release.outputs.version }}
-        platforms: linux/amd64
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+    
+    - name: Generate image summary
+      run: |
+        echo "## 🐳 Docker Images Published" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "The following Docker images have been published to GitHub Container Registry:" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "```" >> $GITHUB_STEP_SUMMARY
+        echo "ghcr.io/${{ github.repository }}:latest" >> $GITHUB_STEP_SUMMARY
+        echo "ghcr.io/${{ github.repository }}:${{ needs.create-release.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+        echo "```" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Usage" >> $GITHUB_STEP_SUMMARY
+        echo "```bash" >> $GITHUB_STEP_SUMMARY
+        echo "docker pull ghcr.io/${{ github.repository }}:latest" >> $GITHUB_STEP_SUMMARY
+        echo "docker run -p 3000:3000 ghcr.io/${{ github.repository }}:latest" >> $GITHUB_STEP_SUMMARY
+        echo "```" >> $GITHUB_STEP_SUMMARY
 
   notify:
     name: Notify Release

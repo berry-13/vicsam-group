@@ -51,13 +51,36 @@ class ApiService {
 
   constructor() {
     // Get base URL from settings or environment
-    // In Codespaces, use relative URLs to avoid SSL certificate issues
-    this.currentBaseUrl = this.getStoredBaseUrl() || import.meta.env.VITE_API_BASE_URL || '/api';
+    // In Codespaces and similar environments, use relative URLs to avoid SSL certificate issues
+    const isCodespaces = window.location.hostname.includes('github.dev') || 
+                        window.location.hostname.includes('gitpod.io') ||
+                        window.location.hostname.includes('codespace');
+    
+    const isDevelopment = import.meta.env.DEV;
+    const isHTTPS = window.location.protocol === 'https:';
+    
+    // Intelligent base URL configuration
+    let defaultBaseUrl = '/api';
+    
+    if (!isDevelopment && !isCodespaces && !isHTTPS) {
+      // Production environment with HTTP
+      defaultBaseUrl = 'http://localhost:3000/api';
+    } else if (!isDevelopment && isHTTPS && !isCodespaces) {
+      // Production environment with HTTPS
+      defaultBaseUrl = `${window.location.protocol}//${window.location.hostname}:3000/api`;
+    }
+    // For development and Codespaces, always use relative URLs with proxy
+    
+    this.currentBaseUrl = this.getStoredBaseUrl() || import.meta.env.VITE_API_BASE_URL || defaultBaseUrl;
     
     // Log della configurazione per debug
-    console.log('🔧 [API CONFIG] Current window location:', window.location.href);
-    console.log('🔧 [API CONFIG] Environment:', import.meta.env.MODE);
-    console.log('🔧 [API CONFIG] Configured base URL:', this.currentBaseUrl);
+    console.log('🔧 [API CONFIG] Environment Detection:');
+    console.log('  - Current URL:', window.location.href);
+    console.log('  - Is Development:', isDevelopment);
+    console.log('  - Is Codespaces:', isCodespaces);
+    console.log('  - Is HTTPS:', isHTTPS);
+    console.log('  - Mode:', import.meta.env.MODE);
+    console.log('  - Configured base URL:', this.currentBaseUrl);
     
     this.api = axios.create({
       baseURL: this.currentBaseUrl,

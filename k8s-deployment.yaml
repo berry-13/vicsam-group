@@ -1,0 +1,242 @@
+# Kubernetes Deployment per VicSam Group API
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: vicsam-group
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: vicsam-secrets
+  namespace: vicsam-group
+type: Opaque
+stringData:
+  jwt-secret: "your-very-secure-jwt-secret-here-change-this"
+  bearer-token: "your-secure-bearer-token-here-change-this"
+  api-password: "your-secure-api-password-here-change-this"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vicsam-config
+  namespace: vicsam-group
+data:
+  NODE_ENV: "production"
+  PORT: "3000"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vicsam-api
+  namespace: vicsam-group
+  labels:
+    app: vicsam-api
+    version: v1
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: vicsam-api
+  template:
+    metadata:
+      labels:
+        app: vicsam-api
+        version: v1
+    spec:
+      containers:
+      - name: vicsam-api
+        image: ghcr.io/your-username/vicsam-group:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3000
+          name: http
+        env:
+        - name: NODE_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: vicsam-config
+              key: NODE_ENV
+        - name: PORT
+          valueFrom:
+            configMapKeyRef:
+              name: vicsam-config
+              key: PORT
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: vicsam-secrets
+              key: jwt-secret
+        - name: BEARER_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: vicsam-secrets
+              key: bearer-token
+        - name: API_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: vicsam-secrets
+              key: api-password
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        volumeMounts:
+        - name: data-volume
+          mountPath: /app/data
+        - name: logs-volume
+          mountPath: /app/logs
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+            - ALL
+      volumes:
+      - name: data-volume
+        persistentVolumeClaim:
+          claimName: vicsam-data-pvc
+      - name: logs-volume
+        persistentVolumeClaim:
+          claimName: vicsam-logs-pvc
+      restartPolicy: Always
+      securityContext:
+        fsGroup: 1001
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vicsam-api-service
+  namespace: vicsam-group
+  labels:
+    app: vicsam-api
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 3000
+    protocol: TCP
+    name: http
+  selector:
+    app: vicsam-api
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: vicsam-api-ingress
+  namespace: vicsam-group
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  tls:
+  - hosts:
+    - your-domain.example.com
+    secretName: vicsam-tls
+  rules:
+  - host: your-domain.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: vicsam-api-service
+            port:
+              number: 80
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: vicsam-data-pvc
+  namespace: vicsam-group
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: standard
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: vicsam-logs-pvc
+  namespace: vicsam-group
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: standard
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: vicsam-api-pdb
+  namespace: vicsam-group
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: vicsam-api
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: vicsam-api-hpa
+  namespace: vicsam-group
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: vicsam-api
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80

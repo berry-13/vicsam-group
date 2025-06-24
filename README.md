@@ -86,7 +86,24 @@ flowchart TD
 
 ## ⚡ Quick Start
 
-### GitHub Codespaces (Consigliato) ☁️
+### 🐳 Docker (Raccomandato per Produzione)
+```bash
+# Usa l'immagine prebuilt dal GitHub Container Registry
+docker run -d \
+  --name vicsam-api \
+  -p 3000:3000 \
+  -e JWT_SECRET=your-jwt-secret \
+  -e BEARER_TOKEN=your-bearer-token \
+  -e API_PASSWORD=your-api-password \
+  ghcr.io/your-username/vicsam-group:latest
+
+# Oppure con Docker Compose
+docker-compose -f docker-compose.registry.yml up -d
+```
+
+📖 **[Guida Completa Docker](./DOCKER.md)** - Deployment, configurazione e troubleshooting
+
+### GitHub Codespaces (Consigliato per Sviluppo) ☁️
 ```bash
 # Avvio automatico con configurazione Codespaces
 ./start-codespaces.sh
