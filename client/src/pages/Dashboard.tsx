@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiService } from '../services/api';
-import type { DataStats, ApiInfo } from '../services/api';
-import { CodespacesBanner } from '../components/CodespacesBanner';
+import type { DataStats } from '../services/api';
 import { 
   BarChart3, 
   FileText, 
@@ -10,28 +9,21 @@ import {
   Activity, 
   RefreshCw,
   Settings,
-  Info,
   Loader2
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const [stats, setStats] = useState<DataStats | null>(null);
-  const [apiInfo, setApiInfo] = useState<ApiInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const loadData = async () => {
     try {
-      const [statsData, infoData] = await Promise.all([
-        apiService.getStats(),
-        apiService.getApiInfo()
-      ]);
+      const statsData = await apiService.getStats();
       setStats(statsData);
-      setApiInfo(infoData);
     } catch (error) {
       console.error('Errore nel caricamento dati dashboard:', error);
     } finally {
@@ -75,8 +67,6 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <CodespacesBanner />
-      
       <div className="flex items-center justify-between space-y-2">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
