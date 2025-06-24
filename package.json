@@ -6,6 +6,10 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
+    "build": "./build.sh",
+    "build:client": "cd client && npm ci && npm run build",
+    "build:server": "npm ci",
+    "build:full": "npm run build:server && npm run build:client",
     "test": "NODE_ENV=test jest --detectOpenHandles --forceExit",
     "test:watch": "NODE_ENV=test jest --watch --detectOpenHandles",
     "test:coverage": "NODE_ENV=test jest --coverage --detectOpenHandles --forceExit",

@@ -113,15 +113,49 @@ jobs:
     name: Security Scan
     runs-on: ubuntu-latest
     needs: build-and-push
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && needs.build-and-push.result == 'success'
     
     steps:
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Extract image name for scan
+      id: image
+      run: |
+        # Get the first tag from the metadata (usually the latest/main tag)
+        IMAGE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+        if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          IMAGE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+        elif [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
+          IMAGE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:develop"
+        elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          IMAGE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${TAG_NAME}"
+        else
+          IMAGE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main"
+        fi
+        echo "image-tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+        echo "Scanning image: ${IMAGE_TAG}"
+    
+    - name: Pull image for scanning
+      run: |
+        docker pull ${{ steps.image.outputs.image-tag }}
+    
     - name: Run Trivy vulnerability scanner
       uses: aquasecurity/trivy-action@master
       with:
-        image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+        image-ref: ${{ steps.image.outputs.image-tag }}
         format: 'sarif'
         output: 'trivy-results.sarif'
+        severity: 'CRITICAL,HIGH,MEDIUM'
+        exit-code: '0'  # Non fallire il workflow per vulnerabilità
     
     - name: Upload Trivy scan results to GitHub Security tab
       uses: github/codeql-action/upload-sarif@v3
@@ -133,8 +167,20 @@ jobs:
       run: |
         echo "## 🔒 Security Scan Completed" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Image scanned:** \`${{ steps.image.outputs.image-tag }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
         echo "Vulnerability scan completed using Trivy scanner." >> $GITHUB_STEP_SUMMARY
         echo "Results have been uploaded to the GitHub Security tab." >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        # Check if SARIF file exists and show basic stats
+        if [ -f "trivy-results.sarif" ]; then
+          echo "### 📊 Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "SARIF file generated: trivy-results.sarif" >> $GITHUB_STEP_SUMMARY
+          echo "File size: $(ls -lh trivy-results.sarif | awk '{print $5}')" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        fi
 
   cleanup:
     name: Cleanup Old Images

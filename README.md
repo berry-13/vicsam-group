@@ -110,8 +110,22 @@ docker-compose -f docker-compose.registry.yml up -d
 ```
 
 ### Sviluppo Locale 💻
+
+#### Build Completo (Raccomandato)
 ```bash
-# Installa le dipendenze
+# Build completo: server + client React
+npm run build
+
+# Oppure con lo script dedicato
+./build.sh
+
+# Avvia il server con client integrato
+npm start
+```
+
+#### Solo Server (API-only)
+```bash
+# Installa solo le dipendenze server
 npm install
 
 # Avvia il server in modalità sviluppo
@@ -121,16 +135,18 @@ npm run dev
 npm start
 ```
 
-L'API sarà disponibile su `http://localhost:3000`
-
-### Frontend React 🎨
+#### Solo Client React
 ```bash
+# Build del client separatamente
+npm run build:client
+
+# Oppure sviluppo client standalone
 cd client
 npm install
-npm run dev
+npm run dev  # Disponibile su http://localhost:5173
 ```
 
-Il frontend sarà disponibile su `http://localhost:5173`
+**L'API è sempre disponibile su** `http://localhost:3000`
 
 ## ⚙️ Configurazione per GitHub Codespaces
 

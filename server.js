@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
 const helmet = require('helmet');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
@@ -88,8 +89,18 @@ app.use('/api/*', (req, res) => {
   });
 });
 
-// Serve static files from React build
-app.use(express.static(path.join(__dirname, 'client/dist')));
+// Check if client build exists
+const clientDistPath = path.join(__dirname, 'client/dist');
+const clientIndexPath = path.join(clientDistPath, 'index.html');
+const hasClientBuild = fs.existsSync(clientIndexPath);
+
+if (hasClientBuild) {
+  // Serve static files from React build
+  app.use(express.static(clientDistPath));
+  console.log('✅ Client React build trovato e servito');
+} else {
+  console.log('⚠️  Client React build non trovato. API-only mode.');
+}
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -98,13 +109,75 @@ app.get('/health', (req, res) => {
     message: 'Server is running',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    version: '2.0.0'
+    version: '2.0.0',
+    clientBuild: hasClientBuild
   });
 });
 
-// SPA fallback: tutte le altre rotte servono index.html
+// SPA fallback: tutte le altre rotte servono index.html o messaggio di fallback
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'client/dist', 'index.html'));
+  if (hasClientBuild) {
+    res.sendFile(clientIndexPath);
+  } else {
+    // Fallback HTML quando il client non è disponibile
+    res.status(200).send(`
+      <!DOCTYPE html>
+      <html lang="it">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>VicSam Group API</title>
+        <style>
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            background: #f8fafc;
+            color: #334155;
+          }
+          .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+          }
+          h1 { color: #1e40af; margin-bottom: 1rem; }
+          .api-list { background: #f1f5f9; padding: 1rem; border-radius: 4px; margin: 1rem 0; }
+          .endpoint { font-family: monospace; background: #e2e8f0; padding: 0.25rem 0.5rem; border-radius: 4px; margin: 0.25rem 0; }
+          .status { color: #059669; font-weight: bold; }
+          .warning { color: #d97706; background: #fef3c7; padding: 1rem; border-radius: 4px; margin: 1rem 0; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h1>🚀 VicSam Group API</h1>
+          <p class="status">✅ Server attivo e funzionante</p>
+          
+          <div class="warning">
+            ⚠️ <strong>Client React non disponibile</strong><br>
+            L'interfaccia web non è stata buildada. Server in modalità API-only.
+          </div>
+          
+          <h2>📡 API Endpoints Disponibili</h2>
+          <div class="api-list">
+            <div class="endpoint">GET /health - Health check</div>
+            <div class="endpoint">POST /api/auth/login - Autenticazione</div>
+            <div class="endpoint">GET /api/auth/info - Informazioni API</div>
+            <div class="endpoint">POST /api/data - Salva dati (richiede auth)</div>
+            <div class="endpoint">GET /api/data - Ottieni dati (richiede auth)</div>
+          </div>
+          
+          <h2>🔧 Per sviluppatori</h2>
+          <p>Per buildare il client React:</p>
+          <pre style="background: #1e293b; color: #e2e8f0; padding: 1rem; border-radius: 4px; overflow-x: auto;">cd client && npm run build</pre>
+          
+          <p>Documentazione completa: <a href="/api/auth/info" target="_blank">API Info</a></p>
+        </div>
+      </body>
+      </html>
+    `);
+  }
 });
 
 // Error handling middleware

@@ -1,22 +1,81 @@
-# Node modules
-node_modules
+# Dependencies
+node_modules/
+client/node_modules/
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# Test files
-__tests__
-coverage
-*.test.js
+# Production builds (client/dist will be built inside Docker)
+client/dist/
+build/
+dist/
 
-# Development files
+# Environment files
 .env
 .env.local
 .env.development
 .env.test
+.env.development.local
+.env.test.local
+.env.production.local
 nodemon.json
+
+# Testing
+__tests__/
+coverage/
+*.test.js
+*.spec.js
+jest.config.js
+
+# Development files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 
 # Git
 .git
 .gitignore
+.gitattributes
+
+# Documentation
+*.md
+docs/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+.circleci/
+
+# Docker
+docker-compose*.yml
+.dockerignore
+
+# Logs
+logs/
+*.log
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Local data directories
+data/
+temp/
+tmp/
 
 # CI/CD
 .github
