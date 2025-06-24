@@ -71,7 +71,10 @@ class ApiService {
     }
     // For development and Codespaces, always use relative URLs with proxy
     
-    this.currentBaseUrl = this.getStoredBaseUrl() || import.meta.env.VITE_API_BASE_URL || defaultBaseUrl;
+    // Usa URL relativo in Codespaces per evitare errori SSL, altrimenti usa stored/env/default
+    this.currentBaseUrl = isCodespaces
+      ? defaultBaseUrl
+      : (this.getStoredBaseUrl() || import.meta.env.VITE_API_BASE_URL || defaultBaseUrl);
     
     // Log della configurazione per debug
     console.log('🔧 [API CONFIG] Environment Detection:');
