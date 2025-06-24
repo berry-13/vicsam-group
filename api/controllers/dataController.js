@@ -9,11 +9,18 @@ const { successResponse, errorResponse } = require('../utils/helpers');
 const saveData = async (req, res, next) => {
   try {
     const data = req.body;
+    
+    // Log per debug
+    console.log('📊 [SAVE DATA] Tentativo di salvataggio dati');
+    console.log('📊 [SAVE DATA] CustomerVAT ricevuto:', data?.CustomerVAT);
+    
     const result = await fileService.saveData(data);
     
     const message = result.isUpdate 
       ? `File ${result.fileName} aggiornato con successo`
       : `Nuovo file ${result.fileName} creato con successo`;
+    
+    console.log('✅ [SAVE DATA] Salvataggio completato:', message);
     
     res.status(result.isUpdate ? 200 : 201).json(
       successResponse(
@@ -27,6 +34,7 @@ const saveData = async (req, res, next) => {
       )
     );
   } catch (error) {
+    console.error('❌ [SAVE DATA] Errore durante il salvataggio:', error.message);
     next(error);
   }
 };

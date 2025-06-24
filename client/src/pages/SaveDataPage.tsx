@@ -78,11 +78,18 @@ export const SaveDataPage: React.FC = () => {
         const text = await file.text();
         const jsonData = JSON.parse(text);
         
-        // Salva il file con il nome originale come metadato
+        // Verifica che il JSON contenga CustomerVAT
+        if (!jsonData.CustomerVAT) {
+          throw new Error(`Il file ${file.name} non contiene il campo CustomerVAT richiesto`);
+        }
+        
+        // Aggiungi metadati al JSON esistente invece di wrapparlo
         const dataToSave = {
-          originalFileName: file.name,
-          uploadDate: new Date().toISOString(),
-          data: jsonData
+          ...jsonData,
+          _metadata: {
+            originalFileName: file.name,
+            uploadDate: new Date().toISOString()
+          }
         };
         
         const result = await apiService.saveData(dataToSave);
@@ -92,10 +99,21 @@ export const SaveDataPage: React.FC = () => {
       setSuccess(`${files.length} file JSON salvati con successo: ${uploadResults.join(', ')}`);
       setFiles([]);
     } catch (err) {
+      console.error('Errore durante l\'upload:', err);
+      
       if (err instanceof SyntaxError) {
         setError('Errore: uno dei file non è un JSON valido');
+      } else if (err instanceof Error) {
+        // Gestisci errori dal server
+        if (err.message.includes('CustomerVAT è richiesto')) {
+          setError('Errore: Il file JSON deve contenere il campo "CustomerVAT"');
+        } else if (err.message.includes('non contiene il campo CustomerVAT')) {
+          setError(err.message);
+        } else {
+          setError(`Errore: ${err.message}`);
+        }
       } else {
-        setError(err instanceof Error ? err.message : 'Errore durante il salvataggio');
+        setError('Errore sconosciuto durante il salvataggio');
       }
     } finally {
       setLoading(false);

@@ -78,10 +78,19 @@ class ApiService {
     this.api.interceptors.response.use(
       (response) => response,
       (error) => {
+        console.error('Errore API:', error);
+        
         if (error.response?.status === 401) {
           this.clearAuth();
           window.location.href = '/login';
         }
+        
+        // Estrai il messaggio di errore dal server se disponibile
+        if (error.response?.data?.error) {
+          const serverError = new Error(error.response.data.error);
+          return Promise.reject(serverError);
+        }
+        
         return Promise.reject(error);
       }
     );

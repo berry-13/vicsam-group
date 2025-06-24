@@ -135,7 +135,7 @@ export const Dashboard: React.FC = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Button onClick={() => navigate('/files')} className="w-full justify-start">
+            <Button onClick={() => navigate('/files')} className="w-full justify-start" variant="outline">
               <FileText className="mr-2 h-4 w-4" />
               Gestione File
             </Button>

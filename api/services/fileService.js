@@ -17,11 +17,22 @@ class FileService {
    */
   async saveData(data) {
     try {
+      // Verifica che data sia un oggetto valido
+      if (!data || typeof data !== 'object') {
+        throw new Error('I dati forniti non sono un oggetto JSON valido');
+      }
+      
       // Estrae il CustomerVAT dal JSON
       const customerVAT = data.CustomerVAT;
       
       if (!customerVAT) {
+        console.error('Dati ricevuti:', JSON.stringify(data, null, 2));
         throw new Error('CustomerVAT è richiesto nel JSON per salvare il file');
+      }
+      
+      // Verifica che CustomerVAT non sia vuoto
+      if (typeof customerVAT !== 'string' || customerVAT.trim() === '') {
+        throw new Error('CustomerVAT deve essere una stringa non vuota');
       }
       
       // Sanitizza il CustomerVAT per il nome del file (rimuove caratteri non validi)
@@ -35,11 +46,14 @@ class FileService {
       // Salva i dati JSON così come sono, senza validazione
       await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
       
+      console.log(`✅ File salvato con successo: ${fileName} (CustomerVAT: ${customerVAT})`);
+      
       return {
         fileName,
         isUpdate: fileExists
       };
     } catch (error) {
+      console.error('Errore nel FileService.saveData:', error);
       throw new Error(`Errore nel salvataggio dei dati: ${error.message}`);
     }
   }
