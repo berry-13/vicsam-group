@@ -1,79 +1,89 @@
+require('dotenv').config();
 const express = require('express');
-const fs = require('fs');
 const path = require('path');
+const helmet = require('helmet');
+const cors = require('cors');
+const rateLimit = require('express-rate-limit');
+
+// Import middleware
+const { errorHandler, notFound, requestLogger } = require('./api/middleware/common');
+
+// Import routes
+const apiRoutes = require('./api/routes');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
-app.use(express.json());
+// Security middleware
+app.use(helmet({
+  contentSecurityPolicy: false, // Disabilita CSP per consentire il serving di file statici
+}));
 
-// percorso del file "generale"
-const generalFilePath = path.join(__dirname, 'dati_generali.json');
+// CORS configuration
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' ? false : true,
+  credentials: true
+}));
 
-// i campi che vogliamo estrarre dai dati inviati
-function estraiDatiImportanti(body) {
-  return {
-    nome: body.nome,
-    email: body.email,
-    data: new Date().toISOString()
-  };
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minuti
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100, // limite di 100 richieste per finestra
+  message: {
+    success: false,
+    error: 'Troppe richieste, riprova più tardi',
+    timestamp: new Date().toISOString()
+  }
+});
+
+app.use('/api', limiter);
+
+// Request logging
+if (process.env.NODE_ENV !== 'production') {
+  app.use(requestLogger);
 }
 
-app.post('/salva', (req, res) => {
-  const body = req.body;
-  const timestamp = Date.now();
-  const filePath = path.join(__dirname, `dati_${timestamp}.json`);
+// Body parsing
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-  fs.writeFileSync(filePath, JSON.stringify(body, null, 2));
+// API routes
+app.use('/api', apiRoutes);
 
-  let datiGenerali = [];
-  if (fs.existsSync(generalFilePath)) {
-    datiGenerali = JSON.parse(fs.readFileSync(generalFilePath));
-  }
-  datiGenerali.push(estraiDatiImportanti(body));
-  fs.writeFileSync(generalFilePath, JSON.stringify(datiGenerali, null, 2));
+// Serve static files from React build
+app.use(express.static(path.join(__dirname, 'client/dist')));
 
-  res.json({ message: 'Dati salvati con successo!' });
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Server is running',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    version: '2.0.0'
+  });
 });
 
-const PASSWORD = "supersegreta"; // Cambia questa password a piacere
-
-// Middleware per autenticazione semplice
-function checkPassword(req, res, next) {
-  const password = req.headers["x-access-password"] || req.body.password;
-  if (password !== PASSWORD) {
-    return res.status(401).json({ error: "Password errata" });
-  }
-  next();
-}
-
-// Endpoint per elencare tutti i file dati_*.json e dati_generali.json
-app.get('/files', checkPassword, (req, res) => {
-  const files = fs.readdirSync(__dirname)
-    .filter(f => f.startsWith('dati_') && f.endsWith('.json'));
-  files.push('dati_generali.json');
-  res.json({ files });
+// SPA fallback: tutte le altre rotte servono index.html
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'client/dist', 'index.html'));
 });
 
-// Endpoint per visualizzare il contenuto di un file
-app.get('/file/:filename', checkPassword, (req, res) => {
-  const { filename } = req.params;
-  if (!filename.endsWith('.json')) return res.status(400).json({ error: 'Formato non valido' });
-  const filePath = path.join(__dirname, filename);
-  if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'File non trovato' });
-  const content = fs.readFileSync(filePath, 'utf-8');
-  res.json({ content: JSON.parse(content) });
+// Error handling middleware
+app.use(notFound);
+app.use(errorHandler);
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM signal received: closing HTTP server');
+  server.close(() => {
+    console.log('HTTP server closed');
+  });
 });
 
-// Endpoint per scaricare un file
-app.get('/download/:filename', checkPassword, (req, res) => {
-  const { filename } = req.params;
-  if (!filename.endsWith('.json')) return res.status(400).json({ error: 'Formato non valido' });
-  const filePath = path.join(__dirname, filename);
-  if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'File non trovato' });
-  res.download(filePath);
-});
-
-app.listen(PORT, () => {
-  console.log(`Server avviato su http://localhost:${PORT}`);
+const server = app.listen(PORT, () => {
+  console.log(`🚀 Server avviato su http://localhost:${PORT}`);
+  console.log(`📁 API disponibili su http://localhost:${PORT}/api`);
+  console.log(`🔍 Documentazione API: http://localhost:${PORT}/api/auth/info`);
+  console.log(`⚡ Ambiente: ${process.env.NODE_ENV || 'development'}`);
 });
