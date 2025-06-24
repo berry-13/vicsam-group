@@ -4,7 +4,17 @@ const { errorResponse } = require('../utils/helpers');
  * Middleware per gestione degli errori globali
  */
 const errorHandler = (err, req, res, next) => {
-  console.error('Error:', err);
+  // Non loggare errori di parsing JSON nei test
+  if (process.env.NODE_ENV !== 'test') {
+    console.error('Error:', err);
+  }
+
+  // Errore di parsing JSON body
+  if (err.type === 'entity.parse.failed') {
+    return res.status(400).json(
+      errorResponse('Formato JSON non valido', 400)
+    );
+  }
 
   // Errore di validazione Joi
   if (err.isJoi) {

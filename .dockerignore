@@ -1,0 +1,46 @@
+# Node modules
+node_modules
+npm-debug.log*
+
+# Test files
+__tests__
+coverage
+*.test.js
+
+# Development files
+.env
+.env.local
+.env.development
+.env.test
+nodemon.json
+
+# Git
+.git
+.gitignore
+
+# CI/CD
+.github
+
+# Documentation
+*.md
+!README.md
+
+# Data files (questi non dovrebbero essere nell'immagine)
+dati_*.json
+dati_generali.json
+
+# Logs
+logs
+*.log
+
+# Temporary files
+tmp
+temp
+
+# IDE
+.vscode
+.idea
+
+# OS
+.DS_Store
+Thumbs.db

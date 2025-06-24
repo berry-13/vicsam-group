@@ -50,6 +50,15 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // API routes
 app.use('/api', apiRoutes);
 
+// API 404 handler (solo per rotte che iniziano con /api)
+app.use('/api/*', (req, res) => {
+  res.status(404).json({
+    success: false,
+    error: `Rotta API non trovata: ${req.method} ${req.path}`,
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Serve static files from React build
 app.use(express.static(path.join(__dirname, 'client/dist')));
 

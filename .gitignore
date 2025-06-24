@@ -134,3 +134,20 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# VicSam Group specific files
+dati_*.json
+dati_generali.json
+
+# Test files
+coverage/
+test-results/
+.nyc_output
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Data directories
+data/

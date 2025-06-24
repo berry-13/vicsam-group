@@ -1,0 +1,192 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run tests
+      run: npm run test:ci
+      env:
+        NODE_ENV: test
+    
+    - name: Determine version
+      id: version
+      run: |
+        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          # Versioning manuale
+          NEW_VERSION=$(npm version ${{ github.event.inputs.version }} --no-git-tag-version)
+          echo "version=${NEW_VERSION}" >> $GITHUB_OUTPUT
+          echo "tag=${NEW_VERSION}" >> $GITHUB_OUTPUT
+        else
+          # Versioning da tag
+          TAG=${GITHUB_REF#refs/tags/}
+          echo "version=${TAG}" >> $GITHUB_OUTPUT
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Generate changelog
+      id: changelog
+      run: |
+        # Genera changelog dai commit
+        PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo "")
+        
+        if [ -n "$PREVIOUS_TAG" ]; then
+          CHANGELOG=$(git log --pretty=format:"- %s (%h)" ${PREVIOUS_TAG}..HEAD | head -20)
+        else
+          CHANGELOG=$(git log --pretty=format:"- %s (%h)" | head -20)
+        fi
+        
+        echo "changelog<<EOF" >> $GITHUB_OUTPUT
+        echo "$CHANGELOG" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+    
+    - name: Create release package
+      run: |
+        mkdir -p release
+        
+        # Copia i file necessari per la release
+        cp -r api release/
+        cp server.js package.json README.md LICENSE release/
+        cp -r __tests__ release/
+        
+        # Crea file di esempio per configurazione
+        cp .env.test release/.env.example
+        
+        # Crea archivio
+        tar -czf vicsam-group-${{ steps.version.outputs.version }}.tar.gz -C release .
+    
+    - name: Create GitHub Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.version.outputs.tag }}
+        release_name: Release ${{ steps.version.outputs.version }}
+        body: |
+          ## 🚀 VicSam Group API ${{ steps.version.outputs.version }}
+          
+          ### Changes
+          ${{ steps.changelog.outputs.changelog }}
+          
+          ### Installation
+          ```bash
+          wget https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/vicsam-group-${{ steps.version.outputs.version }}.tar.gz
+          tar -xzf vicsam-group-${{ steps.version.outputs.version }}.tar.gz
+          npm install
+          cp .env.example .env
+          # Configura le variabili d'ambiente
+          npm start
+          ```
+          
+          ### Features
+          - ✅ Secure Bearer Token Authentication
+          - ✅ Comprehensive Data Validation
+          - ✅ Rate Limiting & Security Headers
+          - ✅ Structured JSON Responses
+          - ✅ Health Check Endpoint
+          - ✅ Complete Test Suite
+          
+          ### Documentation
+          - 📖 [API Documentation](./API_DOCUMENTATION.md)
+          - 🏃‍♂️ [Quick Start Guide](./README.md)
+        draft: false
+        prerelease: false
+    
+    - name: Upload release asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./vicsam-group-${{ steps.version.outputs.version }}.tar.gz
+        asset_name: vicsam-group-${{ steps.version.outputs.version }}.tar.gz
+        asset_content_type: application/gzip
+
+  docker-build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: create-release
+    if: success()
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Login to Docker Hub (Optional)
+      if: env.DOCKER_USERNAME != ''
+      uses: docker/login-action@v3
+      env:
+        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      with:
+        username: ${{ env.DOCKER_USERNAME }}
+        password: ${{ env.DOCKER_PASSWORD }}
+    
+    - name: Build Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: false
+        tags: |
+          vicsam/api:latest
+          vicsam/api:${{ needs.create-release.outputs.version }}
+        platforms: linux/amd64
+
+  notify:
+    name: Notify Release
+    runs-on: ubuntu-latest
+    needs: [create-release, docker-build]
+    if: always()
+    
+    steps:
+    - name: Notify success
+      if: needs.create-release.result == 'success'
+      run: |
+        echo "✅ Release ${{ needs.create-release.outputs.version }} created successfully!"
+        # Aggiungi qui notifiche (Slack, Discord, email, etc.)
+    
+    - name: Notify failure
+      if: needs.create-release.result == 'failure'
+      run: |
+        echo "❌ Release failed!"
+        # Aggiungi qui notifiche di errore

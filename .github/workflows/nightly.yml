@@ -1,0 +1,136 @@
+name: Nightly Tests
+
+on:
+  schedule:
+    # Esegui ogni notte alle 2:00 UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch: # Permetti esecuzione manuale
+
+jobs:
+  extended-tests:
+    name: Extended Test Suite
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run extended tests
+      run: |
+        npm run test:coverage
+        npm run test:integration --if-present
+      env:
+        NODE_ENV: test
+    
+    - name: Performance tests
+      run: |
+        echo "Running performance tests..."
+        # Aggiungi qui test di performance (artillery, k6, etc.)
+    
+    - name: Memory leak tests
+      run: |
+        echo "Running memory leak tests..."
+        # Aggiungi qui test per memory leak
+    
+    - name: Generate test report
+      run: |
+        echo "Generating comprehensive test report..."
+        # Aggiungi qui generazione report
+    
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: nightly-test-results
+        path: |
+          coverage/
+          test-results/
+        retention-days: 7
+
+  dependency-update:
+    name: Check Dependency Updates
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+    
+    - name: Check for outdated packages
+      run: |
+        npm outdated --json > outdated.json || true
+        cat outdated.json
+    
+    - name: Create dependency update issue
+      if: success()  
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          
+          try {
+            const outdated = JSON.parse(fs.readFileSync('outdated.json', 'utf8'));
+            
+            if (Object.keys(outdated).length > 0) {
+              const body = `## 📦 Dependency Updates Available\n\n` +
+                `The following packages have updates available:\n\n` +
+                Object.entries(outdated).map(([pkg, info]) => 
+                  `- **${pkg}**: ${info.current} → ${info.latest}`
+                ).join('\n') +
+                `\n\n⚠️ Please review and update dependencies as needed.`;
+              
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: '📦 Dependency Updates Available',
+                body: body,
+                labels: ['dependencies', 'maintenance']
+              });
+            }
+          } catch (error) {
+            console.log('No outdated dependencies found or error parsing JSON');
+          }
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run security scan
+      run: |
+        npm audit --json > audit.json || true
+        npx audit-ci --config audit-ci.json || true
+    
+    - name: Upload security scan results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: security-scan-results  
+        path: audit.json
+        retention-days: 30

@@ -41,8 +41,11 @@
       "html"
     ],
     "testMatch": [
-      "**/__tests__/**/*.js",
+      "**/__tests__/**/*.test.js",
       "**/?(*.)+(spec|test).js"
+    ],
+    "testPathIgnorePatterns": [
+      "/__tests__/helpers.js"
     ]
   }
 }

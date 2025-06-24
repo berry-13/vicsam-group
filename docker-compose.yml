@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  vicsam-api:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - JWT_SECRET=your-production-jwt-secret-here
+      - BEARER_TOKEN=your-production-bearer-token-here
+      - API_PASSWORD=your-production-password-here
+    volumes:
+      - ./data:/app/data  # Persistenza dati
+      - ./logs:/app/logs  # Persistenza log
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+  
+  # Nginx reverse proxy (opzionale)
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro  # Certificati SSL
+    depends_on:
+      - vicsam-api
+    restart: unless-stopped
+
+volumes:
+  data:
+    driver: local
+  logs:
+    driver: local
