@@ -203,14 +203,6 @@ Il progetto include workflow GitHub Actions per:
 - 🔍 Scansioni di sicurezza
 - 📦 Controllo dipendenze
 
-## 🤝 Contribuire
-
-1. Fork del progetto
-2. Crea un branch per la feature (`git checkout -b feature/AmazingFeature`)
-3. Commit delle modifiche (`git commit -m 'Add some AmazingFeature'`)
-4. Push sul branch (`git push origin feature/AmazingFeature`)
-5. Apri una Pull Request
-
 ## 📝 License
 
 Distribuito sotto licenza MIT. Vedi `LICENSE` per maggiori informazioni.
