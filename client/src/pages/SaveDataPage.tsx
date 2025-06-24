@@ -9,7 +9,15 @@ import { Badge } from "@/components/ui/badge";
 export const SaveDataPage: React.FC = () => {
   const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [success, setSuccess] = useState<{
+    message: string;
+    results: Array<{
+      originalFile: string;
+      savedAs: string;
+      customerVAT: string;
+      isUpdate: boolean;
+    }>;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
 
@@ -73,6 +81,7 @@ export const SaveDataPage: React.FC = () => {
 
     try {
       const uploadResults = [];
+      let successCount = 0;
       
       for (const file of files) {
         const text = await file.text();
@@ -93,10 +102,31 @@ export const SaveDataPage: React.FC = () => {
         };
         
         const result = await apiService.saveData(dataToSave);
-        uploadResults.push(result.fileName);
+        uploadResults.push({
+          originalFile: file.name,
+          savedAs: result.fileName,
+          customerVAT: jsonData.CustomerVAT,
+          isUpdate: result.isUpdate || false
+        });
+        successCount++;
       }
       
-      setSuccess(`${files.length} file JSON salvati con successo: ${uploadResults.join(', ')}`);
+      const newFiles = uploadResults.filter(r => !r.isUpdate).length;
+      const updatedFiles = uploadResults.filter(r => r.isUpdate).length;
+      
+      let successMessage = `✅ ${successCount} file processati con successo`;
+      if (newFiles > 0 && updatedFiles > 0) {
+        successMessage += ` (${newFiles} nuovi, ${updatedFiles} aggiornati)`;
+      } else if (newFiles > 0) {
+        successMessage += ` (${newFiles} nuovi)`;
+      } else if (updatedFiles > 0) {
+        successMessage += ` (${updatedFiles} aggiornati)`;
+      }
+      
+      setSuccess({
+        message: successMessage,
+        results: uploadResults
+      });
       setFiles([]);
     } catch (err) {
       console.error('Errore durante l\'upload:', err);
@@ -155,7 +185,29 @@ export const SaveDataPage: React.FC = () => {
             {success && (
               <Alert className="mb-6">
                 <CheckCircle className="h-4 w-4" />
-                <AlertDescription>{success}</AlertDescription>
+                <AlertDescription>
+                  <div className="space-y-2">
+                    <p className="font-medium">{success.message}</p>
+                    {success.results.length > 0 && (
+                      <div className="mt-3 space-y-1">
+                        <p className="text-sm font-medium">Dettagli:</p>
+                        {success.results.map((result, index) => (
+                          <div key={index} className="flex items-center gap-2 text-sm">
+                            <Badge variant={result.isUpdate ? "secondary" : "default"} className="text-xs">
+                              {result.isUpdate ? "Aggiornato" : "Nuovo"}
+                            </Badge>
+                            <span className="text-muted-foreground">
+                              {result.originalFile} → {result.savedAs}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              (P.IVA: {result.customerVAT})
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </AlertDescription>
               </Alert>
             )}
 

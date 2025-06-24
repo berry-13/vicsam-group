@@ -129,8 +129,8 @@ class ApiService {
   }
 
   // Gestione dati
-  async saveData(data: Record<string, unknown>): Promise<{ fileName: string }> {
-    const response: AxiosResponse<ApiResponse<{ fileName: string }>> = await this.api.post('/data/save', data);
+  async saveData(data: Record<string, unknown>): Promise<{ fileName: string; isUpdate?: boolean; customerVAT?: string }> {
+    const response: AxiosResponse<ApiResponse<{ fileName: string; isUpdate?: boolean; customerVAT?: string }>> = await this.api.post('/data/save', data);
     return response.data.data;
   }
 
