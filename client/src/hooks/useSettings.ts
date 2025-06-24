@@ -1,12 +1,10 @@
 import { useState, useEffect } from 'react';
 
 export interface AppSettings {
-  apiBaseUrl: string;
   debug: boolean;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
-  apiBaseUrl: import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? '/api' : 'http://localhost:3000'),
   debug: import.meta.env.VITE_DEBUG === 'true' || false,
 };
 
@@ -46,43 +44,9 @@ export const useSettings = () => {
     localStorage.removeItem(SETTINGS_STORAGE_KEY);
   };
 
-  const getApiUrl = (endpoint: string = '') => {
-    const baseUrl = settings.apiBaseUrl.replace(/\/$/, '');
-    const cleanEndpoint = endpoint.replace(/^\//, '');
-    return cleanEndpoint ? `${baseUrl}/${cleanEndpoint}` : baseUrl;
-  };
-
-  // Auto-detect GitHub Codespaces URL
-  const detectCodespaceUrl = (): string | null => {
-    if (typeof window === 'undefined') return null;
-    
-    const hostname = window.location.hostname;
-    if (hostname.includes('github.dev') || hostname.includes('githubpreview.dev')) {
-      // Extract the codespace name and generate the backend URL
-      const parts = hostname.split('.');
-      if (parts.length >= 3) {
-        const codespaceId = parts[0];
-        return `https://${codespaceId}-3000.${parts.slice(1).join('.')}`;
-      }
-    }
-    return null;
-  };
-
-  const autoConfigureForCodespaces = () => {
-    const codespaceUrl = detectCodespaceUrl();
-    if (codespaceUrl) {
-      updateSettings({ apiBaseUrl: codespaceUrl });
-      return codespaceUrl;
-    }
-    return null;
-  };
-
   return {
     settings,
     updateSettings,
     resetSettings,
-    getApiUrl,
-    detectCodespaceUrl,
-    autoConfigureForCodespaces,
   };
 };

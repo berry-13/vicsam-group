@@ -1,7 +1,7 @@
 const fs = require('fs').promises;
 const fsSync = require('fs');
 const path = require('path');
-const { generateFileName, extractImportantData } = require('../utils/helpers');
+const { generateFileName } = require('../utils/helpers');
 
 class FileService {
   constructor() {
@@ -10,8 +10,9 @@ class FileService {
   }
 
   /**
-   * Salva i dati in un file specifico con timestamp
-   * @param {Object} data - Dati da salvare
+   * Salva i dati JSON in un file specifico con timestamp
+   * Accetta qualsiasi struttura JSON senza validazione
+   * @param {Object} data - Dati JSON da salvare
    * @returns {Promise<string>} Nome del file creato
    */
   async saveData(data) {
@@ -19,38 +20,12 @@ class FileService {
       const fileName = generateFileName('dati', 'json');
       const filePath = path.join(this.dataDir, fileName);
       
+      // Salva i dati JSON così come sono, senza validazione
       await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
-      
-      // Aggiorna il file generale
-      await this.updateGeneralFile(data);
       
       return fileName;
     } catch (error) {
       throw new Error(`Errore nel salvataggio dei dati: ${error.message}`);
-    }
-  }
-
-  /**
-   * Aggiorna il file generale con i dati importanti
-   * @param {Object} data - Dati originali
-   */
-  async updateGeneralFile(data) {
-    try {
-      let generalData = [];
-      
-      // Leggi il file generale esistente se presente
-      if (fsSync.existsSync(this.generalFilePath)) {
-        const content = await fs.readFile(this.generalFilePath, 'utf8');
-        generalData = JSON.parse(content);
-      }
-      
-      // Aggiungi i nuovi dati estratti
-      generalData.push(extractImportantData(data));
-      
-      // Salva il file aggiornato
-      await fs.writeFile(this.generalFilePath, JSON.stringify(generalData, null, 2), 'utf8');
-    } catch (error) {
-      throw new Error(`Errore nell'aggiornamento del file generale: ${error.message}`);
     }
   }
 

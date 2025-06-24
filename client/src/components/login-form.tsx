@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { AlertCircle } from 'lucide-react';
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import Spinner from "@/components/ui/spinner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ThemeToggle } from './theme-toggle';
 import { useAuth } from '../hooks/useAuth';
 import { cn } from "@/lib/utils"
-import { ThemeToggle } from './theme-toggle';
 
 interface LoginFormProps extends React.ComponentProps<"div"> {
   className?: string;
@@ -54,7 +55,7 @@ export function LoginForm({
         <CardHeader>
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <CardTitle>Accesso Amministratore</CardTitle>
+              <CardTitle>Ben Tornato!</CardTitle>
               <CardDescription>
                 Inserisci la password master per accedere al pannello.
               </CardDescription>
@@ -84,7 +85,7 @@ export function LoginForm({
                 />
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Accesso in corso...' : 'Accedi'}
+                {loading ? <Spinner /> : 'Accedi'}
               </Button>
             </div>
           </form>

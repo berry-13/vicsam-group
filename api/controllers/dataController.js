@@ -2,7 +2,8 @@ const fileService = require('../services/fileService');
 const { successResponse, errorResponse } = require('../utils/helpers');
 
 /**
- * Controller per salvare nuovi dati
+ * Controller per salvare nuovi dati JSON
+ * Accetta qualsiasi struttura JSON e la salva senza validazione
  */
 const saveData = async (req, res, next) => {
   try {
@@ -12,7 +13,7 @@ const saveData = async (req, res, next) => {
     res.status(201).json(
       successResponse(
         { fileName },
-        'Dati salvati con successo',
+        'Dati JSON salvati con successo',
         201
       )
     );

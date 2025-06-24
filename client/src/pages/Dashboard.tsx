@@ -135,46 +135,13 @@ export const Dashboard: React.FC = () => {
         </Card>
       </div>
 
-      {/* API Info Card */}
+      {/* Quick Actions */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Info className="h-5 w-5" />
-              Informazioni API
-            </CardTitle>
-            <CardDescription>
-              Dettagli sul servizio API attualmente in uso
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Nome:</span>
-              <span className="text-sm">{apiInfo?.name || 'N/A'}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Versione:</span>
-              <Badge variant="secondary">{apiInfo?.version || 'N/A'}</Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Autenticazione:</span>
-              <Badge variant="outline">{apiInfo?.authentication || 'N/A'}</Badge>
-            </div>
-            <div className="space-y-2">
-              <span className="text-sm font-medium">Descrizione:</span>
-              <p className="text-sm text-muted-foreground">
-                {apiInfo?.description || 'Nessuna descrizione disponibile'}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Quick Actions */}
         <Card className="col-span-3">
           <CardHeader>
             <CardTitle>Azioni Rapide</CardTitle>
             <CardDescription>
-              Accesso rapido alle funzioni principali
+              Accesso rapido alle funzioni principali del sistema
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -184,7 +151,7 @@ export const Dashboard: React.FC = () => {
             </Button>
             <Button onClick={() => navigate('/save-data')} className="w-full justify-start" variant="outline">
               <Database className="mr-2 h-4 w-4" />
-              Salva Dati
+              Carica File JSON
             </Button>
             <Button onClick={() => navigate('/stats')} className="w-full justify-start" variant="outline">
               <BarChart3 className="mr-2 h-4 w-4" />

@@ -1,90 +1,75 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSettings } from '../hooks/useSettings';
-import { apiService } from '../services/api';
 import { 
   ArrowLeft,
   Save,
-  RefreshCw,
-  AlertCircle,
-  CheckCircle,
-  Globe,
   Settings as SettingsIcon,
-  Zap,
-  Loader2
+  Moon,
+  Sun,
+  Monitor,
+  Palette
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 
+type Theme = 'light' | 'dark' | 'system';
+
 export const SettingsPage: React.FC = () => {
   const navigate = useNavigate();
-  const { settings, updateSettings, resetSettings, autoConfigureForCodespaces } = useSettings();
+  const { settings, updateSettings, resetSettings } = useSettings();
   const [tempSettings, setTempSettings] = useState(settings);
-  const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
-  const [testMessage, setTestMessage] = useState('');
+  const [theme, setTheme] = useState<Theme>(() => {
+    const savedTheme = localStorage.getItem('theme') as Theme;
+    return savedTheme || 'system';
+  });
   const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
     setHasChanges(
-      tempSettings.apiBaseUrl !== settings.apiBaseUrl ||
-      tempSettings.debug !== settings.debug
+      tempSettings.debug !== settings.debug ||
+      theme !== (localStorage.getItem('theme') || 'system')
     );
-  }, [tempSettings, settings]);
+  }, [tempSettings, settings, theme]);
 
-  const testConnection = async () => {
-    setTestStatus('testing');
-    setTestMessage('');
-
-    try {
-      // Update API service with new URL for testing
-      apiService.updateBaseUrl(tempSettings.apiBaseUrl);
-
-      await apiService.getApiInfo();
-      setTestStatus('success');
-      setTestMessage('Connessione riuscita! Il backend è raggiungibile.');
-    } catch (error) {
-      setTestStatus('error');
-      setTestMessage(
-        error instanceof Error 
-          ? `Errore di connessione: ${error.message}`
-          : 'Impossibile connettersi al backend. Verifica l\'URL.'
-      );
-      // Restore original URL on error
-      apiService.updateBaseUrl(settings.apiBaseUrl);
+  const applyTheme = (newTheme: Theme) => {
+    if (newTheme === 'system') {
+      localStorage.removeItem('theme');
+      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.classList.toggle('dark', systemTheme === 'dark');
+    } else {
+      localStorage.setItem('theme', newTheme);
+      document.documentElement.classList.toggle('dark', newTheme === 'dark');
     }
   };
 
-  const handleSave = async () => {
+  const handleThemeChange = (newTheme: Theme) => {
+    setTheme(newTheme);
+    applyTheme(newTheme);
+  };
+
+  const handleSave = () => {
     updateSettings(tempSettings);
-    apiService.updateBaseUrl(tempSettings.apiBaseUrl);
-    
-    // Test the connection after saving
-    await testConnection();
-    
-    if (testStatus === 'success') {
-      setTimeout(() => navigate('/'), 1500);
-    }
+    setHasChanges(false);
+    setTimeout(() => navigate('/'), 500);
   };
 
   const handleReset = () => {
     resetSettings();
     setTempSettings(settings);
-    setTestStatus('idle');
-    setTestMessage('');
+    setTheme('system');
+    applyTheme('system');
+    setHasChanges(false);
   };
 
-  const handleAutoDetect = () => {
-    const detectedUrl = autoConfigureForCodespaces();
-    if (detectedUrl) {
-      setTempSettings(prev => ({ ...prev, apiBaseUrl: detectedUrl }));
-      setTestMessage(`URL GitHub Codespaces rilevato: ${detectedUrl}`);
-    } else {
-      setTestMessage('GitHub Codespaces non rilevato. Assicurati di essere in un ambiente Codespaces.');
+  const getThemeIcon = (themeType: Theme) => {
+    switch (themeType) {
+      case 'light': return <Sun className="h-4 w-4" />;
+      case 'dark': return <Moon className="h-4 w-4" />;
+      case 'system': return <Monitor className="h-4 w-4" />;
     }
   };
 
@@ -100,7 +85,7 @@ export const SettingsPage: React.FC = () => {
             <div>
               <h2 className="text-3xl font-bold tracking-tight">Impostazioni</h2>
               <p className="text-muted-foreground">
-                Configura l'URL del backend e altre opzioni
+                Personalizza l'applicazione secondo le tue preferenze
               </p>
             </div>
           </div>
@@ -108,69 +93,39 @@ export const SettingsPage: React.FC = () => {
       </div>
 
       <div className="max-w-2xl mx-auto space-y-6">
-        {/* Connection Settings */}
+        {/* Theme Settings */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Globe className="h-5 w-5" />
-              Configurazione Connessione
+              <Palette className="h-5 w-5" />
+              Aspetto
             </CardTitle>
             <CardDescription>
-              Configura l'URL del backend API
+              Personalizza l'aspetto dell'applicazione
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="apiUrl">URL API Backend</Label>
-              <Input
-                id="apiUrl"
-                type="url"
-                placeholder="https://api.esempio.com/api"
-                value={tempSettings.apiBaseUrl}
-                onChange={(e) => setTempSettings(prev => ({ ...prev, apiBaseUrl: e.target.value }))}
-              />
+            <div className="space-y-3">
+              <Label>Tema</Label>
+              <div className="grid grid-cols-3 gap-3">
+                {(['light', 'dark', 'system'] as const).map((themeOption) => (
+                  <Button
+                    key={themeOption}
+                    variant={theme === themeOption ? 'default' : 'outline'}
+                    onClick={() => handleThemeChange(themeOption)}
+                    className="flex items-center gap-2 justify-start"
+                  >
+                    {getThemeIcon(themeOption)}
+                    {themeOption === 'light' && 'Chiaro'}
+                    {themeOption === 'dark' && 'Scuro'}
+                    {themeOption === 'system' && 'Sistema'}
+                  </Button>
+                ))}
+              </div>
               <p className="text-xs text-muted-foreground">
-                L'URL base per le chiamate API del backend
+                Il tema sistema si adatta automaticamente alle preferenze del tuo dispositivo
               </p>
             </div>
-
-            <div className="flex gap-2">
-              <Button onClick={testConnection} disabled={testStatus === 'testing'} variant="outline">
-                {testStatus === 'testing' ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                )}
-                Testa Connessione
-              </Button>
-              
-              <Button onClick={handleAutoDetect} variant="outline">
-                <Zap className="h-4 w-4 mr-2" />
-                Auto-rileva Codespaces
-              </Button>
-            </div>
-
-            {/* Connection Status */}
-            {testStatus === 'success' && (
-              <Alert>
-                <CheckCircle className="h-4 w-4" />
-                <AlertDescription>{testMessage}</AlertDescription>
-              </Alert>
-            )}
-
-            {testStatus === 'error' && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{testMessage}</AlertDescription>
-              </Alert>
-            )}
-
-            {testMessage && testStatus === 'idle' && (
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{testMessage}</AlertDescription>
-              </Alert>
-            )}
           </CardContent>
         </Card>
 
@@ -188,9 +143,9 @@ export const SettingsPage: React.FC = () => {
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label htmlFor="debug">Modalità Debug</Label>
+                <Label htmlFor="debug">Modalità Debug Avanzata</Label>
                 <p className="text-xs text-muted-foreground">
-                  Abilita logging dettagliato nella console
+                  Abilita logging dettagliato nella console, informazioni di debug nell'interfaccia e strumenti per sviluppatori
                 </p>
               </div>
               <Switch
@@ -199,6 +154,19 @@ export const SettingsPage: React.FC = () => {
                 onCheckedChange={(checked) => setTempSettings(prev => ({ ...prev, debug: checked }))}
               />
             </div>
+            
+            {tempSettings.debug && (
+              <div className="p-3 bg-muted rounded-lg">
+                <h4 className="text-sm font-medium mb-2">Funzionalità Debug Abilitate:</h4>
+                <ul className="text-xs text-muted-foreground space-y-1">
+                  <li>• Logging dettagliato delle chiamate API</li>
+                  <li>• Informazioni di debug nell'interfaccia utente</li>
+                  <li>• Stack trace degli errori</li>
+                  <li>• Timing delle operazioni</li>
+                  <li>• Stato interno dei componenti</li>
+                </ul>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -214,7 +182,7 @@ export const SettingsPage: React.FC = () => {
             <Button onClick={() => navigate('/')} variant="outline">
               Annulla
             </Button>
-            <Button onClick={handleSave} disabled={!hasChanges || testStatus === 'testing'}>
+            <Button onClick={handleSave} disabled={!hasChanges}>
               <Save className="h-4 w-4 mr-2" />
               Salva Impostazioni
             </Button>
@@ -228,8 +196,8 @@ export const SettingsPage: React.FC = () => {
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">URL API:</span>
-              <span className="font-mono text-xs">{settings.apiBaseUrl}</span>
+              <span className="text-muted-foreground">Tema:</span>
+              <span className="capitalize">{theme === 'system' ? 'Sistema' : theme === 'light' ? 'Chiaro' : 'Scuro'}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Debug:</span>
@@ -238,6 +206,10 @@ export const SettingsPage: React.FC = () => {
             <div className="flex justify-between">
               <span className="text-muted-foreground">Ambiente:</span>
               <span>{import.meta.env.MODE}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Versione:</span>
+              <span>1.0.0</span>
             </div>
           </CardContent>
         </Card>

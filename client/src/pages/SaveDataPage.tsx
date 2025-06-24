@@ -1,90 +1,122 @@
-import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
+import React, { useState, useCallback } from 'react';
 import { apiService } from '../services/api';
-import { Save, AlertCircle, CheckCircle, Database, Plus, Trash2 } from 'lucide-react';
+import { Upload, AlertCircle, CheckCircle, Database, FileText, X } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-
-// Schema di validazione per i dati
-const saveDataSchema = z.object({
-  name: z.string().min(1, 'Il nome è obbligatorio'),
-  email: z.string().email('Email non valida').optional().or(z.literal('')),
-  phone: z.string().optional(),
-  company: z.string().optional(),
-  notes: z.string().optional(),
-});
-
-type SaveDataForm = z.infer<typeof saveDataSchema>;
+import { Badge } from "@/components/ui/badge";
 
 export const SaveDataPage: React.FC = () => {
+  const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [customFields, setCustomFields] = useState<{ key: string; value: string }[]>([]);
+  const [dragActive, setDragActive] = useState(false);
 
-  const form = useForm<SaveDataForm>({
-    resolver: zodResolver(saveDataSchema),
-    defaultValues: {
-      name: '',
-      email: '',
-      phone: '',
-      company: '',
-      notes: '',
+  const handleDrag = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
     }
-  });
+  }, []);
 
-  const addCustomField = () => {
-    setCustomFields([...customFields, { key: '', value: '' }]);
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    const jsonFiles = droppedFiles.filter(file => 
+      file.type === 'application/json' || file.name.endsWith('.json')
+    );
+    
+    if (jsonFiles.length !== droppedFiles.length) {
+      setError('Solo i file JSON sono supportati');
+      return;
+    }
+    
+    setFiles(prev => [...prev, ...jsonFiles]);
+    setError(null);
+  }, []);
+
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(e.target.files || []);
+    const jsonFiles = selectedFiles.filter(file => 
+      file.type === 'application/json' || file.name.endsWith('.json')
+    );
+    
+    if (jsonFiles.length !== selectedFiles.length) {
+      setError('Solo i file JSON sono supportati');
+      return;
+    }
+    
+    setFiles(prev => [...prev, ...jsonFiles]);
+    setError(null);
   };
 
-  const removeCustomField = (index: number) => {
-    setCustomFields(customFields.filter((_, i) => i !== index));
+  const removeFile = (index: number) => {
+    setFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const updateCustomField = (index: number, field: 'key' | 'value', value: string) => {
-    const updatedFields = [...customFields];
-    updatedFields[index][field] = value;
-    setCustomFields(updatedFields);
-  };
+  const uploadFiles = async () => {
+    if (files.length === 0) {
+      setError('Seleziona almeno un file JSON');
+      return;
+    }
 
-  const onSubmit = async (data: SaveDataForm) => {
     setLoading(true);
     setError(null);
     setSuccess(null);
 
     try {
-      // Prepara i dati includendo i campi personalizzati
-      const dataToSave = {
-        ...data,
-        customFields: customFields.filter(field => field.key && field.value),
-        timestamp: new Date().toISOString()
-      };
-
-      const result = await apiService.saveData(dataToSave);
-      setSuccess(`Dati salvati con successo nel file: ${result.fileName}`);
-      form.reset();
-      setCustomFields([]);
+      const uploadResults = [];
+      
+      for (const file of files) {
+        const text = await file.text();
+        const jsonData = JSON.parse(text);
+        
+        // Salva il file con il nome originale come metadato
+        const dataToSave = {
+          originalFileName: file.name,
+          uploadDate: new Date().toISOString(),
+          data: jsonData
+        };
+        
+        const result = await apiService.saveData(dataToSave);
+        uploadResults.push(result.fileName);
+      }
+      
+      setSuccess(`${files.length} file JSON salvati con successo: ${uploadResults.join(', ')}`);
+      setFiles([]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Errore durante il salvataggio');
+      if (err instanceof SyntaxError) {
+        setError('Errore: uno dei file non è un JSON valido');
+      } else {
+        setError(err instanceof Error ? err.message : 'Errore durante il salvataggio');
+      }
     } finally {
       setLoading(false);
     }
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between space-y-2">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Salva Nuovi Dati</h2>
+          <h2 className="text-3xl font-bold tracking-tight">Salva File JSON</h2>
           <p className="text-muted-foreground">
-            Inserisci e salva nuovi dati nel sistema
+            Carica e salva file JSON nel sistema tramite drag-and-drop
           </p>
         </div>
       </div>
@@ -94,10 +126,10 @@ export const SaveDataPage: React.FC = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Database className="h-5 w-5" />
-              Inserimento Dati
+              Caricamento File JSON
             </CardTitle>
             <CardDescription>
-              Compila il form sottostante per salvare i dati nel sistema
+              Trascina e rilascia i file JSON o clicca per selezionarli
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -116,133 +148,80 @@ export const SaveDataPage: React.FC = () => {
               </Alert>
             )}
 
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                {/* Campo Nome */}
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nome *</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Inserisci il nome" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+            {/* Drag and Drop Area */}
+            <div
+              className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                dragActive 
+                  ? 'border-primary bg-primary/10' 
+                  : 'border-muted-foreground/25 hover:border-muted-foreground/50'
+              }`}
+              onDragEnter={handleDrag}
+              onDragLeave={handleDrag}
+              onDragOver={handleDrag}
+              onDrop={handleDrop}
+            >
+              <Upload className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+              <h3 className="text-lg font-semibold mb-2">
+                Trascina i file JSON qui
+              </h3>
+              <p className="text-muted-foreground mb-4">
+                Oppure clicca per selezionare i file dal tuo computer
+              </p>
+              <input
+                type="file"
+                multiple
+                accept=".json,application/json"
+                onChange={handleFileInput}
+                className="hidden"
+                id="file-input"
+              />
+              <Button asChild variant="outline">
+                <label htmlFor="file-input" className="cursor-pointer">
+                  <FileText className="h-4 w-4 mr-2" />
+                  Seleziona File JSON
+                </label>
+              </Button>
+            </div>
 
-                {/* Campo Email */}
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input type="email" placeholder="email@esempio.com" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Campo Telefono */}
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Telefono</FormLabel>
-                      <FormControl>
-                        <Input placeholder="+39 123 456 7890" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Campo Azienda */}
-                <FormField
-                  control={form.control}
-                  name="company"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Azienda</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Nome dell'azienda" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Campo Note */}
-                <FormField
-                  control={form.control}
-                  name="notes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Note</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Note aggiuntive..." 
-                          className="min-h-[100px]"
-                          {...field} 
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Campi Personalizzati */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-sm font-medium">Campi Personalizzati</Label>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={addCustomField}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Aggiungi Campo
-                    </Button>
-                  </div>
-
-                  {customFields.map((field, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <Input
-                        placeholder="Chiave"
-                        value={field.key}
-                        onChange={(e) => updateCustomField(index, 'key', e.target.value)}
-                      />
-                      <Input
-                        placeholder="Valore"
-                        value={field.value}
-                        onChange={(e) => updateCustomField(index, 'value', e.target.value)}
-                      />
+            {/* File List */}
+            {files.length > 0 && (
+              <div className="mt-6 space-y-3">
+                <h4 className="font-medium">File selezionati:</h4>
+                {files.map((file, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <FileText className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="font-medium">{file.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {formatFileSize(file.size)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary">JSON</Badge>
                       <Button
-                        type="button"
                         variant="ghost"
                         size="sm"
-                        onClick={() => removeCustomField(index)}
+                        onClick={() => removeFile(index)}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <X className="h-4 w-4" />
                       </Button>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
-                {/* Submit Button */}
-                <Button type="submit" className="w-full" disabled={loading}>
-                  <Save className="h-4 w-4 mr-2" />
-                  {loading ? 'Salvataggio in corso...' : 'Salva Dati'}
+            {/* Upload Button */}
+            {files.length > 0 && (
+              <div className="mt-6">
+                <Button onClick={uploadFiles} className="w-full" disabled={loading}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  {loading ? 'Caricamento in corso...' : `Carica ${files.length} file`}
                 </Button>
-              </form>
-            </Form>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

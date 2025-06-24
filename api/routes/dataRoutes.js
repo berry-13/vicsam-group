@@ -17,10 +17,10 @@ router.use(authenticateBearer);
 
 /**
  * @route POST /api/data/save
- * @desc Salva nuovi dati
+ * @desc Salva dati JSON senza validazione
  * @access Private (Bearer Token required)
  */
-router.post('/save', validate(saveDataSchema), saveData);
+router.post('/save', saveData);
 
 /**
  * @route GET /api/data/files
