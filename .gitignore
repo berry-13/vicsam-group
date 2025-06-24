@@ -143,6 +143,9 @@ dati_generali.json
 coverage/
 test-results/
 .nyc_output
+*.test.output
+audit.json
+outdated.json
 
 # Environment files
 .env
@@ -151,3 +154,9 @@ test-results/
 
 # Data directories
 data/
+
+# File di documentazione obsoleti
+API_DOCUMENTATION.md
+CI_CD_DOCUMENTATION.md
+TESTING_SUMMARY.md
+test-api.sh
