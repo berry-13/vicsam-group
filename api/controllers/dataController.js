@@ -3,18 +3,27 @@ const { successResponse, errorResponse } = require('../utils/helpers');
 
 /**
  * Controller per salvare nuovi dati JSON
- * Accetta qualsiasi struttura JSON e la salva senza validazione
+ * Il nome del file sarà basato sul CustomerVAT presente nel JSON
+ * Se un file con lo stesso CustomerVAT esiste, verrà aggiornato
  */
 const saveData = async (req, res, next) => {
   try {
     const data = req.body;
-    const fileName = await fileService.saveData(data);
+    const result = await fileService.saveData(data);
     
-    res.status(201).json(
+    const message = result.isUpdate 
+      ? `File ${result.fileName} aggiornato con successo`
+      : `Nuovo file ${result.fileName} creato con successo`;
+    
+    res.status(result.isUpdate ? 200 : 201).json(
       successResponse(
-        { fileName },
-        'Dati JSON salvati con successo',
-        201
+        { 
+          fileName: result.fileName, 
+          isUpdate: result.isUpdate,
+          customerVAT: data.CustomerVAT 
+        },
+        message,
+        result.isUpdate ? 200 : 201
       )
     );
   } catch (error) {

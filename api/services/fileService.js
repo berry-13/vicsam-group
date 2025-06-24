@@ -10,20 +10,35 @@ class FileService {
   }
 
   /**
-   * Salva i dati JSON in un file specifico con timestamp
-   * Accetta qualsiasi struttura JSON senza validazione
+   * Salva i dati JSON in un file specifico basato sul CustomerVAT
+   * Se il file esiste già, lo aggiorna
    * @param {Object} data - Dati JSON da salvare
-   * @returns {Promise<string>} Nome del file creato
+   * @returns {Promise<{fileName: string, isUpdate: boolean}>} Nome del file e se è un aggiornamento
    */
   async saveData(data) {
     try {
-      const fileName = generateFileName('dati', 'json');
+      // Estrae il CustomerVAT dal JSON
+      const customerVAT = data.CustomerVAT;
+      
+      if (!customerVAT) {
+        throw new Error('CustomerVAT è richiesto nel JSON per salvare il file');
+      }
+      
+      // Sanitizza il CustomerVAT per il nome del file (rimuove caratteri non validi)
+      const sanitizedVAT = customerVAT.toString().replace(/[^a-zA-Z0-9_-]/g, '_');
+      const fileName = `${sanitizedVAT}.json`;
       const filePath = path.join(this.dataDir, fileName);
+      
+      // Verifica se il file esiste già
+      const fileExists = fsSync.existsSync(filePath);
       
       // Salva i dati JSON così come sono, senza validazione
       await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
       
-      return fileName;
+      return {
+        fileName,
+        isUpdate: fileExists
+      };
     } catch (error) {
       throw new Error(`Errore nel salvataggio dei dati: ${error.message}`);
     }
@@ -36,12 +51,13 @@ class FileService {
   async getFilesList() {
     try {
       const files = await fs.readdir(this.dataDir);
-      const dataFiles = files.filter(f => f.startsWith('dati_') && f.endsWith('.json'));
-      
-      // Aggiungi il file generale se esiste
-      if (fsSync.existsSync(this.generalFilePath)) {
-        dataFiles.push('dati_generali.json');
-      }
+      // Filtra per tutti i file .json (inclusi quelli con CustomerVAT) ma esclude i file di sistema
+      const dataFiles = files.filter(f => 
+        f.endsWith('.json') && 
+        !f.startsWith('.') && 
+        f !== 'package.json' &&
+        f !== 'package-lock.json'
+      );
       
       // Ordina i file per data di modifica (più recenti prima)
       const filesWithStats = await Promise.all(
@@ -119,8 +135,14 @@ class FileService {
   async deleteFile(filename) {
     try {
       // Validazione nome file per sicurezza
-      if (!filename.endsWith('.json') || filename.includes('..') || filename === 'dati_generali.json') {
-        throw new Error('Impossibile eliminare questo file');
+      if (!filename.endsWith('.json') || filename.includes('..')) {
+        throw new Error('Nome file non valido');
+      }
+      
+      // Impedisce l'eliminazione di file di sistema
+      const systemFiles = ['package.json', 'package-lock.json', 'dati_generali.json'];
+      if (systemFiles.includes(filename)) {
+        throw new Error('Impossibile eliminare questo file di sistema');
       }
       
       const filePath = path.join(this.dataDir, filename);
