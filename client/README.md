@@ -1,54 +1,73 @@
-# React + TypeScript + Vite
+# VicSam Group Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Frontend React moderno per l'API VicSam Group, costruito con TypeScript, Vite e Tailwind CSS.
 
-Currently, two official plugins are available:
+## 🚀 Caratteristiche
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- ✅ **Autenticazione completa** - Login sicuro con gestione token JWT/Bearer
+- 📊 **Dashboard interattiva** - Panoramica in tempo reale dei dati e statistiche
+- 📁 **Gestione file** - Visualizza, scarica ed elimina file con interfaccia intuitiva
+- 💾 **Salvataggio dati** - Form dinamico per inserire nuovi dati con campi personalizzabili
+- 📈 **Statistiche avanzate** - Analisi dettagliata con grafici e metriche
+- 🎨 **UI moderna** - Design responsive con Tailwind CSS
+- 🔒 **Sicurezza** - Gestione automatica dei token e redirect per sessioni scadute
+- 📱 **Mobile-first** - Ottimizzato per tutti i dispositivi
 
-## Expanding the ESLint configuration
+## 🛠️ Stack Tecnologico
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- **React 19** - Framework frontend
+- **TypeScript** - Tipizzazione statica
+- **Vite** - Build tool ultra-veloce
+- **Tailwind CSS** - Framework CSS utility-first
+- **React Router DOM** - Routing SPA
+- **React Hook Form** - Gestione form performante
+- **Zod** - Validazione schema
+- **Axios** - Client HTTP
+- **Lucide React** - Icone moderne
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+## 🚀 Avvio Rapido
+
+1. **Avvia il backend** (dalla root del progetto):
+```bash
+npm start
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
+2. **Avvia il frontend** (dalla cartella client):
+```bash
+cd client
+npm run dev
 ```
+
+3. **Accedi all'applicazione**:
+   - Frontend: http://localhost:5173/
+   - Backend API: http://localhost:3000/api
+
+## 🎨 Funzionalità Principali
+
+### Dashboard
+- Statistiche in tempo reale
+- Azioni rapide per navigazione
+- Informazioni API e endpoint
+- Panoramica generale del sistema
+
+### Gestione File
+- Lista completa dei file salvati
+- Ricerca e filtri in tempo reale
+- Visualizzazione contenuto JSON
+- Download e eliminazione file
+
+### Salvataggio Dati
+- Form dinamico con validazione
+- Campi personalizzabili
+- Feedback di successo/errore
+- Reset e gestione stato
+
+### Statistiche
+- Metriche dettagliate
+- Distribuzione dimensioni file
+- File più recenti
+- Analisi utilizzo storage
+
+---
+
+Sviluppato con ❤️ da Berry per VicSam Group
