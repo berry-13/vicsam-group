@@ -8,6 +8,7 @@ const rateLimit = require('express-rate-limit');
 
 // Import middleware
 const { errorHandler, notFound, requestLogger } = require('./api/middleware/common');
+const optionalApiKeyMiddleware = require('./api/middleware/apiKey');
 
 // Import routes
 const apiRoutes = require('./api/routes');
@@ -23,6 +24,7 @@ console.log('🔧 [CONFIG] JWT_SECRET:', process.env.JWT_SECRET ? 'CONFIGURATO' 
 console.log('🔧 [CONFIG] JWT_EXPIRES_IN:', process.env.JWT_EXPIRES_IN);
 console.log('🔧 [CONFIG] API_PASSWORD:', process.env.API_PASSWORD ? 'CONFIGURATO' : '❌ MANCANTE');
 console.log('🔧 [CONFIG] BEARER_TOKEN:', process.env.BEARER_TOKEN ? `CONFIGURATO (${process.env.BEARER_TOKEN.length} caratteri)` : '❌ MANCANTE');
+console.log('🔧 [CONFIG] API_KEY:', process.env.API_KEY ? `CONFIGURATO (${process.env.API_KEY.length} caratteri)` : '❌ MANCANTE (opzionale)');
 console.log('🔧 [CONFIG] RATE_LIMIT_WINDOW_MS:', process.env.RATE_LIMIT_WINDOW_MS);
 console.log('🔧 [CONFIG] RATE_LIMIT_MAX_REQUESTS:', process.env.RATE_LIMIT_MAX_REQUESTS);
 console.log('🔧 [CONFIG] CORS_ORIGIN:', process.env.CORS_ORIGIN);
@@ -76,6 +78,9 @@ app.use('/api/auth', (req, res, next) => {
 // Body parsing
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Protezione API KEY opzionale per le rotte /api (escluso /api/auth)
+app.use('/api', optionalApiKeyMiddleware);
 
 // API routes
 app.use('/api', apiRoutes);
