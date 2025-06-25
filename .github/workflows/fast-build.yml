@@ -18,15 +18,15 @@ on:
       - 'package*.json'
       - 'Dockerfile'
 
-# Grant write permissions for GitHub Packages
-permissions:
-  contents: read
-  packages: write
-
 # Cancel in-progress runs for the same PR/branch
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
+# Required permissions for GHCR
+permissions:
+  contents: read
+  packages: write
 
 env:
   NODE_VERSION: '20.x'
@@ -97,6 +97,13 @@ jobs:
       with:
         driver-opts: network=host
     
+    - name: Debug GitHub context
+      run: |
+        echo "Repository: ${{ github.repository }}"
+        echo "Actor: ${{ github.actor }}"
+        echo "Registry: ${{ env.REGISTRY }}"
+        echo "Image name: ${{ env.IMAGE_NAME }}"
+    
     - name: Log in to Container Registry
       uses: docker/login-action@v3
       with:
@@ -104,13 +111,25 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
     
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix=fast-build-
+          type=raw,value=latest,enable={{is_default_branch}}
+    
     - name: Build and push
       uses: docker/build-push-action@v5
       with:
         context: .
         platforms: linux/amd64
         push: true
-        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:fast-build-${{ github.sha }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
         build-args: |
