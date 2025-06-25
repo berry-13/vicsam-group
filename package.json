@@ -6,10 +6,12 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "build": "./build.sh",
+    "build": "npm --prefix client run build:fast",
+    "build:bash": "./build.sh",
+    "build:ps": "powershell -ExecutionPolicy Bypass -File ./build.ps1",
     "test": "jest",
     "lint": "eslint .",
-    "clean": "rm -rf client/dist"
+    "clean": "powershell -Command \"Remove-Item -Recurse -Force client/dist -ErrorAction SilentlyContinue\""
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
