@@ -52,10 +52,13 @@ describe('Data API', () => {
     });
 
     test('should save data without creating general file', async () => {
+      // Use a unique VAT for this test to ensure file does not exist
+      const uniqueVAT = 'IT' + Date.now();
+      const uniqueUser = { ...testData.validUser, CustomerVAT: uniqueVAT };
       await request(app)
         .post('/api/data/save')
         .set(getAuthHeaders())
-        .send(testData.validUser)
+        .send(uniqueUser)
         .expect(201);
 
       // I file di dati generali non vengono più creati automaticamente

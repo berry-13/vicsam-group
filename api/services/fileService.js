@@ -35,8 +35,9 @@ class FileService {
         throw new Error('CustomerVAT deve essere una stringa non vuota');
       }
       
-      // Sanitizza il CustomerVAT per il nome del file (rimuove caratteri non validi)
-      const sanitizedVAT = customerVAT.toString().replace(/[^a-zA-Z0-9_-]/g, '_');
+      // Sanitizza il CustomerVAT per il nome del file (solo cifre, senza prefisso IT)
+      let sanitizedVAT = customerVAT.toString().replace(/^IT/i, '');
+      sanitizedVAT = sanitizedVAT.replace(/[^0-9]/g, '');
       const fileName = `dati_${sanitizedVAT}.json`;
       const filePath = path.join(this.dataDir, fileName);
       
@@ -157,7 +158,9 @@ class FileService {
       // Impedisce l'eliminazione di file di sistema
       const systemFiles = ['package.json', 'package-lock.json', 'dati_generali.json'];
       if (systemFiles.includes(filename)) {
-        throw new Error('Impossibile eliminare questo file di sistema');
+        const err = new Error('Impossibile eliminare questo file');
+        err.status = 403;
+        throw err;
       }
       
       const filePath = path.join(this.dataDir, filename);
