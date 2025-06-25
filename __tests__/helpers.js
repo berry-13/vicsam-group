@@ -61,12 +61,14 @@ const cleanupTestFiles = () => {
 // Dati di test comuni
 const testData = {
   validUser: {
+    CustomerVAT: 'IT12345678901',
     nome: 'Mario Rossi',
     email: 'mario@example.com',
     telefono: '1234567890',
     messaggio: 'Test message'
   },
   invalidUser: {
+    CustomerVAT: 'IT00000000000',
     nome: 'A', // Troppo corto
     email: 'invalid-email',
     telefono: '123'
