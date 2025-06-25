@@ -16,8 +16,8 @@ npm run build
 
 # Riavvia PM2
 echo "🔄 Riavvio applicazione..."
-pm2 restart vicsam-group-api
+npx pm2 restart vicsam-group-api
 
 # Visualizza stato
 echo "✅ Deploy completato!"
-pm2 status
+npx pm2 status
