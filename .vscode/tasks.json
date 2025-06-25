@@ -8,6 +8,36 @@
 			"group": "build",
 			"isBackground": true,
 			"problemMatcher": []
+		},
+		{
+			"label": "Avvia client Vite",
+			"type": "shell",
+			"command": "npm run dev",
+			"group": "build",
+			"isBackground": true,
+			"options": {
+				"cwd": "${workspaceFolder}/client"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "Avvia Full Stack (Server + Client)",
+			"dependsOrder": "parallel",
+			"dependsOn": [
+				"Avvia server Node.js",
+				"Avvia client Vite"
+			],
+			"group": "build",
+			"isBackground": true
+		},
+		{
+			"label": "Build Client",
+			"type": "shell",
+			"command": "npm run build",
+			"group": "build",
+			"options": {
+				"cwd": "${workspaceFolder}/client"
+			}
 		}
 	]
 }
