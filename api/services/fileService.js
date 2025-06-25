@@ -37,7 +37,7 @@ class FileService {
       
       // Sanitizza il CustomerVAT per il nome del file (rimuove caratteri non validi)
       const sanitizedVAT = customerVAT.toString().replace(/[^a-zA-Z0-9_-]/g, '_');
-      const fileName = `${sanitizedVAT}.json`;
+      const fileName = `dati_${sanitizedVAT}.json`;
       const filePath = path.join(this.dataDir, fileName);
       
       // Verifica se il file esiste già
