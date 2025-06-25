@@ -18,7 +18,7 @@ FROM base AS deps
 COPY package*.json ./
 
 # Install server dependencies (only production for now)
-RUN npm ci --only=production --no-audit --no-fund && \
+RUN npm install --omit=dev --no-audit --no-fund && \
     npm cache clean --force
 
 # Create a separate stage for dev dependencies
@@ -28,7 +28,7 @@ FROM base AS deps-dev
 COPY package*.json ./
 
 # Install all dependencies (including dev for client build)
-RUN npm ci --no-audit --no-fund && \
+RUN npm install --no-audit --no-fund && \
     npm cache clean --force
 
 #################################
@@ -41,7 +41,7 @@ COPY client/package*.json ./client/
 
 # Install client dependencies
 WORKDIR /app/client
-RUN npm ci --no-audit --no-fund && \
+RUN npm install --no-audit --no-fund && \
     npm cache clean --force
 
 # Copy client source code
