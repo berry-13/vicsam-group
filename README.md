@@ -1,24 +1,37 @@
-# Vicsam Group API 🚀
+# Vicsam Group Platform
 
-API REST moderna per la gestione dei dati del gruppo Vicsam, costruita con Node.js ed Express
+Piattaforma completa per la gestione dei dati del gruppo Vicsam, con API REST backend e interfaccia web moderna
 
 ## 📋 Panoramica
 
-L'API Vicsam Group è un server backend robusto che fornisce:
-- ✅ Autenticazione JWT sicura
-- 📊 Gestione dati con validazione
-- 🔒 Middleware di sicurezza avanzati
-- 🧪 Suite di test completa
-- 📈 Monitoraggio e logging
+La piattaforma Vicsam Group è una soluzione full-stack che include:
+
+### Backend API
+- ✅ **Autenticazione JWT** con doppio livello (Password + Bearer Token)
+- 📊 **Gestione file JSON** con auto-naming basato su CustomerVAT
+- 🔒 **Sicurezza avanzata** con Helmet, CORS, Rate Limiting
+- � **File Management** completo (upload, download, delete)
+- 📈 **Statistiche** in tempo reale sui dati
+- 🧪 **Suite di test** completa con Jest
+- 🐛 **Debug endpoints** per sviluppo
+
+### Frontend React
+- 🎨 **UI moderna** con Tailwind CSS e shadcn/ui
+- � **Autenticazione** integrata con context management
+- 📊 **Dashboard** con statistiche e grafici
+- 📁 **File Explorer** per gestione file
+- ⚙️ **Pannello impostazioni** per configurazione
+- 📱 **Design responsive** ottimizzato per mobile
+- 🌙 **Dark/Light mode** con persistenza
 
 ## 🏗️ Architettura
 
 ```mermaid
 graph TB
-    A[Client] --> B[Express Server]
+    A[React Frontend] --> B[Express Server]
     B --> C[Middleware Stack]
     C --> D[Rate Limiting]
-    C --> E[Authentication]
+    C --> E[Dual Authentication]
     C --> F[CORS & Security]
     B --> G[API Routes]
     G --> H[Auth Controller]
@@ -26,10 +39,25 @@ graph TB
     H --> J[JWT Service]
     I --> K[File Service]
     K --> L[JSON Storage]
+    
+    subgraph "Frontend Features"
+        M[Dashboard]
+        N[File Manager]
+        O[Data Upload]
+        P[Settings]
+        Q[Auth System]
+    end
+    
+    A --> M
+    A --> N
+    A --> O
+    A --> P
+    A --> Q
 ```
 
 ## 🛠️ Stack Tecnologico
 
+### Backend
 | Categoria | Tecnologia |
 |-----------|------------|
 | **Runtime** | Node.js 20.x |
@@ -40,13 +68,307 @@ graph TB
 | **Testing** | Jest + Supertest |
 | **Development** | Nodemon |
 
-## 🚦 Endpoints API
+### Frontend
+| Categoria | Tecnologia |
+|-----------|------------|
+| **Framework** | React 18 + TypeScript |
+| **Build Tool** | Vite |
+| **Styling** | Tailwind CSS |
+| **UI Components** | shadcn/ui + Radix UI |
+| **Routing** | React Router |
+| **State Management** | React Context |
+| **HTTP Client** | Axios |
+| **Icons** | Lucide React |
 
-```mermaid
-flowchart TD
-    A["/api"] --> B["/auth"]
-    A --> C["/data"]
-    A --> D["/health"]
+## 🚦 API Endpoints
+
+### Autenticazione
+```http
+POST /api/auth/login
+Content-Type: application/json
+
+{
+  "password": "vicsam-test"
+}
+```
+**Risposta:**
+```json
+{
+  "success": true,
+  "data": {
+    "token": "jwt_token_here",
+    "bearerToken": "htQ3G3Zyc1Z5TwhlbpQ9ga5gsomsQRobKWWgXSLdU5e1P8z3T7lx6rU7FbjvyYVL",
+    "expiresIn": "24h"
+  },
+  "message": "🎉 Autenticazione completata con successo!"
+}
+```
+
+```http
+GET /api/auth/verify
+Authorization: Bearer htQ3G3Zyc1Z5TwhlbpQ9ga5gsomsQRobKWWgXSLdU5e1P8z3T7lx6rU7FbjvyYVL
+```
+
+```http
+GET /api/auth/info
+```
+Ritorna informazioni pubbliche sull'API.
+
+```http
+GET /api/auth/debug
+```
+Endpoint di debug per sviluppo.
+
+### Gestione Dati
+Tutti gli endpoint richiedono autenticazione Bearer Token.
+
+```http
+POST /api/data/save
+Authorization: Bearer {bearerToken}
+Content-Type: application/json
+
+{
+  "CustomerVAT": "02638030961",
+  "CompanyName": "Vicsam Group",
+  "data": {...}
+}
+```
+## 🖥️ Interfaccia Web
+
+### Dashboard
+- 📊 **Statistiche** in tempo reale
+- 📈 **Grafici** di utilizzo
+- 🔄 **Refresh** automatico dei dati
+- 📱 **Design responsive**
+
+### File Explorer
+- 📁 **Visualizzazione** lista file
+- 👀 **Preview** contenuto JSON
+- ⬇️ **Download** diretto
+- 🗑️ **Eliminazione** file
+- 🔍 **Ricerca** e filtri
+
+### Upload Dati
+- 📤 **Drag & Drop** per file JSON
+- 📝 **Upload multipli** simultanei
+- ✅ **Validazione** automatica
+- 📊 **Feedback** in tempo reale
+
+### Impostazioni
+- 🌙 **Dark/Light mode**
+- ⚙️ **Configurazione** API
+- 🔑 **Gestione token**
+- 💾 **Salvataggio** preferenze
+
+## 🚀 Avvio Rapido
+
+### Prerequisiti
+- Node.js 18+ 
+- npm o yarn
+
+### Installazione
+```bash
+# Clone del repository
+git clone <repository-url>
+cd vicsam-group
+
+# Installa dipendenze backend
+npm install
+
+# Installa dipendenze frontend
+cd client
+npm install
+cd ..
+
+# Copia e configura ambiente
+cp .env.example .env
+# Modifica .env con le tue configurazioni
+```
+
+### Sviluppo
+```bash
+# Avvia server backend
+npm run dev
+
+# In un nuovo terminale, avvia client
+npm run dev:client
+
+# Oppure avvia entrambi simultaneamente
+npm run dev:full
+```
+
+### Produzione
+```bash
+# Build del client
+npm run build
+
+# Avvia server in produzione
+npm start
+```
+
+## 🏭 Deploy con PM2
+
+### Setup Server
+```bash
+# Installa PM2
+npm install -g pm2
+
+# Clone e setup
+git clone <repository-url> vicsam-group
+cd vicsam-group
+npm install --production
+cd client && npm install && cd ..
+npm run build
+```
+
+### Configurazione PM2
+```bash
+# Avvia con PM2
+pm2 start ecosystem.config.js --env production
+
+# Salva configurazione
+pm2 save
+
+# Setup avvio automatico
+pm2 startup
+```
+
+### Monitoraggio
+```bash
+# Status applicazioni
+pm2 status
+
+# Log in tempo reale
+pm2 logs
+
+# Monitoring dashboard
+pm2 monit
+```
+
+## 🧪 Testing
+
+### Esecuzione Test
+```bash
+# Test singoli
+npm test
+
+# Test con coverage
+npm run test:ci
+
+# Test in watch mode
+npm run test:watch
+```
+
+### Test Coverage
+Il progetto include test completi per:
+- ✅ **Controllers** (Auth, Data)
+- ✅ **Middleware** (Auth, Validation)
+- ✅ **Services** (File operations)
+- ✅ **Routes** (API endpoints)
+- ✅ **Utils** (Helpers, JWT)
+
+## � Monitoraggio e Logging
+
+### Logging Strutturato
+- 📝 **Request logging** con dettagli completi
+- 🐛 **Debug logs** per development
+- ❌ **Error tracking** con stack traces
+- 📈 **Performance metrics**
+
+### Health Monitoring
+- 🏥 **Health endpoint** (`/health`)
+- ⏱️ **Uptime tracking**
+- 💾 **Memory usage**
+- 🔄 **Request statistics**
+
+## 🔧 Configurazione
+
+### Variabili Ambiente
+```env
+# Server
+PORT=3000
+NODE_ENV=production
+
+# JWT
+JWT_SECRET=your-secret-key
+JWT_EXPIRES_IN=24h
+
+# Authentication
+API_PASSWORD=your-api-password
+BEARER_TOKEN=your-bearer-token
+API_KEY=optional-api-key
+
+# Rate Limiting
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=100
+
+# CORS
+CORS_ORIGIN=*
+```
+
+### Personalizzazione
+- 🎨 **Temi** personalizzabili
+- 🌐 **Multi-language** ready
+- 📱 **PWA** compatible
+- 🔧 **Plugin** architecture
+
+## 🛡️ Sicurezza
+
+### Misure Implementate
+- 🔒 **Helmet.js** per header sicuri
+- 🚫 **Rate Limiting** per prevenire abuse
+- 🔐 **JWT** per autenticazione stateless
+- 🛡️ **CORS** configurabile
+- 📝 **Input validation** con Joi
+- 🔒 **Password hashing** con bcrypt
+
+## 📈 Performance
+
+### Ottimizzazioni Backend
+- ⚡ **Response caching**
+- 📦 **Compression** middleware
+- � **Connection pooling**
+- 📊 **Memory management**
+
+### Ottimizzazioni Frontend
+- 🚀 **Vite** per build ultra-veloci
+- 📦 **Code splitting** automatico
+- 🖼️ **Asset optimization**
+- 💾 **Service Worker** per caching
+
+## 🤝 Contribuire
+
+### Sviluppo
+1. Fork del repository
+2. Crea feature branch
+3. Commit delle modifiche
+4. Push e Pull Request
+
+### Coding Standards
+- 📝 **ESLint** per linting
+- 🎨 **Prettier** per formatting
+- 📋 **TypeScript** per type safety
+- 🧪 **Test coverage** > 80%
+
+## 📝 Changelog
+
+### v2.0.0 (Corrente)
+- ✨ **Frontend React** completo
+- 🔐 **Dual authentication** system
+- 📁 **File management** avanzato
+- 📊 **Dashboard** con statistiche
+- 🎨 **UI moderna** con shadcn/ui
+- 🌙 **Dark mode** support
+
+### v1.0.0
+- 🚀 **API base** con Express
+- 🔐 **JWT authentication**
+- 📁 **File storage** JSON
+- 🧪 **Test suite** completa
+
+---
+
+**Vicsam Group Platform** - Gestione dati moderna e sicura 🚀
     
     B --> E["POST /login"]
     B --> F["POST /register"]
