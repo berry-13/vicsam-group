@@ -18,6 +18,11 @@ on:
       - 'package*.json'
       - 'Dockerfile'
 
+# Grant write permissions for GitHub Packages
+permissions:
+  contents: read
+  packages: write
+
 # Cancel in-progress runs for the same PR/branch
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
