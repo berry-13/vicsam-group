@@ -7,6 +7,9 @@ on:
   pull_request:
     branches: [ main ]
   workflow_dispatch:
+  schedule:
+    # Run weekly to refresh cache
+    - cron: '0 2 * * 0'
 
 env:
   REGISTRY: ghcr.io
@@ -21,12 +24,21 @@ jobs:
     name: Build and Push Docker Image
     runs-on: ubuntu-latest
     
+    outputs:
+      image-name: ${{ steps.meta.outputs.tags }}
+      image-digest: ${{ steps.build.outputs.digest }}
+    
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
     
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
+      with:
+        driver-opts: |
+          network=host
+        buildkitd-flags: |
+          --allow-insecure-entitlement network.host
     
     - name: Log in to Container Registry
       if: github.event_name != 'pull_request'
@@ -55,23 +67,25 @@ jobs:
           # Latest tag for main branch
           type=raw,value=latest,enable={{is_default_branch}}
         labels: |
-          org.opencontainers.image.title=Vicsam Group API
+          org.opencontainers.image.title=VicSam Group API
           org.opencontainers.image.description=A secure Node.js API with authentication and data management
-          org.opencontainers.image.vendor=Vicsam Group
+          org.opencontainers.image.vendor=VicSam Group
           org.opencontainers.image.licenses=MIT
     
     - name: Build and push Docker image
+      id: build
       uses: docker/build-push-action@v5
       with:
         context: .
-        platforms: linux/amd64,linux/arm64
+        # Single platform for PR, multi-platform for releases
+        platforms: ${{ github.event_name == 'pull_request' && 'linux/amd64' || 'linux/amd64,linux/arm64' }}
         push: ${{ github.event_name != 'pull_request' }}
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
-        # Aggiungi build args se necessario
         build-args: |
+          BUILDKIT_INLINE_CACHE=1
           NODE_ENV=production
           BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
           VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
@@ -83,7 +97,8 @@ jobs:
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "**Registry:** \`${{ env.REGISTRY }}\`" >> $GITHUB_STEP_SUMMARY
         echo "**Repository:** \`${{ env.IMAGE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
-        echo "**Platforms:** \`linux/amd64, linux/arm64\`" >> $GITHUB_STEP_SUMMARY
+        echo "**Build Time:** $(date -u)" >> $GITHUB_STEP_SUMMARY
+        echo "**Digest:** \`${{ steps.build.outputs.digest }}\`" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         
         if [[ "${{ github.event_name }}" != "pull_request" ]]; then
@@ -93,10 +108,81 @@ jobs:
           echo "${{ steps.meta.outputs.tags }}" | tr ',' '\n' >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 🚀 Usage" >> $GITHUB_STEP_SUMMARY
+          echo "### 🚀 Quick Start" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "# Pull the latest image" >> $GITHUB_STEP_SUMMARY
           echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_STEP_SUMMARY
+          echo "docker run -d -p 3000:3000 --name vicsam-api ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "### ✅ Build Test Completed" >> $GITHUB_STEP_SUMMARY
+          echo "Docker image built successfully for pull request validation." >> $GITHUB_STEP_SUMMARY
+        fi
+
+  # Run security scan only for pushed images, not PRs
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.event_name != 'pull_request' && needs.build-and-push.result == 'success'
+    
+    steps:
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Extract image for scan
+      id: image
+      run: |
+        # Use the digest for accurate scanning
+        IMAGE_REF="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.build-and-push.outputs.image-digest }}"
+        echo "image-ref=${IMAGE_REF}" >> $GITHUB_OUTPUT
+        
+        # Also set a tag-based ref as fallback
+        if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          TAG_REF="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+        elif [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
+          TAG_REF="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:develop"
+        else
+          TAG_REF="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main"
+        fi
+        echo "tag-ref=${TAG_REF}" >> $GITHUB_OUTPUT
+    
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ steps.image.outputs.tag-ref }}
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        severity: 'CRITICAL,HIGH'
+        exit-code: '0'
+    
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  # Cleanup job runs less frequently to avoid slowing down builds
+  cleanup:
+    name: Cleanup Old Images
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    
+    steps:
+    - name: Delete old container images
+      uses: actions/delete-package-versions@v5
+      with:
+        package-name: ${{ github.event.repository.name }}
+        package-type: 'container'
+        min-versions-to-keep: 10
+        delete-only-untagged-versions: true
+      continue-on-error: true
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "# Run the container" >> $GITHUB_STEP_SUMMARY
           echo "docker run -d --name vicsam-api \\" >> $GITHUB_STEP_SUMMARY

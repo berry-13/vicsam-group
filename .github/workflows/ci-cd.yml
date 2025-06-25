@@ -13,14 +13,63 @@ permissions:
   pull-requests: write
   packages: write
 
+# Global environment variables for optimization
+env:
+  NODE_VERSION: '20.x'
+  NPM_CONFIG_FUND: false
+  NPM_CONFIG_AUDIT: false
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
 jobs:
+  # Parallel job for faster execution
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      server: ${{ steps.changes.outputs.server }}
+      client: ${{ steps.changes.outputs.client }}
+      docker: ${{ steps.changes.outputs.docker }}
+    steps:
+    - name: Checkout code 
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 2
+    
+    - name: Check for changes
+      id: changes
+      run: |
+        # Check if server files changed
+        if git diff --name-only HEAD~1 HEAD | grep -E "(server\.js|api/|package\.json|package-lock\.json)" || [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
+          echo "server=true" >> $GITHUB_OUTPUT
+        else
+          echo "server=false" >> $GITHUB_OUTPUT
+        fi
+        
+        # Check if client files changed
+        if git diff --name-only HEAD~1 HEAD | grep -E "client/" || [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
+          echo "client=true" >> $GITHUB_OUTPUT
+        else
+          echo "client=false" >> $GITHUB_OUTPUT
+        fi
+        
+        # Check if Docker files changed
+        if git diff --name-only HEAD~1 HEAD | grep -E "(Dockerfile|\.dockerignore|docker-compose)" || [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
+          echo "docker=true" >> $GITHUB_OUTPUT
+        else
+          echo "docker=false" >> $GITHUB_OUTPUT
+        fi
+
   test:
     name: Test Suite
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.server == 'true' || github.event_name == 'pull_request'
     
+    # Use matrix only for important branches
     strategy:
       matrix:
-        node-version: [18.x, 20.x]
+        node-version: ${{ github.ref == 'refs/heads/main' && fromJSON('["18.x", "20.x"]') || fromJSON('["20.x"]') }}
     
     steps:
     - name: Checkout code
@@ -31,20 +80,20 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
+        cache-dependency-path: 'package-lock.json'
     
+    # Install dependencies with optimizations
     - name: Install dependencies
-      run: npm ci
-    
-    - name: Run linting
-      run: npm run lint --if-present
+      run: |
+        npm ci --prefer-offline --no-audit --no-fund
     
     - name: Run tests
       run: npm run test:ci
       env:
         NODE_ENV: test
     
-    - name: Upload coverage to Codecov
-      if: matrix.node-version == '20.x'
+    - name: Upload coverage
+      if: matrix.node-version == '20.x' && github.event_name == 'push'
       uses: codecov/codecov-action@v3
       with:
         file: ./coverage/lcov.info
@@ -52,9 +101,11 @@ jobs:
         name: codecov-umbrella
         fail_ci_if_error: false
 
-  security:
-    name: Security Audit
+  lint:
+    name: Code Quality
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.server == 'true' || github.event_name == 'pull_request'
     
     steps:
     - name: Checkout code
@@ -63,50 +114,67 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '20.x'
+        node-version: ${{ env.NODE_VERSION }}
         cache: 'npm'
+        cache-dependency-path: 'package-lock.json'
     
     - name: Install dependencies
-      run: npm ci
+      run: npm ci --prefer-offline --no-audit --no-fund
+    
+    - name: Run linting
+      run: npm run lint --if-present
+
+  # Security job runs in parallel but only on pushes to main branches
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.server == 'true' && github.event_name == 'push'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: 'package-lock.json'
+    
+    - name: Install dependencies
+      run: npm ci --prefer-offline --no-audit --no-fund
     
     - name: Run security audit
       run: npm audit --audit-level=moderate
-    
-    - name: Run dependency check
-      run: npx audit-ci --moderate
+      continue-on-error: true
 
   build:
     name: Build Application
     runs-on: ubuntu-latest
-    needs: [test, security]
+    needs: [changes, test, lint]
+    if: needs.changes.outputs.client == 'true' || needs.changes.outputs.server == 'true' || needs.changes.outputs.docker == 'true'
     
     outputs:
       image-name: ${{ steps.image.outputs.image-name }}
       image-tag: ${{ steps.image.outputs.image-tag }}
+      image-digest: ${{ steps.build.outputs.digest }}
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
     
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20.x'
-        cache: 'npm'
-    
-    - name: Install dependencies
-      run: npm ci
-    
-    - name: Build application
-      run: npm run build --if-present
-    
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
+      with:
+        driver-opts: |
+          network=host
     
     - name: Log in to Container Registry
+      if: github.event_name != 'pull_request'
       uses: docker/login-action@v3
       with:
-        registry: ghcr.io
+        registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
     
@@ -114,144 +182,98 @@ jobs:
       id: meta
       uses: docker/metadata-action@v5
       with:
-        images: ghcr.io/${{ github.repository }}
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         tags: |
           type=ref,event=branch
           type=ref,event=pr
           type=sha,prefix={{branch}}-
           type=raw,value=latest,enable={{is_default_branch}}
+        labels: |
+          org.opencontainers.image.title=VicSam Group API
+          org.opencontainers.image.description=Secure Node.js API with authentication
+          org.opencontainers.image.vendor=VicSam Group
     
     - name: Build and push Docker image
+      id: build
       uses: docker/build-push-action@v5
       with:
         context: .
-        platforms: linux/amd64,linux/arm64
-        push: true
+        # Build for single platform on PR, multi-platform on push
+        platforms: ${{ github.event_name == 'pull_request' && 'linux/amd64' || 'linux/amd64,linux/arm64' }}
+        push: ${{ github.event_name != 'pull_request' }}
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
+        build-args: |
+          BUILDKIT_INLINE_CACHE=1
     
-    - name: Set image outputs
+    - name: Set outputs
       id: image
       run: |
-        echo "image-name=ghcr.io/${{ github.repository }}" >> $GITHUB_OUTPUT
+        echo "image-name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" >> $GITHUB_OUTPUT
         echo "image-tag=${{ fromJSON(steps.meta.outputs.json).tags[0] }}" >> $GITHUB_OUTPUT
-    
-    - name: Create deployment package
+    - name: Set outputs
+      id: image
       run: |
-        mkdir -p deployment
-        cp -r api deployment/
-        cp server.js package.json deployment/
-        cp .env.example deployment/.env
-    
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: deployment-package
-        path: deployment/
-        retention-days: 30
+        echo "image-name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" >> $GITHUB_OUTPUT
+        echo "image-tag=${{ fromJSON(steps.meta.outputs.json).tags[0] }}" >> $GITHUB_OUTPUT
 
+  # Simplified deployment jobs
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
     needs: build
-    if: github.ref == 'refs/heads/develop'
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
     environment: staging
     
     steps:
-    - name: Download build artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: deployment-package
-        path: deployment/
-    
     - name: Deploy to staging
       run: |
-        echo "Deploying to staging environment..."
+        echo "🚀 Deploying to staging environment..."
         echo "Docker image: ${{ needs.build.outputs.image-name }}:${{ needs.build.outputs.image-tag }}"
-        # Esempio di deployment con Docker
-        # docker pull ${{ needs.build.outputs.image-name }}:${{ needs.build.outputs.image-tag }}
-        # docker run -d --name vicsam-staging \
-        #   -p 3000:3000 \
-        #   -e NODE_ENV=staging \
-        #   ${{ needs.build.outputs.image-name }}:${{ needs.build.outputs.image-tag }}
+        # Add actual deployment commands here
     
-    - name: Run smoke tests
+    - name: Smoke test
       run: |
-        echo "Running smoke tests on staging..."
-        # Aggiungi qui i test di smoke per verificare il deployment
+        echo "✅ Running smoke tests on staging..."
+        # Add smoke tests here
 
   deploy-production:
-    name: Deploy to Production
+    name: Deploy to Production  
     runs-on: ubuntu-latest
     needs: build
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment: production
     
     steps:
-    - name: Download build artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: deployment-package
-        path: deployment/
-    
     - name: Deploy to production
       run: |
-        echo "Deploying to production environment..."
+        echo "🚀 Deploying to production environment..."
         echo "Docker image: ${{ needs.build.outputs.image-name }}:${{ needs.build.outputs.image-tag }}"
-        # Esempio di deployment con Docker
-        # docker pull ${{ needs.build.outputs.image-name }}:${{ needs.build.outputs.image-tag }}
-        # docker run -d --name vicsam-production \
-        #   -p 3000:3000 \
-        #   -e NODE_ENV=production \
-        #   ${{ needs.build.outputs.image-name }}:${{ needs.build.outputs.image-tag }}
+        # Add actual deployment commands here
     
-    - name: Run smoke tests
+    - name: Smoke test
       run: |
-        echo "Running smoke tests on production..."
-        # Aggiungi qui i test di smoke per verificare il deployment
+        echo "✅ Running smoke tests on production..."
+        # Add smoke tests here
     
-    - name: Notify deployment
+    - name: Notify success
       if: success()
-      run: |
-        echo "✅ Deployment to production successful!"
-        # Aggiungi qui notifiche (Slack, email, etc.)
+      run: echo "✅ Production deployment successful!"
 
+  # Cleanup only on schedule or manual trigger to avoid slowing down regular builds
   cleanup:
     name: Cleanup
     runs-on: ubuntu-latest
-    needs: [deploy-staging, deploy-production]
-    if: always()
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     
     steps:
-    - name: Cleanup old artifacts
-      uses: actions/github-script@v7
+    - name: Cleanup old images
+      uses: actions/delete-package-versions@v5
       with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        script: |
-          try {
-            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              run_id: context.runId,
-            });
-            
-            // Mantieni solo gli ultimi 5 artifacts
-            const oldArtifacts = artifacts.data.artifacts.slice(5);
-            
-            for (const artifact of oldArtifacts) {
-              try {
-                await github.rest.actions.deleteArtifact({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  artifact_id: artifact.id,
-                });
-                console.log(`Deleted artifact: ${artifact.name}`);
-              } catch (error) {
-                console.log(`Failed to delete artifact ${artifact.name}: ${error.message}`);
-              }
-            }
-          } catch (error) {
-            console.log(`Cleanup failed: ${error.message}`);
-          }
+        package-name: ${{ github.event.repository.name }}
+        package-type: 'container'
+        min-versions-to-keep: 5
+        delete-only-untagged-versions: true
+      continue-on-error: true

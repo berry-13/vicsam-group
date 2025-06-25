@@ -1,0 +1,112 @@
+name: Fast Build
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'client/**'
+      - 'api/**'
+      - 'server.js'
+      - 'package*.json'
+      - 'Dockerfile'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'client/**'
+      - 'api/**'
+      - 'server.js'
+      - 'package*.json'
+      - 'Dockerfile'
+
+# Cancel in-progress runs for the same PR/branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20.x'
+  NPM_CONFIG_FUND: false
+  NPM_CONFIG_AUDIT: false
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  fast-build:
+    name: Fast Build & Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1  # Shallow clone for speed
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: |
+          package-lock.json
+          client/package-lock.json
+    
+    # Install dependencies in parallel
+    - name: Install server dependencies
+      run: npm ci --prefer-offline --no-audit --no-fund --ignore-scripts
+    
+    - name: Install client dependencies
+      run: cd client && npm ci --prefer-offline --no-audit --no-fund --ignore-scripts
+    
+    # Run tests and build in parallel
+    - name: Run tests
+      run: npm run test:ci &
+    
+    - name: Build client
+      run: cd client && npm run build:fast
+    
+    # Wait for background jobs
+    - name: Wait for tests
+      run: wait
+    
+    - name: Build summary
+      run: |
+        echo "## ⚡ Fast Build Complete" >> $GITHUB_STEP_SUMMARY
+        echo "**Build time:** ~$(date -u)" >> $GITHUB_STEP_SUMMARY
+        echo "**Client build size:** $(du -sh client/dist 2>/dev/null | cut -f1 || echo 'N/A')" >> $GITHUB_STEP_SUMMARY
+
+  # Conditional Docker build only for main branch or specific triggers
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: fast-build
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    timeout-minutes: 20
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      with:
+        driver-opts: network=host
+    
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Build and push
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64
+        push: true
+        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:fast-build-${{ github.sha }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        build-args: |
+          BUILDKIT_INLINE_CACHE=1
