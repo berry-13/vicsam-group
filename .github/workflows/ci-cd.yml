@@ -213,11 +213,6 @@ jobs:
       run: |
         echo "image-name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" >> $GITHUB_OUTPUT
         echo "image-tag=${{ fromJSON(steps.meta.outputs.json).tags[0] }}" >> $GITHUB_OUTPUT
-    - name: Set outputs
-      id: image
-      run: |
-        echo "image-name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" >> $GITHUB_OUTPUT
-        echo "image-tag=${{ fromJSON(steps.meta.outputs.json).tags[0] }}" >> $GITHUB_OUTPUT
 
   # Simplified deployment jobs
   deploy-staging:
