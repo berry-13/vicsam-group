@@ -55,9 +55,9 @@ jobs:
           # Latest tag for main branch
           type=raw,value=latest,enable={{is_default_branch}}
         labels: |
-          org.opencontainers.image.title=VicSam Group API
+          org.opencontainers.image.title=Vicsam Group API
           org.opencontainers.image.description=A secure Node.js API with authentication and data management
-          org.opencontainers.image.vendor=VicSam Group
+          org.opencontainers.image.vendor=Vicsam Group
           org.opencontainers.image.licenses=MIT
     
     - name: Build and push Docker image

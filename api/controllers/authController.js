@@ -80,7 +80,7 @@ const verifyAuth = async (req, res) => {
  */
 const getApiInfo = async (req, res) => {
   const apiInfo = {
-    name: 'VicSam Group API',
+    name: 'Vicsam Group API',
     version: '2.0.0',
     description: 'API ottimizzata per la gestione dei dati',
     endpoints: {

@@ -135,7 +135,7 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
-# VicSam Group specific files
+# Vicsam Group specific files
 dati_*.json
 dati_generali.json
 

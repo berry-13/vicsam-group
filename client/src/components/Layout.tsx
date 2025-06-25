@@ -86,7 +86,7 @@ const DesktopSidebar: React.FC = () => (
       <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
         <NavLink to="/" className="flex items-center gap-2 font-semibold">
           <Shield className="h-6 w-6" />
-          <span className="">VicSam Group</span>
+          <span className="">Vicsam Group</span>
         </NavLink>
       </div>
       <div className="flex-1">
@@ -108,7 +108,7 @@ const MobileSidebar: React.FC = () => (
       <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
         <NavLink to="/" className="flex items-center gap-2 font-semibold">
           <Shield className="h-6 w-6" />
-          <span>VicSam Group</span>
+          <span>Vicsam Group</span>
         </NavLink>
       </div>
       <NavContent />

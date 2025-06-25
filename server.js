@@ -126,7 +126,7 @@ app.get('*', (req, res) => {
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>VicSam Group API</title>
+        <title>Vicsam Group API</title>
         <style>
           body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -151,7 +151,7 @@ app.get('*', (req, res) => {
       </head>
       <body>
         <div class="container">
-          <h1>🚀 VicSam Group API</h1>
+          <h1>🚀 Vicsam Group API</h1>
           <p class="status">✅ Server attivo e funzionante</p>
           
           <div class="warning">

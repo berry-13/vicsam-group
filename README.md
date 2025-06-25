@@ -1,10 +1,10 @@
-# VicSam Group API 🚀
+# Vicsam Group API 🚀
 
-API REST moderna per la gestione dei dati del gruppo VicSam, costruita con Node.js ed Express
+API REST moderna per la gestione dei dati del gruppo Vicsam, costruita con Node.js ed Express
 
 ## 📋 Panoramica
 
-L'API VicSam Group è un server backend robusto che fornisce:
+L'API Vicsam Group è un server backend robusto che fornisce:
 - ✅ Autenticazione JWT sicura
 - 📊 Gestione dati con validazione
 - 🔒 Middleware di sicurezza avanzati

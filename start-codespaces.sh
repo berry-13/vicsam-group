@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Script per avviare l'applicazione VicSam Group in GitHub Codespaces
+# Script per avviare l'applicazione Vicsam Group in GitHub Codespaces
 
-echo "🚀 Avvio VicSam Group per GitHub Codespaces..."
+echo "🚀 Avvio Vicsam Group per GitHub Codespaces..."
 
 # Controlla se siamo in un ambiente Codespaces
 if [[ "$CODESPACE_NAME" != "" ]]; then
