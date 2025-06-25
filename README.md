@@ -423,8 +423,6 @@ docker run -d \
 docker-compose -f docker-compose.registry.yml up -d
 ```
 
-📖 **[Guida Completa Docker](./DOCKER.md)** - Deployment, configurazione e troubleshooting
-
 ### GitHub Codespaces (Consigliato per Sviluppo) ☁️
 ```bash
 # Avvio automatico con configurazione Codespaces
@@ -469,16 +467,6 @@ npm run dev  # Disponibile su http://localhost:5173
 ```
 
 **L'API è sempre disponibile su** `http://localhost:3000`
-
-## ⚙️ Configurazione per GitHub Codespaces
-
-Il progetto include supporto completo per GitHub Codespaces con:
-- Auto-rilevamento dell'ambiente Codespaces
-- Configurazione automatica dell'URL del backend
-- Script di avvio automatico (`start-codespaces.sh`)
-- Banner di configurazione intelligente nel frontend
-
-Vedi [client/CODESPACES_CONFIG.md](./client/CODESPACES_CONFIG.md) per dettagli.
 
 ### Installazione
 ```bash
