@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageContainer } from '@/components/PageContainer';
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -56,17 +57,19 @@ export const Dashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">Caricamento dashboard...</p>
+      <PageContainer intensity={1}>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">Caricamento dashboard...</p>
+          </div>
         </div>
-      </div>
+      </PageContainer>
     );
   }
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+    <PageContainer intensity={2}>
       <div className="flex items-center justify-between space-y-2">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
@@ -84,7 +87,7 @@ export const Dashboard: React.FC = () => {
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+        <Card className="enhanced-card">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">File Totali</CardTitle>
             <FileText className="h-4 w-4 text-muted-foreground" />
@@ -94,7 +97,7 @@ export const Dashboard: React.FC = () => {
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="enhanced-card">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Spazio Utilizzato</CardTitle>
             <Database className="h-4 w-4 text-muted-foreground" />
@@ -104,7 +107,7 @@ export const Dashboard: React.FC = () => {
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="enhanced-card">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Dati Generali</CardTitle>
             <BarChart3 className="h-4 w-4 text-muted-foreground" />
@@ -114,7 +117,7 @@ export const Dashboard: React.FC = () => {
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="enhanced-card">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Ultimo Aggiornamento</CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
@@ -127,7 +130,7 @@ export const Dashboard: React.FC = () => {
 
       {/* Quick Actions */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-3">
+        <Card className="col-span-3 enhanced-card">
           <CardHeader>
             <CardTitle>Azioni Rapide</CardTitle>
             <CardDescription>
@@ -154,6 +157,6 @@ export const Dashboard: React.FC = () => {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </PageContainer>
   );
 };

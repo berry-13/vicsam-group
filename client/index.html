@@ -18,6 +18,22 @@
     <meta property="twitter:description" content="Piattaforma completa per la gestione dei dati del gruppo Vicsam" />
     
     <title>Vicsam Group Platform</title>
+    <script>
+      // Applica il tema prima che la pagina venga renderizzata per evitare il flash
+      (function() {
+        const savedTheme = localStorage.getItem('theme');
+        const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        const theme = savedTheme || systemTheme;
+        
+        console.log('HTML script:', { savedTheme, systemTheme, theme });
+        
+        if (theme === 'dark') {
+          document.documentElement.classList.add('dark');
+        }
+        
+        console.log('HTML script - document classes:', document.documentElement.className);
+      })();
+    </script>
   </head>
   <body class="antialiased">
     <div id="root"></div>

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { PageContainer } from '@/components/PageContainer';
 
 export const SaveDataPage: React.FC = () => {
   const [files, setFiles] = useState<File[]>([]);
@@ -159,7 +160,7 @@ export const SaveDataPage: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+    <PageContainer intensity={2}>
       <div className="flex items-center justify-between space-y-2">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Salva File JSON</h2>
@@ -170,7 +171,7 @@ export const SaveDataPage: React.FC = () => {
       </div>
 
       <div className="max-w-2xl mx-auto">
-        <Card>
+        <Card className="enhanced-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Database className="h-5 w-5" />
@@ -295,6 +296,6 @@ export const SaveDataPage: React.FC = () => {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </PageContainer>
   );
 };

@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { PageContainer } from '@/components/PageContainer';
 
 export const StatsPage: React.FC = () => {
   const [stats, setStats] = useState<DataStats | null>(null);
@@ -94,12 +95,14 @@ export const StatsPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">Caricamento statistiche...</p>
+      <PageContainer intensity={1}>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">Caricamento statistiche...</p>
+          </div>
         </div>
-      </div>
+      </PageContainer>
     );
   }
 
@@ -109,7 +112,7 @@ export const StatsPage: React.FC = () => {
   const maxSize = Math.max(...sizeDistribution.map(d => d.count));
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+    <PageContainer intensity={2}>
       <div className="flex items-center justify-between space-y-2">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Statistiche</h2>
@@ -278,6 +281,6 @@ export const StatsPage: React.FC = () => {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </PageContainer>
   );
 };
