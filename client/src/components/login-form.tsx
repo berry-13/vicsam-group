@@ -15,6 +15,11 @@ interface LoginFormProps extends React.ComponentProps<"div"> {
   className?: string;
 }
 
+/**
+ * Renders a password-based login form with real-time validation, error handling, and user feedback.
+ *
+ * The form validates password input, displays categorized error messages, and provides UI feedback such as loading states, password visibility toggling, and error animations. On successful login, a toast notification is shown; on failure, user-friendly error messages and alerts are displayed.
+ */
 export function LoginForm({
   className,
   ...props

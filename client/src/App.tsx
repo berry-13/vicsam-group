@@ -11,6 +11,13 @@ import { StatsPage } from './pages/StatsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import './App.css';
 
+/**
+ * The root component of the application, providing global context and routing.
+ *
+ * Wraps the app with toast notification and authentication providers, and defines all client-side routes, including protected and public pages.
+ *
+ * @returns The application's component tree with context providers and route configuration.
+ */
 function App() {
   return (
     <ToastProvider>
