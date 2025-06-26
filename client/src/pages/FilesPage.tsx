@@ -120,6 +120,8 @@ export const FilesPage: React.FC = () => {
     "structured"
   );
   const [filterType, setFilterType] = useState<FilterType>("all");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [fileToDelete, setFileToDelete] = useState<string | null>(null);
 
   const parseSystemData = (
     content: unknown
@@ -259,13 +261,29 @@ export const FilesPage: React.FC = () => {
     }
   };
 
-  const handleDelete = async (filename: string) => {
+  const handleDelete = (filename: string) => {
+    setFileToDelete(filename);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!fileToDelete) return;
+    
     try {
-      await apiService.deleteFile(filename);
-      setFiles(files.filter((f) => f.name !== filename));
+      await apiService.deleteFile(fileToDelete);
+      setFiles(files.filter((f) => f.name !== fileToDelete));
+      setDeleteDialogOpen(false);
+      setFileToDelete(null);
     } catch (error) {
       console.error("Errore nella cancellazione file:", error);
+      setDeleteDialogOpen(false);
+      setFileToDelete(null);
     }
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteDialogOpen(false);
+    setFileToDelete(null);
   };
 
   const formatDate = (dateString: string) => {
@@ -962,7 +980,7 @@ export const FilesPage: React.FC = () => {
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog>
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
@@ -970,13 +988,16 @@ export const FilesPage: React.FC = () => {
               Conferma eliminazione
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Questa azione eliminerà definitivamente il file selezionato dal
+              Questa azione eliminerà definitivamente il file "{fileToDelete}" dal
               sistema. L'operazione non può essere annullata.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Annulla</AlertDialogCancel>
-            <AlertDialogAction className="bg-destructive hover:bg-destructive/90">
+            <AlertDialogCancel onClick={handleCancelDelete}>Annulla</AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-destructive hover:bg-destructive/90"
+              onClick={handleConfirmDelete}
+            >
               Elimina definitivamente
             </AlertDialogAction>
           </AlertDialogFooter>
