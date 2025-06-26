@@ -33,7 +33,7 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
-  
+
   /* Status colors that work in light mode */
   --success: 142 71% 45%;
   --success-foreground: 0 0% 100%;
@@ -77,7 +77,7 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
-  
+
   /* Status colors that work in dark mode */
   --success: 142 76% 36%;
   --success-foreground: 0 0% 100%;
@@ -93,57 +93,62 @@
   * {
     border-color: hsl(var(--border));
   }
-  
+
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
     transition: background-color 0.3s ease, color 0.3s ease;
   }
-  
+
   /* Improve form controls in light mode */
-  input, select, textarea {
+  input,
+  select,
+  textarea {
     background-color: hsl(var(--background));
     border: 1px solid hsl(var(--border));
     color: hsl(var(--foreground));
   }
-  
-  input:focus, select:focus, textarea:focus {
+
+  input:focus,
+  select:focus,
+  textarea:focus {
     outline: 2px solid hsl(var(--ring));
     outline-offset: 2px;
   }
-  
+
   /* Better table styles */
   table {
     background-color: hsl(var(--card));
     color: hsl(var(--card-foreground));
   }
-  
+
   th {
     background-color: hsl(var(--muted));
     color: hsl(var(--muted-foreground));
   }
-  
+
   tr:hover {
     background-color: hsl(var(--accent));
   }
-  
+
   /* Better code blocks */
-  pre, code {
+  pre,
+  code {
     background-color: hsl(var(--muted));
     color: hsl(var(--muted-foreground));
     border: 1px solid hsl(var(--border));
   }
-  
+
   /* Ensure good contrast for links */
   a {
     color: hsl(var(--primary));
     text-decoration-color: hsl(var(--primary) / 0.3);
   }
-  
+
   a:hover {
     color: hsl(var(--primary) / 0.8);
   }
-  
+
   /* Better disabled state */
   :disabled {
     opacity: 0.5;
@@ -156,67 +161,86 @@
   .text-success {
     color: hsl(var(--success));
   }
-  
+
   .text-warning {
     color: hsl(var(--warning));
   }
-  
+
   .text-error {
     color: hsl(var(--error));
   }
-  
+
   .text-info {
     color: hsl(var(--info-foreground));
   }
-  
+
   .bg-success {
     background-color: hsl(var(--success));
     color: hsl(var(--success-foreground));
   }
-  
+
   .bg-warning {
     background-color: hsl(var(--warning));
     color: hsl(var(--warning-foreground));
   }
-  
+
   .bg-error {
     background-color: hsl(var(--error));
     color: hsl(var(--error-foreground));
   }
-  
+
   .bg-info {
     background-color: hsl(var(--info));
     color: hsl(var(--info-foreground));
   }
-  
+
   .border-success {
     border-color: hsl(var(--success));
   }
-  
+
   .border-warning {
     border-color: hsl(var(--warning));
   }
-  
+
   .border-error {
     border-color: hsl(var(--error));
   }
-  
+
   .border-info {
     border-color: hsl(var(--info));
   }
 
   /* Login form specific animations */
   @keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
-    20%, 40%, 60%, 80% { transform: translateX(2px); }
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    10%,
+    30%,
+    50%,
+    70%,
+    90% {
+      transform: translateX(-2px);
+    }
+    20%,
+    40%,
+    60%,
+    80% {
+      transform: translateX(2px);
+    }
   }
-  
+
   @keyframes pulse-error {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.8; }
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.8;
+    }
   }
-  
+
   @keyframes slide-in-from-top {
     from {
       opacity: 0;
@@ -227,7 +251,7 @@
       transform: translateY(0);
     }
   }
-  
+
   @keyframes fade-in-scale {
     from {
       opacity: 0;
@@ -238,9 +262,10 @@
       transform: scale(1);
     }
   }
-  
+
   @keyframes gradient-xy {
-    0%, 100% {
+    0%,
+    100% {
       background-size: 400% 400%;
       background-position: left center;
     }
@@ -249,48 +274,48 @@
       background-position: right center;
     }
   }
-  
+
   .animate-shake {
     animation: shake 0.5s ease-in-out;
   }
-  
+
   .animate-pulse-error {
     animation: pulse-error 1s ease-in-out infinite;
   }
-  
+
   .animate-slide-in-top {
     animation: slide-in-from-top 0.3s ease-out;
   }
-  
+
   .animate-fade-in-scale {
     animation: fade-in-scale 0.4s ease-out;
   }
-  
+
   .animate-gradient-xy {
     animation: gradient-xy 3s ease infinite;
   }
-  
+
   /* Login specific hover effects */
   .login-input:focus {
     box-shadow: 0 0 0 3px hsl(var(--primary) / 0.1);
     transition: box-shadow 0.2s ease;
   }
-  
+
   .login-button:hover:not(:disabled) {
     transform: translateY(-1px);
     box-shadow: 0 4px 12px hsl(var(--primary) / 0.2);
   }
-  
+
   .login-button:active:not(:disabled) {
     transform: translateY(0);
   }
-  
+
   /* Error state styling */
   .input-error {
     border-color: hsl(var(--error));
     animation: shake 0.4s ease-in-out;
   }
-  
+
   .input-error:focus {
     box-shadow: 0 0 0 3px hsl(var(--error) / 0.1);
   }
@@ -336,8 +361,7 @@
     backdrop-filter: blur(8px);
     background: hsl(var(--card) / 0.95);
     border: 1px solid hsl(var(--border) / 0.5);
-    box-shadow: 
-      0 1px 3px 0 hsl(var(--foreground) / 0.1),
+    box-shadow: 0 1px 3px 0 hsl(var(--foreground) / 0.1),
       0 1px 2px 0 hsl(var(--foreground) / 0.06);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
@@ -345,8 +369,7 @@
   .enhanced-card:hover {
     background: hsl(var(--card) / 0.98);
     border-color: hsl(var(--border) / 0.8);
-    box-shadow: 
-      0 4px 6px -1px hsl(var(--foreground) / 0.1),
+    box-shadow: 0 4px 6px -1px hsl(var(--foreground) / 0.1),
       0 2px 4px -1px hsl(var(--foreground) / 0.06);
     transform: translateY(-1px);
   }
@@ -399,5 +422,65 @@
 
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: hsl(var(--muted-foreground) / 0.5);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Utility classes */
+.text-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+  .mobile-hide {
+    display: none;
+  }
+
+  .mobile-full {
+    width: 100% !important;
   }
 }
