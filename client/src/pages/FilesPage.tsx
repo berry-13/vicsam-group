@@ -844,51 +844,44 @@ export const FilesPage: React.FC = () => {
         <DialogContent className="max-w-6xl max-h-[90vh]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              {selectedFile &&
-              files.find((f) => f.name === selectedFile.name)
-                ?.isValidSystemData ? (
-                <>
-                  <CheckCircle className="h-5 w-5 text-success" />
-                  {
-                    files.find((f) => f.name === selectedFile.name)?.systemData
-                      ?.CustomerName
-                  }
-                </>
-              ) : (
-                <>
-                  <FileText className="h-5 w-5" />
-                  {selectedFile?.name}
-                </>
-              )}
+              {(() => {
+                const currentFile = selectedFile 
+                  ? files.find((f) => f.name === selectedFile.name)
+                  : null;
+                
+                return currentFile?.isValidSystemData ? (
+                  <>
+                    <CheckCircle className="h-5 w-5 text-success" />
+                    {currentFile.systemData?.CustomerName}
+                  </>
+                ) : (
+                  <>
+                    <FileText className="h-5 w-5" />
+                    {selectedFile?.name}
+                  </>
+                );
+              })()}
             </DialogTitle>
             <DialogDescription>
-              {selectedFile &&
-                files.find((f) => f.name === selectedFile.name)
-                  ?.isValidSystemData && (
+              {(() => {
+                const currentFile = selectedFile 
+                  ? files.find((f) => f.name === selectedFile.name)
+                  : null;
+                
+                return currentFile?.isValidSystemData && (
                   <div className="flex flex-wrap gap-4 mt-2 text-sm">
                     <span>
-                      P.IVA:{" "}
-                      {
-                        files.find((f) => f.name === selectedFile.name)
-                          ?.systemData?.CustomerVAT
-                      }
+                      P.IVA: {currentFile.systemData?.CustomerVAT}
                     </span>
                     <span>
-                      Database:{" "}
-                      {
-                        files.find((f) => f.name === selectedFile.name)
-                          ?.systemData?.DatabaseName
-                      }
+                      Database: {currentFile.systemData?.DatabaseName}
                     </span>
                     <span>
-                      Versione:{" "}
-                      {
-                        files.find((f) => f.name === selectedFile.name)
-                          ?.systemData?.Version
-                      }
+                      Versione: {currentFile.systemData?.Version}
                     </span>
                   </div>
-                )}
+                );
+              })()}
             </DialogDescription>
           </DialogHeader>
 
@@ -914,36 +907,35 @@ export const FilesPage: React.FC = () => {
               </TabsList>
 
               <TabsContent value="structured" className="mt-4">
-                {selectedFile &&
-                files.find((f) => f.name === selectedFile.name)
-                  ?.isValidSystemData ? (
-                  <StructuredView
-                    data={
-                      files.find((f) => f.name === selectedFile.name)!
-                        .systemData!
-                    }
-                  />
-                ) : (
-                  <Card>
-                    <CardContent className="p-8 text-center">
-                      <AlertCircle className="h-12 w-12 text-warning mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold mb-2">
-                        Dati non strutturati
-                      </h3>
-                      <p className="text-muted-foreground mb-4">
-                        Questo file non contiene dati di sistema in formato
-                        riconosciuto. Utilizza la vista JSON Raw per
-                        visualizzare il contenuto completo.
-                      </p>
-                      <Button
-                        variant="outline"
-                        onClick={() => setContentViewMode("raw")}
-                      >
-                        Visualizza JSON Raw
-                      </Button>
-                    </CardContent>
-                  </Card>
-                )}
+                {(() => {
+                  const currentFile = selectedFile 
+                    ? files.find((f) => f.name === selectedFile.name)
+                    : null;
+                    
+                  return currentFile?.isValidSystemData ? (
+                    <StructuredView data={currentFile.systemData!} />
+                  ) : (
+                    <Card>
+                      <CardContent className="p-8 text-center">
+                        <AlertCircle className="h-12 w-12 text-warning mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold mb-2">
+                          Dati non strutturati
+                        </h3>
+                        <p className="text-muted-foreground mb-4">
+                          Questo file non contiene dati di sistema in formato
+                          riconosciuto. Utilizza la vista JSON Raw per
+                          visualizzare il contenuto completo.
+                        </p>
+                        <Button
+                          variant="outline"
+                          onClick={() => setContentViewMode("raw")}
+                        >
+                          Visualizza JSON Raw
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  );
+                })()}
               </TabsContent>
 
               <TabsContent value="raw" className="mt-4">
