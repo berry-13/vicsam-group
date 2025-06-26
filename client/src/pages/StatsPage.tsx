@@ -10,13 +10,13 @@ import {
   HardDrive,
   RefreshCw,
   PieChart,
-  Loader2
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { PageContainer } from '@/components/PageContainer';
+import Spinner from "@/components/ui/spinner"
 
 export const StatsPage: React.FC = () => {
   const [stats, setStats] = useState<DataStats | null>(null);
@@ -98,7 +98,7 @@ export const StatsPage: React.FC = () => {
       <PageContainer intensity={1}>
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="flex flex-col items-center gap-4">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <Spinner className="h-8 w-8 text-primary" />
             <p className="text-sm text-muted-foreground">Caricamento statistiche...</p>
           </div>
         </div>

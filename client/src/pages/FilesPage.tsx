@@ -24,7 +24,6 @@ import {
   Grid,
   List,
   MoreVertical,
-  ChevronDown,
   X,
   SortAsc,
   SortDesc,
@@ -33,12 +32,7 @@ import ALYIcon from "@/assets/ALY.ico";
 import TSEIcon from "@/assets/TSE.ico";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -47,7 +41,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { PageContainer } from '@/components/PageContainer';
+import { PageContainer } from "@/components/PageContainer";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -88,6 +82,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
+import Spinner from "@/components/ui/spinner";
 
 // Interfaccia per i dati strutturati del JSON
 interface CustomMenuItem {
@@ -160,7 +155,7 @@ export const FilesPage: React.FC = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [fileToDelete, setFileToDelete] = useState<string | null>(null);
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
-  
+
   // Stati per filtri avanzati e ordinamento
   const [columnFilters, setColumnFilters] = useState<ColumnFilter>({
     applicationVersion: [],
@@ -322,7 +317,7 @@ export const FilesPage: React.FC = () => {
 
   const handleConfirmDelete = async () => {
     if (!fileToDelete) return;
-    
+
     try {
       await apiService.deleteFile(fileToDelete);
       setFiles(files.filter((f) => f.name !== fileToDelete));
@@ -365,7 +360,10 @@ export const FilesPage: React.FC = () => {
     }));
   };
 
-  const handleColumnFilterChange = (column: keyof ColumnFilter, value: unknown) => {
+  const handleColumnFilterChange = (
+    column: keyof ColumnFilter,
+    value: unknown
+  ) => {
     setColumnFilters((prev) => ({ ...prev, [column]: value }));
   };
 
@@ -397,11 +395,18 @@ export const FilesPage: React.FC = () => {
   const filteredAndSortedFiles = useMemo(() => {
     const filtered = files.filter((file) => {
       // Filtro di ricerca generale
-      const matchesSearch = !searchTerm || 
+      const matchesSearch =
+        !searchTerm ||
         file.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        file.systemData?.CustomerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        file.systemData?.CustomerVAT?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        file.systemData?.DatabaseName?.toLowerCase().includes(searchTerm.toLowerCase());
+        file.systemData?.CustomerName?.toLowerCase().includes(
+          searchTerm.toLowerCase()
+        ) ||
+        file.systemData?.CustomerVAT?.toLowerCase().includes(
+          searchTerm.toLowerCase()
+        ) ||
+        file.systemData?.DatabaseName?.toLowerCase().includes(
+          searchTerm.toLowerCase()
+        );
 
       if (!matchesSearch) return false;
 
@@ -411,52 +416,86 @@ export const FilesPage: React.FC = () => {
         if (filterType === "invalid" && file.isValidSystemData) return false;
         if (filterType === "outdated") {
           const versionStatus = getVersionStatus(file.systemData?.Version);
-          const sqlStatus = getSQLServerVersionStatus(file.systemData?.SQLServerVersion);
-          if (versionStatus.status !== "old" && sqlStatus.status !== "old") return false;
+          const sqlStatus = getSQLServerVersionStatus(
+            file.systemData?.SQLServerVersion
+          );
+          if (versionStatus.status !== "old" && sqlStatus.status !== "old")
+            return false;
         }
       }
 
       // Filtri per colonne specifiche
-      if (columnFilters.applicationVersion.length > 0 && 
-          !columnFilters.applicationVersion.includes(file.systemData?.ApplicationVersion || "")) {
+      if (
+        columnFilters.applicationVersion.length > 0 &&
+        !columnFilters.applicationVersion.includes(
+          file.systemData?.ApplicationVersion || ""
+        )
+      ) {
         return false;
       }
 
-      if (columnFilters.customerName && 
-          !file.systemData?.CustomerName?.toLowerCase().includes(columnFilters.customerName.toLowerCase())) {
+      if (
+        columnFilters.customerName &&
+        !file.systemData?.CustomerName?.toLowerCase().includes(
+          columnFilters.customerName.toLowerCase()
+        )
+      ) {
         return false;
       }
 
-      if (columnFilters.customerVAT && 
-          !file.systemData?.CustomerVAT?.toLowerCase().includes(columnFilters.customerVAT.toLowerCase())) {
+      if (
+        columnFilters.customerVAT &&
+        !file.systemData?.CustomerVAT?.toLowerCase().includes(
+          columnFilters.customerVAT.toLowerCase()
+        )
+      ) {
         return false;
       }
 
-      if (columnFilters.version.length > 0 && 
-          !columnFilters.version.includes(file.systemData?.Version || "")) {
+      if (
+        columnFilters.version.length > 0 &&
+        !columnFilters.version.includes(file.systemData?.Version || "")
+      ) {
         return false;
       }
 
-      if (columnFilters.sqlServerVersion.length > 0 && 
-          !columnFilters.sqlServerVersion.includes(file.systemData?.SQLServerVersion || "")) {
+      if (
+        columnFilters.sqlServerVersion.length > 0 &&
+        !columnFilters.sqlServerVersion.includes(
+          file.systemData?.SQLServerVersion || ""
+        )
+      ) {
         return false;
       }
 
-      if (columnFilters.databaseName && 
-          !file.systemData?.DatabaseName?.toLowerCase().includes(columnFilters.databaseName.toLowerCase())) {
+      if (
+        columnFilters.databaseName &&
+        !file.systemData?.DatabaseName?.toLowerCase().includes(
+          columnFilters.databaseName.toLowerCase()
+        )
+      ) {
         return false;
       }
 
-      if (columnFilters.hasCustomMenus !== null && 
-          Boolean(file.systemData?.ExistsCustomMenuItems) !== columnFilters.hasCustomMenus) {
+      if (
+        columnFilters.hasCustomMenus !== null &&
+        Boolean(file.systemData?.ExistsCustomMenuItems) !==
+          columnFilters.hasCustomMenus
+      ) {
         return false;
       }
 
       if (columnFilters.status.length > 0) {
         const versionStatus = getVersionStatus(file.systemData?.Version);
-        const sqlStatus = getSQLServerVersionStatus(file.systemData?.SQLServerVersion);
-        const fileStatus = versionStatus.status === "old" || sqlStatus.status === "old" ? "obsoleto" : 
-                          file.isValidSystemData ? "valido" : "invalido";
+        const sqlStatus = getSQLServerVersionStatus(
+          file.systemData?.SQLServerVersion
+        );
+        const fileStatus =
+          versionStatus.status === "old" || sqlStatus.status === "old"
+            ? "obsoleto"
+            : file.isValidSystemData
+            ? "valido"
+            : "invalido";
         if (!columnFilters.status.includes(fileStatus)) return false;
       }
 
@@ -533,13 +572,17 @@ export const FilesPage: React.FC = () => {
                 </p>
               </div>
               <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">Partita IVA</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Partita IVA
+                </p>
                 <p className="text-base font-mono">
                   {data.CustomerVAT || "Non specificata"}
                 </p>
               </div>
               <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">Rivenditore</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Rivenditore
+                </p>
                 <p className="text-base">
                   {data.ResellerName || "Non specificato"}
                 </p>
@@ -580,11 +623,15 @@ export const FilesPage: React.FC = () => {
                 </div>
               </div>
               <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">Build</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Build
+                </p>
                 <p className="text-base font-mono">{data.Build || "N/A"}</p>
               </div>
               <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">SQL Server</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  SQL Server
+                </p>
                 <div className="flex items-center gap-2">
                   <p className="text-base">{data.SQLServerVersion || "N/A"}</p>
                   <Badge
@@ -597,7 +644,9 @@ export const FilesPage: React.FC = () => {
                 </div>
               </div>
               <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">Database</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Database
+                </p>
                 <p className="text-base font-mono">
                   {data.DatabaseName || "N/A"}
                 </p>
@@ -706,20 +755,21 @@ export const FilesPage: React.FC = () => {
   );
 
   // Componente per l'icona dell'applicazione
-  const ApplicationIcon: React.FC<{ version?: string; size?: number }> = ({ 
-    version, 
-    size = 20 
+  const ApplicationIcon: React.FC<{ version?: string; size?: number }> = ({
+    version,
+    size = 20,
   }) => {
     if (!version) return null;
-    
-    const iconSrc = version === "ALY" ? ALYIcon : version === "TSE" ? TSEIcon : null;
-    
+
+    const iconSrc =
+      version === "ALY" ? ALYIcon : version === "TSE" ? TSEIcon : null;
+
     if (!iconSrc) return null;
-    
+
     return (
-      <img 
-        src={iconSrc} 
-        alt={`${version} Logo`} 
+      <img
+        src={iconSrc}
+        alt={`${version} Logo`}
         className="flex-shrink-0"
         style={{ width: size, height: size }}
         title={`Applicazione ${version}`}
@@ -744,13 +794,13 @@ export const FilesPage: React.FC = () => {
               ) : (
                 <AlertCircle className="h-5 w-5 text-warning flex-shrink-0" />
               )}
-              
+
               {/* Icona dell'applicazione */}
-              <ApplicationIcon 
-                version={file.systemData?.ApplicationVersion} 
-                size={18} 
+              <ApplicationIcon
+                version={file.systemData?.ApplicationVersion}
+                size={18}
               />
-              
+
               <div className="min-w-0 flex-1">
                 <CardTitle className="text-base truncate leading-tight">
                   {file.systemData?.CustomerName || file.name}
@@ -764,13 +814,19 @@ export const FilesPage: React.FC = () => {
                   {file.systemData?.Version && (
                     <span className="flex items-center gap-1">
                       v{file.systemData.Version}
-                      <Badge variant="outline" className={`h-4 px-1 text-[10px] ${versionStatus.color}`}>
+                      <Badge
+                        variant="outline"
+                        className={`h-4 px-1 text-[10px] ${versionStatus.color}`}
+                      >
                         {versionStatus.label}
                       </Badge>
                     </span>
                   )}
                   {file.systemData?.DatabaseName && (
-                    <span className="truncate max-w-[120px]" title={file.systemData.DatabaseName}>
+                    <span
+                      className="truncate max-w-[120px]"
+                      title={file.systemData.DatabaseName}
+                    >
                       DB: {file.systemData.DatabaseName}
                     </span>
                   )}
@@ -815,14 +871,19 @@ export const FilesPage: React.FC = () => {
                 {file.systemData?.SQLServerVersion && (
                   <div className="flex items-center gap-1">
                     <Server className="h-3 w-3" />
-                    <span className="truncate">{file.systemData.SQLServerVersion}</span>
-                    <Badge variant="outline" className={`h-4 px-1 text-[10px] ${sqlStatus.color}`}>
+                    <span className="truncate">
+                      {file.systemData.SQLServerVersion}
+                    </span>
+                    <Badge
+                      variant="outline"
+                      className={`h-4 px-1 text-[10px] ${sqlStatus.color}`}
+                    >
                       {sqlStatus.label}
                     </Badge>
                   </div>
                 )}
               </div>
-              
+
               <div className="flex items-center gap-1">
                 {file.systemData?.ExistsCustomMenuItems && (
                   <Badge variant="outline" className="h-4 px-1 text-[10px]">
@@ -830,7 +891,10 @@ export const FilesPage: React.FC = () => {
                   </Badge>
                 )}
                 {file.systemData?.ApplicationVersion && (
-                  <Badge variant="outline" className="h-4 px-1 text-[10px] bg-primary/10">
+                  <Badge
+                    variant="outline"
+                    className="h-4 px-1 text-[10px] bg-primary/10"
+                  >
                     {file.systemData.ApplicationVersion}
                   </Badge>
                 )}
@@ -897,8 +961,12 @@ export const FilesPage: React.FC = () => {
             {children}
             {sortConfig.column === column && (
               <>
-                {sortConfig.direction === "asc" && <SortAsc className="h-3 w-3" />}
-                {sortConfig.direction === "desc" && <SortDesc className="h-3 w-3" />}
+                {sortConfig.direction === "asc" && (
+                  <SortAsc className="h-3 w-3" />
+                )}
+                {sortConfig.direction === "desc" && (
+                  <SortDesc className="h-3 w-3" />
+                )}
               </>
             )}
           </div>
@@ -915,10 +983,15 @@ export const FilesPage: React.FC = () => {
           <TableRow>
             <TableHead className="w-12">
               <Checkbox
-                checked={selectedRows.size === filteredAndSortedFiles.length && filteredAndSortedFiles.length > 0}
+                checked={
+                  selectedRows.size === filteredAndSortedFiles.length &&
+                  filteredAndSortedFiles.length > 0
+                }
                 onCheckedChange={(checked: boolean) => {
                   if (checked) {
-                    setSelectedRows(new Set(filteredAndSortedFiles.map(f => f.name)));
+                    setSelectedRows(
+                      new Set(filteredAndSortedFiles.map((f) => f.name))
+                    );
                   } else {
                     setSelectedRows(new Set());
                   }
@@ -931,11 +1004,16 @@ export const FilesPage: React.FC = () => {
             <SortableTableHead column="customerName" className="min-w-[200px]">
               <div className="flex items-center gap-2">
                 Cliente
-                <ColumnFilterPopover column="customerName" title="Filtra per Cliente">
+                <ColumnFilterPopover
+                  column="customerName"
+                  title="Filtra per Cliente"
+                >
                   <Input
                     placeholder="Nome cliente..."
                     value={columnFilters.customerName}
-                    onChange={(e) => handleColumnFilterChange("customerName", e.target.value)}
+                    onChange={(e) =>
+                      handleColumnFilterChange("customerName", e.target.value)
+                    }
                   />
                 </ColumnFilterPopover>
               </div>
@@ -943,11 +1021,16 @@ export const FilesPage: React.FC = () => {
             <SortableTableHead column="customerVAT" className="w-32">
               <div className="flex items-center gap-2">
                 P.IVA
-                <ColumnFilterPopover column="customerVAT" title="Filtra per P.IVA">
+                <ColumnFilterPopover
+                  column="customerVAT"
+                  title="Filtra per P.IVA"
+                >
                   <Input
                     placeholder="P.IVA..."
                     value={columnFilters.customerVAT}
-                    onChange={(e) => handleColumnFilterChange("customerVAT", e.target.value)}
+                    onChange={(e) =>
+                      handleColumnFilterChange("customerVAT", e.target.value)
+                    }
                   />
                 </ColumnFilterPopover>
               </div>
@@ -955,21 +1038,32 @@ export const FilesPage: React.FC = () => {
             <SortableTableHead column="version" className="w-24">
               <div className="flex items-center gap-2">
                 Versione
-                <ColumnFilterPopover column="version" title="Filtra per Versione">
+                <ColumnFilterPopover
+                  column="version"
+                  title="Filtra per Versione"
+                >
                   <div className="space-y-2 max-h-40 overflow-y-auto">
                     {getUniqueValues("Version").map((version) => (
-                      <div key={version} className="flex items-center space-x-2">
+                      <div
+                        key={version}
+                        className="flex items-center space-x-2"
+                      >
                         <Checkbox
                           id={`version-${version}`}
                           checked={columnFilters.version.includes(version)}
                           onCheckedChange={(checked) => {
                             const newVersions = checked
                               ? [...columnFilters.version, version]
-                              : columnFilters.version.filter((v) => v !== version);
+                              : columnFilters.version.filter(
+                                  (v) => v !== version
+                                );
                             handleColumnFilterChange("version", newVersions);
                           }}
                         />
-                        <label htmlFor={`version-${version}`} className="text-sm">
+                        <label
+                          htmlFor={`version-${version}`}
+                          className="text-sm"
+                        >
                           {version}
                         </label>
                       </div>
@@ -981,18 +1075,31 @@ export const FilesPage: React.FC = () => {
             <SortableTableHead column="sqlServerVersion" className="w-32">
               <div className="flex items-center gap-2">
                 SQL Server
-                <ColumnFilterPopover column="sqlServerVersion" title="Filtra per SQL Server">
+                <ColumnFilterPopover
+                  column="sqlServerVersion"
+                  title="Filtra per SQL Server"
+                >
                   <div className="space-y-2 max-h-40 overflow-y-auto">
                     {getUniqueValues("SQLServerVersion").map((version) => (
-                      <div key={version} className="flex items-center space-x-2">
+                      <div
+                        key={version}
+                        className="flex items-center space-x-2"
+                      >
                         <Checkbox
                           id={`sql-${version}`}
-                          checked={columnFilters.sqlServerVersion.includes(version)}
+                          checked={columnFilters.sqlServerVersion.includes(
+                            version
+                          )}
                           onCheckedChange={(checked) => {
                             const newVersions = checked
                               ? [...columnFilters.sqlServerVersion, version]
-                              : columnFilters.sqlServerVersion.filter((v) => v !== version);
-                            handleColumnFilterChange("sqlServerVersion", newVersions);
+                              : columnFilters.sqlServerVersion.filter(
+                                  (v) => v !== version
+                                );
+                            handleColumnFilterChange(
+                              "sqlServerVersion",
+                              newVersions
+                            );
                           }}
                         />
                         <label htmlFor={`sql-${version}`} className="text-sm">
@@ -1007,11 +1114,16 @@ export const FilesPage: React.FC = () => {
             <SortableTableHead column="databaseName" className="w-40">
               <div className="flex items-center gap-2">
                 Database
-                <ColumnFilterPopover column="databaseName" title="Filtra per Database">
+                <ColumnFilterPopover
+                  column="databaseName"
+                  title="Filtra per Database"
+                >
                   <Input
                     placeholder="Nome database..."
                     value={columnFilters.databaseName}
-                    onChange={(e) => handleColumnFilterChange("databaseName", e.target.value)}
+                    onChange={(e) =>
+                      handleColumnFilterChange("databaseName", e.target.value)
+                    }
                   />
                 </ColumnFilterPopover>
               </div>
@@ -1026,13 +1138,18 @@ export const FilesPage: React.FC = () => {
         <TableBody>
           {filteredAndSortedFiles.map((file) => {
             const versionStatus = getVersionStatus(file.systemData?.Version);
-            const sqlStatus = getSQLServerVersionStatus(file.systemData?.SQLServerVersion);
-            const isObsolete = versionStatus.status === "old" || sqlStatus.status === "old";
-            
+            const sqlStatus = getSQLServerVersionStatus(
+              file.systemData?.SQLServerVersion
+            );
+            const isObsolete =
+              versionStatus.status === "old" || sqlStatus.status === "old";
+
             return (
               <TableRow
                 key={file.name}
-                className={`${selectedRows.has(file.name) ? "bg-muted/50" : ""} hover:bg-muted/30`}
+                className={`${
+                  selectedRows.has(file.name) ? "bg-muted/50" : ""
+                } hover:bg-muted/30`}
               >
                 <TableCell>
                   <Checkbox
@@ -1050,7 +1167,10 @@ export const FilesPage: React.FC = () => {
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center justify-center">
-                    <ApplicationIcon version={file.systemData?.ApplicationVersion} size={16} />
+                    <ApplicationIcon
+                      version={file.systemData?.ApplicationVersion}
+                      size={16}
+                    />
                   </div>
                 </TableCell>
                 <TableCell>
@@ -1061,7 +1181,10 @@ export const FilesPage: React.FC = () => {
                       <AlertCircle className="h-4 w-4 text-warning flex-shrink-0" />
                     )}
                     <div className="min-w-0">
-                      <div className="font-medium truncate" title={file.systemData?.CustomerName || file.name}>
+                      <div
+                        className="font-medium truncate"
+                        title={file.systemData?.CustomerName || file.name}
+                      >
                         {file.systemData?.CustomerName || file.name}
                       </div>
                     </div>
@@ -1074,9 +1197,14 @@ export const FilesPage: React.FC = () => {
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1">
-                    <span className="text-sm">{file.systemData?.Version || "-"}</span>
+                    <span className="text-sm">
+                      {file.systemData?.Version || "-"}
+                    </span>
                     {file.systemData?.Version && (
-                      <Badge variant="outline" className={`h-4 px-1 text-[10px] ${versionStatus.color}`}>
+                      <Badge
+                        variant="outline"
+                        className={`h-4 px-1 text-[10px] ${versionStatus.color}`}
+                      >
                         {versionStatus.label}
                       </Badge>
                     )}
@@ -1084,24 +1212,35 @@ export const FilesPage: React.FC = () => {
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1">
-                    <span className="text-sm truncate" title={file.systemData?.SQLServerVersion}>
+                    <span
+                      className="text-sm truncate"
+                      title={file.systemData?.SQLServerVersion}
+                    >
                       {file.systemData?.SQLServerVersion || "-"}
                     </span>
                     {file.systemData?.SQLServerVersion && (
-                      <Badge variant="outline" className={`h-4 px-1 text-[10px] ${sqlStatus.color}`}>
+                      <Badge
+                        variant="outline"
+                        className={`h-4 px-1 text-[10px] ${sqlStatus.color}`}
+                      >
                         {sqlStatus.label}
                       </Badge>
                     )}
                   </div>
                 </TableCell>
                 <TableCell>
-                  <span className="text-sm truncate" title={file.systemData?.DatabaseName}>
+                  <span
+                    className="text-sm truncate"
+                    title={file.systemData?.DatabaseName}
+                  >
                     {file.systemData?.DatabaseName || "-"}
                   </span>
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1">
-                    {isObsolete && <AlertTriangle className="h-3 w-3 text-warning" />}
+                    {isObsolete && (
+                      <AlertTriangle className="h-3 w-3 text-warning" />
+                    )}
                     {file.systemData?.ExistsCustomMenuItems && (
                       <Badge variant="outline" className="h-4 px-1 text-[10px]">
                         {file.systemData.CustomMenuItems?.length || 0}
@@ -1122,11 +1261,15 @@ export const FilesPage: React.FC = () => {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleViewFile(file.name)}>
+                      <DropdownMenuItem
+                        onClick={() => handleViewFile(file.name)}
+                      >
                         <Eye className="h-4 w-4 mr-2" />
                         Visualizza
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleDownload(file.name)}>
+                      <DropdownMenuItem
+                        onClick={() => handleDownload(file.name)}
+                      >
                         <Download className="h-4 w-4 mr-2" />
                         Scarica
                       </DropdownMenuItem>
@@ -1145,7 +1288,7 @@ export const FilesPage: React.FC = () => {
           })}
         </TableBody>
       </Table>
-      
+
       {filteredAndSortedFiles.length === 0 && (
         <div className="text-center py-8 text-muted-foreground">
           Nessun file trovato con i filtri applicati
@@ -1159,7 +1302,7 @@ export const FilesPage: React.FC = () => {
       <PageContainer intensity={1}>
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="text-center space-y-4">
-            <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+            <Spinner className="h-8 w-8 text-primary" />
             <div className="space-y-2">
               <h3 className="text-lg font-semibold">
                 Caricamento file in corso...
@@ -1226,7 +1369,11 @@ export const FilesPage: React.FC = () => {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {files.filter((f) => f.systemData?.ApplicationVersion === "ALY").length}
+                  {
+                    files.filter(
+                      (f) => f.systemData?.ApplicationVersion === "ALY"
+                    ).length
+                  }
                 </p>
                 <p className="text-sm text-muted-foreground">ALY</p>
               </div>
@@ -1242,7 +1389,11 @@ export const FilesPage: React.FC = () => {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {files.filter((f) => f.systemData?.ApplicationVersion === "TSE").length}
+                  {
+                    files.filter(
+                      (f) => f.systemData?.ApplicationVersion === "TSE"
+                    ).length
+                  }
                 </p>
                 <p className="text-sm text-muted-foreground">TSE</p>
               </div>
@@ -1328,7 +1479,7 @@ export const FilesPage: React.FC = () => {
                 <SelectItem value="outdated">Versioni obsolete</SelectItem>
               </SelectContent>
             </Select>
-            
+
             {/* Filtro per applicazioni */}
             <Popover>
               <PopoverTrigger asChild>
@@ -1348,11 +1499,19 @@ export const FilesPage: React.FC = () => {
                         onCheckedChange={(checked) => {
                           const newApps = checked
                             ? [...columnFilters.applicationVersion, app]
-                            : columnFilters.applicationVersion.filter((a) => a !== app);
-                          handleColumnFilterChange("applicationVersion", newApps);
+                            : columnFilters.applicationVersion.filter(
+                                (a) => a !== app
+                              );
+                          handleColumnFilterChange(
+                            "applicationVersion",
+                            newApps
+                          );
                         }}
                       />
-                      <label htmlFor={`app-${app}`} className="flex items-center gap-2 text-sm">
+                      <label
+                        htmlFor={`app-${app}`}
+                        className="flex items-center gap-2 text-sm"
+                      >
                         <ApplicationIcon version={app} size={16} />
                         {app}
                       </label>
@@ -1382,8 +1541,8 @@ export const FilesPage: React.FC = () => {
             </div>
 
             {/* Pulsante per cancellare tutti i filtri */}
-            {(searchTerm || 
-              filterType !== "all" || 
+            {(searchTerm ||
+              filterType !== "all" ||
               columnFilters.applicationVersion.length > 0 ||
               columnFilters.customerName ||
               columnFilters.customerVAT ||
@@ -1418,8 +1577,8 @@ export const FilesPage: React.FC = () => {
             <span className="text-sm">
               {selectedRows.size} file selezionati
             </span>
-            <Button 
-              size="sm" 
+            <Button
+              size="sm"
               variant="outline"
               onClick={() => setSelectedRows(new Set())}
             >
@@ -1445,10 +1604,7 @@ export const FilesPage: React.FC = () => {
                 : "I file di configurazione salvati appariranno qui"}
             </p>
             {(searchTerm || filterType !== "all") && (
-              <Button
-                variant="outline"
-                onClick={clearAllFilters}
-              >
+              <Button variant="outline" onClick={clearAllFilters}>
                 Rimuovi filtri
               </Button>
             )}
@@ -1476,16 +1632,16 @@ export const FilesPage: React.FC = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {(() => {
-                const currentFile = selectedFile 
+                const currentFile = selectedFile
                   ? files.find((f) => f.name === selectedFile.name)
                   : null;
-                
+
                 return currentFile?.isValidSystemData ? (
                   <>
                     <CheckCircle className="h-5 w-5 text-success" />
-                    <ApplicationIcon 
-                      version={currentFile.systemData?.ApplicationVersion} 
-                      size={20} 
+                    <ApplicationIcon
+                      version={currentFile.systemData?.ApplicationVersion}
+                      size={20}
                     />
                     {currentFile.systemData?.CustomerName}
                   </>
@@ -1499,22 +1655,20 @@ export const FilesPage: React.FC = () => {
             </DialogTitle>
             <DialogDescription>
               {(() => {
-                const currentFile = selectedFile 
+                const currentFile = selectedFile
                   ? files.find((f) => f.name === selectedFile.name)
                   : null;
-                
-                return currentFile?.isValidSystemData && (
-                  <div className="flex flex-wrap gap-4 mt-2 text-sm">
-                    <span>
-                      P.IVA: {currentFile.systemData?.CustomerVAT}
-                    </span>
-                    <span>
-                      Database: {currentFile.systemData?.DatabaseName}
-                    </span>
-                    <span>
-                      Versione: {currentFile.systemData?.Version}
-                    </span>
-                  </div>
+
+                return (
+                  currentFile?.isValidSystemData && (
+                    <div className="flex flex-wrap gap-4 mt-2 text-sm">
+                      <span>P.IVA: {currentFile.systemData?.CustomerVAT}</span>
+                      <span>
+                        Database: {currentFile.systemData?.DatabaseName}
+                      </span>
+                      <span>Versione: {currentFile.systemData?.Version}</span>
+                    </div>
+                  )
                 );
               })()}
             </DialogDescription>
@@ -1543,10 +1697,10 @@ export const FilesPage: React.FC = () => {
 
               <TabsContent value="structured" className="mt-4">
                 {(() => {
-                  const currentFile = selectedFile 
+                  const currentFile = selectedFile
                     ? files.find((f) => f.name === selectedFile.name)
                     : null;
-                    
+
                   return currentFile?.isValidSystemData ? (
                     <StructuredView data={currentFile.systemData!} />
                   ) : (
@@ -1605,13 +1759,15 @@ export const FilesPage: React.FC = () => {
               Conferma eliminazione
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Questa azione eliminerà definitivamente il file "{fileToDelete}" dal
-              sistema. L'operazione non può essere annullata.
+              Questa azione eliminerà definitivamente il file "{fileToDelete}"
+              dal sistema. L'operazione non può essere annullata.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleCancelDelete}>Annulla</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogCancel onClick={handleCancelDelete}>
+              Annulla
+            </AlertDialogCancel>
+            <AlertDialogAction
               className="bg-destructive hover:bg-destructive/90"
               onClick={handleConfirmDelete}
             >
