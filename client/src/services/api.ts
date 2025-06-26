@@ -80,18 +80,61 @@ class ApiService {
       (error) => {
         console.error('Errore API:', error);
         
+        // Gestione errori di autenticazione
         if (error.response?.status === 401) {
           this.clearAuth();
-          window.location.href = '/login';
+          // Non reindirizzare automaticamente se siamo già nella pagina di login
+          if (!window.location.pathname.includes('/login')) {
+            window.location.href = '/login';
+          }
         }
         
-        // Estrai il messaggio di errore dal server se disponibile
-        if (error.response?.data?.error) {
-          const serverError = new Error(error.response.data.error);
-          return Promise.reject(serverError);
+        // Crea un messaggio di errore più specifico
+        let errorMessage = 'Si è verificato un errore imprevisto';
+        
+        if (error.response) {
+          // Errore del server con risposta
+          const status = error.response.status;
+          const serverMessage = error.response.data?.error || error.response.data?.message;
+          
+          switch (status) {
+            case 400:
+              errorMessage = serverMessage || 'Richiesta non valida';
+              break;
+            case 401:
+              errorMessage = 'Password errata o sessione scaduta';
+              break;
+            case 403:
+              errorMessage = 'Accesso negato';
+              break;
+            case 404:
+              errorMessage = 'Risorsa non trovata';
+              break;
+            case 429:
+              errorMessage = 'Troppi tentativi. Riprova più tardi';
+              break;
+            case 500:
+              errorMessage = 'Errore interno del server. Riprova più tardi';
+              break;
+            case 502:
+            case 503:
+            case 504:
+              errorMessage = 'Servizio temporaneamente non disponibile';
+              break;
+            default:
+              errorMessage = serverMessage || `Errore del server (${status})`;
+          }
+        } else if (error.request) {
+          // Errore di rete
+          errorMessage = 'Errore di connessione. Verifica la tua connessione internet';
+        } else {
+          // Altro tipo di errore
+          errorMessage = error.message || 'Errore imprevisto';
         }
         
-        return Promise.reject(error);
+        const enhancedError = new Error(errorMessage);
+        enhancedError.name = error.name;
+        return Promise.reject(enhancedError);
       }
     );
 

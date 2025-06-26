@@ -187,9 +187,9 @@ jobs:
             type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
           labels: |
-            org.opencontainers.image.title=VicSam Group API
+            org.opencontainers.image.title=Vicsam Group API
             org.opencontainers.image.description=Secure Node.js API with authentication
-            org.opencontainers.image.vendor=VicSam Group
+            org.opencontainers.image.vendor=Vicsam Group
 
       - name: Build and push Docker image
         id: build

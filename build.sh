@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Build script semplice per VicSam Group
+# Build script semplice per Vicsam Group
 set -e
 
-echo "🚀 Building VicSam Group..."
+echo "🚀 Building Vicsam Group..."
 
 # Build client
 cd client

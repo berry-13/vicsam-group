@@ -65,11 +65,11 @@ export const StatsPage: React.FC = () => {
     if (!files.length) return [];
     
     const sizeRanges = [
-      { label: '< 1KB', min: 0, max: 1024, count: 0, color: 'bg-blue-500' },
-      { label: '1KB - 10KB', min: 1024, max: 10240, count: 0, color: 'bg-green-500' },
-      { label: '10KB - 100KB', min: 10240, max: 102400, count: 0, color: 'bg-yellow-500' },
-      { label: '100KB - 1MB', min: 102400, max: 1048576, count: 0, color: 'bg-orange-500' },
-      { label: '> 1MB', min: 1048576, max: Infinity, count: 0, color: 'bg-red-500' }
+      { label: '< 1KB', min: 0, max: 1024, count: 0, color: 'bg-primary' },
+      { label: '1KB - 10KB', min: 1024, max: 10240, count: 0, color: 'bg-success' },
+      { label: '10KB - 100KB', min: 10240, max: 102400, count: 0, color: 'bg-warning' },
+      { label: '100KB - 1MB', min: 102400, max: 1048576, count: 0, color: 'bg-destructive' },
+      { label: '> 1MB', min: 1048576, max: Infinity, count: 0, color: 'bg-muted' }
     ];
 
     files.forEach(file => {
@@ -262,11 +262,11 @@ export const StatsPage: React.FC = () => {
         <CardContent>
           <div className="grid gap-4 md:grid-cols-3">
             <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">{stats?.totalFiles || 0}</div>
+              <div className="text-2xl font-bold text-primary">{stats?.totalFiles || 0}</div>
               <p className="text-sm text-muted-foreground">File Totali</p>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{formatBytes(stats?.totalSize || 0)}</div>
+              <div className="text-2xl font-bold text-success">{formatBytes(stats?.totalSize || 0)}</div>
               <p className="text-sm text-muted-foreground">Spazio Utilizzato</p>
             </div>
             <div className="text-center">

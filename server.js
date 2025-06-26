@@ -8,7 +8,6 @@ const rateLimit = require('express-rate-limit');
 
 // Import middleware
 const { errorHandler, notFound, requestLogger } = require('./api/middleware/common');
-const optionalApiKeyMiddleware = require('./api/middleware/apiKey');
 
 // Import routes
 const apiRoutes = require('./api/routes');
@@ -78,9 +77,6 @@ app.use('/api/auth', (req, res, next) => {
 // Body parsing
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-// Protezione API KEY opzionale per le rotte /api (escluso /api/auth)
-app.use('/api', optionalApiKeyMiddleware);
 
 // API routes
 app.use('/api', apiRoutes);
