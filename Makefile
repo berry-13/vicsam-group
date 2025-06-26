@@ -1,10 +1,10 @@
-# Makefile for VicSam Group build optimization
+# Makefile for Vicsam Group build optimization
 
 .PHONY: help build build-fast build-dev clean test docker-build docker-run docker-dev docker-clean
 
 # Default help command
 help:
-	@echo "VicSam Group Build Commands:"
+	@echo "Vicsam Group Build Commands:"
 	@echo ""
 	@echo "Local Development:"
 	@echo "  build       - Build the client application"

@@ -1,6 +1,6 @@
-# Build script for VicSam Group (PowerShell version)
+# Build script for Vicsam Group (PowerShell version)
 
-Write-Host "Building VicSam Group..." -ForegroundColor Green
+Write-Host "Building Vicsam Group..." -ForegroundColor Green
 
 try {
     # Build client

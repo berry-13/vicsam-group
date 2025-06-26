@@ -50,7 +50,7 @@ export const LoginPage: React.FC = () => {
             </svg>
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-foreground">VicSam Group</h1>
+            <h1 className="text-3xl font-bold text-foreground">Vicsam Group</h1>
             <p className="text-muted-foreground mt-2">Sistema di Gestione Dati</p>
           </div>
         </div>
