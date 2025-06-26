@@ -1,34 +1,73 @@
-import React, { useState, useEffect } from 'react';
-import { apiService } from '../services/api';
-import type { FileData } from '../services/api';
-import { 
-  FileText, 
-  Download, 
-  Trash2, 
-  Eye, 
-  RefreshCw, 
+import React, { useState, useEffect, useCallback } from "react";
+import { apiService } from "../services/api";
+import type { FileData } from "../services/api";
+import {
+  FileText,
+  Download,
+  Trash2,
+  Eye,
+  RefreshCw,
   Search,
   Calendar,
   HardDrive,
   AlertTriangle,
   Loader2,
-  Database,
-  Settings,
   AlertCircle,
   CheckCircle,
   Info,
   Code,
-  Menu
-} from 'lucide-react';
+  Menu,
+  Building,
+  Server,
+  Package,
+  Filter,
+  Grid,
+  List,
+  MoreVertical,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 // Interfaccia per i dati strutturati del JSON
 interface CustomMenuItem {
@@ -47,7 +86,7 @@ interface SystemData {
   CustomerVAT?: string;
   CustomerName?: string;
   ResellerVAT?: string;
-  ResellerName?: string; 
+  ResellerName?: string;
   Version?: string;
   Build?: string;
   ExistsCustomMenuItems?: boolean;
@@ -64,358 +103,139 @@ interface ParsedFileData extends FileData {
   isValidSystemData: boolean;
 }
 
+type ViewMode = "grid" | "list";
+type FilterType = "all" | "valid" | "invalid" | "outdated";
+
 export const FilesPage: React.FC = () => {
   const [files, setFiles] = useState<ParsedFileData[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedFile, setSelectedFile] = useState<{ name: string; content: unknown } | null>(null);
-  const [viewMode, setViewMode] = useState<'structured' | 'raw'>('structured');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedFile, setSelectedFile] = useState<{
+    name: string;
+    content: unknown;
+  } | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [contentViewMode, setContentViewMode] = useState<"structured" | "raw">(
+    "structured"
+  );
+  const [filterType, setFilterType] = useState<FilterType>("all");
 
-  const parseSystemData = (content: unknown): { systemData?: SystemData; isValidSystemData: boolean } => {
+  const parseSystemData = (
+    content: unknown
+  ): { systemData?: SystemData; isValidSystemData: boolean } => {
     try {
-      if (content && typeof content === 'object' && (content as SystemData).CustomerVAT) {
+      if (
+        content &&
+        typeof content === "object" &&
+        (content as SystemData).CustomerVAT
+      ) {
         return {
           systemData: content as SystemData,
-          isValidSystemData: true
+          isValidSystemData: true,
         };
       }
     } catch (error) {
-      console.error('Errore nel parsing dei dati di sistema:', error);
+      console.error("Errore nel parsing dei dati di sistema:", error);
     }
     return { isValidSystemData: false };
   };
 
   const getSQLServerVersionStatus = (version?: string) => {
-    if (!version) return { status: 'unknown', label: 'N/A', color: 'text-gray-500' };
-    
-    const majorVersion = parseInt(version.split('.')[0]);
-    if (majorVersion >= 16) return { status: 'current', label: 'Aggiornata', color: 'text-green-600' };
-    if (majorVersion >= 14) return { status: 'supported', label: 'Supportata', color: 'text-yellow-600' };
-    return { status: 'old', label: 'Obsoleta', color: 'text-red-600' };
+    if (!version)
+      return {
+        status: "unknown",
+        label: "Sconosciuta",
+        color: "bg-muted text-muted-foreground",
+      };
+
+    const majorVersion = parseInt(version.split(".")[0]);
+    if (majorVersion >= 16)
+      return {
+        status: "current",
+        label: "Aggiornata",
+        color: "bg-success/10 text-success-foreground border-success/20",
+      };
+    if (majorVersion >= 14)
+      return {
+        status: "supported",
+        label: "Supportata",
+        color: "bg-warning/10 text-warning-foreground border-warning/20",
+      };
+    return {
+      status: "old",
+      label: "Obsoleta",
+      color: "bg-error/10 text-error-foreground border-error/20",
+    };
   };
 
   const getVersionStatus = (version?: string) => {
-    if (!version) return { status: 'unknown', label: 'N/A', color: 'text-gray-500' };
-    
-    const [major, minor] = version.split('.').map(Number);
-    if (major >= 8 && minor >= 0) return { status: 'current', label: 'Aggiornata', color: 'text-green-600' };
-    if (major >= 7) return { status: 'supported', label: 'Supportata', color: 'text-yellow-600' };
-    return { status: 'old', label: 'Obsoleta', color: 'text-red-600' };
+    if (!version)
+      return {
+        status: "unknown",
+        label: "Sconosciuta",
+        color: "bg-muted text-muted-foreground",
+      };
+
+    const [major, minor] = version.split(".").map(Number);
+    if (major >= 8 && minor >= 0)
+      return {
+        status: "current",
+        label: "Aggiornata",
+        color: "bg-success/10 text-success-foreground border-success/20",
+      };
+    if (major >= 7)
+      return {
+        status: "supported",
+        label: "Supportata",
+        color: "bg-warning/10 text-warning-foreground border-warning/20",
+      };
+    return {
+      status: "old",
+      label: "Obsoleta",
+      color: "bg-error/10 text-error-foreground border-error/20",
+    };
   };
 
-  const CustomMenuItemsSheet: React.FC<{ items: CustomMenuItem[] }> = ({ items }) => (
-    <Sheet>
-      <SheetTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Menu className="h-4 w-4 mr-2" />
-          {items.length} elementi
-        </Button>
-      </SheetTrigger>
-      <SheetContent className="w-[600px] sm:w-[800px] overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>Custom Menu Items</SheetTitle>
-          <SheetDescription>
-            Elenco degli elementi personalizzati del menu ({items.length} elementi)
-          </SheetDescription>
-        </SheetHeader>
-        <div className="mt-6 space-y-4 px-6 pb-6">
-          {items.map((item, index) => (
-            <Card key={item.IDVoceTS} className="p-4">
-              <div className="flex items-start justify-between">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary">ID: {item.IDVoceTS}</Badge>
-                    <h4 className="font-medium">{item.Description}</h4>
-                  </div>
-                  <p className="text-sm text-muted-foreground font-mono">
-                    {item.ClassID}
-                  </p>
-                </div>
-              </div>
-              {index < items.length - 1 && <Separator className="mt-4" />}
-            </Card>
-          ))}
-        </div>
-      </SheetContent>
-    </Sheet>
-  );
-
-  const StructuredView: React.FC<{ data: SystemData }> = ({ data }) => (
-    <div className="space-y-6">
-      {/* Informazioni Generali */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Info className="h-5 w-5" />
-            Informazioni Generali
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm font-medium">Cliente</p>
-              <p className="text-sm text-muted-foreground">{data.CustomerName || 'N/A'}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium">P.IVA Cliente</p>
-              <p className="text-sm text-muted-foreground">{data.CustomerVAT || 'N/A'}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium">Rivenditore</p>
-              <p className="text-sm text-muted-foreground">{data.ResellerName || 'N/A'}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium">P.IVA Rivenditore</p>
-              <p className="text-sm text-muted-foreground">{data.ResellerVAT || 'N/A'}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium">Data/Ora</p>
-              <p className="text-sm text-muted-foreground">{data.DateTime || 'N/A'}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium">Directory Installazione</p>
-              <p className="text-sm text-muted-foreground font-mono">{data.InstallationDir || 'N/A'}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Informazioni Tecniche */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5" />
-            Informazioni Tecniche
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm font-medium">Versione Applicazione</p>
-              <div className="flex items-center gap-2">
-                <p className="text-sm text-muted-foreground">{data.Version || 'N/A'}</p>
-                <Badge variant={getVersionStatus(data.Version).status === 'old' ? 'destructive' : 'default'}>
-                  {getVersionStatus(data.Version).label}
-                </Badge>
-              </div>
-            </div>
-            <div>
-              <p className="text-sm font-medium">Build</p>
-              <p className="text-sm text-muted-foreground">{data.Build || 'N/A'}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium">Versione App</p>
-              <p className="text-sm text-muted-foreground">{data.AppVersion || 'N/A'}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium">Versione Applicazione</p>
-              <p className="text-sm text-muted-foreground">{data.ApplicationVersion || 'N/A'}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium">Versione SQL Server</p>
-              <div className="flex items-center gap-2">
-                <p className="text-sm text-muted-foreground">{data.SQLServerVersion || 'N/A'}</p>
-                <Badge variant={getSQLServerVersionStatus(data.SQLServerVersion).status === 'old' ? 'destructive' : 'default'}>
-                  {getSQLServerVersionStatus(data.SQLServerVersion).label}
-                </Badge>
-              </div>
-            </div>
-            <div>
-              <p className="text-sm font-medium">Database</p>
-              <p className="text-sm text-muted-foreground">{data.DatabaseName || 'N/A'}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium">Versione Fiscale</p>
-              <p className="text-sm text-muted-foreground">{data.VersioneFiscale || 'N/A'}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Funzionalità e Plugin */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Menu className="h-5 w-5" />
-            Funzionalità e Plugin
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-medium">Custom Menu Items</p>
-                <Badge variant={data.ExistsCustomMenuItems ? 'default' : 'secondary'}>
-                  {data.ExistsCustomMenuItems ? 'Presenti' : 'Assenti'}
-                </Badge>
-              </div>
-              {data.ExistsCustomMenuItems && data.CustomMenuItems && (
-                <Badge variant="outline">
-                  {data.CustomMenuItems.length} elementi
-                </Badge>
-              )}
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-medium">Plugin Documenti</p>
-                <Badge variant={data.ExistsDocumentPlugins ? 'default' : 'secondary'}>
-                  {data.ExistsDocumentPlugins ? 'Presenti' : 'Assenti'}
-                </Badge>
-              </div>
-              {data.ExistsDocumentPlugins && data.DocumentPlugins && (
-                <Badge variant="outline">
-                  {data.DocumentPlugins.length} plugin
-                </Badge>
-              )}
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <p className="text-sm font-medium">RegDoc Personalizzati</p>
-              <Badge variant={data.ExistsRegDocPers ? 'default' : 'secondary'}>
-                {data.ExistsRegDocPers ? 'Presenti' : 'Assenti'}
-              </Badge>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <p className="text-sm font-medium">File Exe Utente</p>
-              <Badge variant={data.ExistsUserfileExeFiles ? 'default' : 'secondary'}>
-                {data.ExistsUserfileExeFiles ? 'Presenti' : 'Assenti'}
-              </Badge>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Custom Menu Items Dettagli */}
-      {data.ExistsCustomMenuItems && data.CustomMenuItems && data.CustomMenuItems.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Menu className="h-5 w-5" />
-              Custom Menu Items ({data.CustomMenuItems.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {data.CustomMenuItems.map((item, index) => (
-                <div key={item.IDVoceTS} className="p-3 border rounded-lg">
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary">ID: {item.IDVoceTS}</Badge>
-                        <h4 className="font-medium text-sm">{item.Description}</h4>
-                      </div>
-                      <p className="text-xs text-muted-foreground font-mono">
-                        {item.ClassID}
-                      </p>
-                    </div>
-                  </div>
-                  {index < data.CustomMenuItems!.length - 1 && <Separator className="mt-3" />}
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Document Plugins Dettagli */}
-      {data.ExistsDocumentPlugins && data.DocumentPlugins && data.DocumentPlugins.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Database className="h-5 w-5" />
-              Document Plugins ({data.DocumentPlugins.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {data.DocumentPlugins.map((plugin, index) => (
-                <div key={index} className="p-2 bg-muted rounded">
-                  <p className="text-sm font-mono">{plugin}</p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-    </div>
-  );
-
-  const loadFiles = async () => {
+  const loadFiles = useCallback(async () => {
     try {
       const data = await apiService.getFiles();
-      
-      // Carica il contenuto di ogni file per il parsing
+
       const parsedFiles: ParsedFileData[] = await Promise.all(
         data.files.map(async (file) => {
           try {
             const fileContent = await apiService.getFileContent(file.name);
-            const { systemData, isValidSystemData } = parseSystemData(fileContent.content);
-            
+            const { systemData, isValidSystemData } = parseSystemData(
+              fileContent.content
+            );
+
             return {
               ...file,
               systemData,
-              isValidSystemData
+              isValidSystemData,
             };
           } catch (error) {
             console.error(`Errore nel caricamento di ${file.name}:`, error);
             return {
               ...file,
-              isValidSystemData: false
+              isValidSystemData: false,
             };
           }
         })
       );
-      
+
       setFiles(parsedFiles);
     } catch (error) {
-      console.error('Errore nel caricamento file:', error);
+      console.error("Errore nel caricamento file:", error);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    const initializeFiles = async () => {
-      try {
-        const data = await apiService.getFiles();
-        
-        // Carica il contenuto di ogni file per il parsing
-        const parsedFiles: ParsedFileData[] = await Promise.all(
-          data.files.map(async (file) => {
-            try {
-              const fileContent = await apiService.getFileContent(file.name);
-              const { systemData, isValidSystemData } = parseSystemData(fileContent.content);
-              
-              return {
-                ...file,
-                systemData,
-                isValidSystemData
-              };
-            } catch (error) {
-              console.error(`Errore nel caricamento di ${file.name}:`, error);
-              return {
-                ...file,
-                isValidSystemData: false
-              };
-            }
-          })
-        );
-        
-        setFiles(parsedFiles);
-      } catch (error) {
-        console.error('Errore nel caricamento file:', error);
-      } finally {
-        setLoading(false);
-        setRefreshing(false);
-      }
-    };
-    
-    initializeFiles();
-  }, []);
+    loadFiles();
+  }, [loadFiles]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -427,7 +247,7 @@ export const FilesPage: React.FC = () => {
       const data = await apiService.getFileContent(filename);
       setSelectedFile({ name: data.filename, content: data.content });
     } catch (error) {
-      console.error('Errore nel caricamento contenuto file:', error);
+      console.error("Errore nel caricamento contenuto file:", error);
     }
   };
 
@@ -435,295 +255,741 @@ export const FilesPage: React.FC = () => {
     try {
       await apiService.downloadFile(filename);
     } catch (error) {
-      console.error('Errore nel download file:', error);
+      console.error("Errore nel download file:", error);
     }
   };
 
   const handleDelete = async (filename: string) => {
     try {
       await apiService.deleteFile(filename);
-      setFiles(files.filter(f => f.name !== filename));
+      setFiles(files.filter((f) => f.name !== filename));
     } catch (error) {
-      console.error('Errore nella cancellazione file:', error);
+      console.error("Errore nella cancellazione file:", error);
     }
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('it-IT');
+    return new Date(dateString).toLocaleDateString("it-IT", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
-  const filteredFiles = files.filter(file =>
-    file?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    file?.systemData?.CustomerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    file?.systemData?.CustomerVAT?.toLowerCase().includes(searchTerm.toLowerCase())
+  const getFilteredFiles = () => {
+    let filtered = files.filter(
+      (file) =>
+        file?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        file?.systemData?.CustomerName?.toLowerCase().includes(
+          searchTerm.toLowerCase()
+        ) ||
+        file?.systemData?.CustomerVAT?.toLowerCase().includes(
+          searchTerm.toLowerCase()
+        )
+    );
+
+    switch (filterType) {
+      case "valid":
+        filtered = filtered.filter((file) => file.isValidSystemData);
+        break;
+      case "invalid":
+        filtered = filtered.filter((file) => !file.isValidSystemData);
+        break;
+      case "outdated":
+        filtered = filtered.filter((file) => {
+          const versionStatus = getVersionStatus(file.systemData?.Version);
+          const sqlStatus = getSQLServerVersionStatus(
+            file.systemData?.SQLServerVersion
+          );
+          return versionStatus.status === "old" || sqlStatus.status === "old";
+        });
+        break;
+    }
+
+    return filtered;
+  };
+
+  const filteredFiles = getFilteredFiles();
+
+  // Component per visualizzazione strutturata
+  const StructuredView: React.FC<{ data: SystemData }> = ({ data }) => (
+    <ScrollArea className="h-[60vh]">
+      <div className="space-y-6 p-1">
+        {/* Informazioni Cliente */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Building className="h-5 w-5 text-primary" />
+              Informazioni Cliente
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">
+                  Nome Cliente
+                </p>
+                <p className="text-base font-semibold">
+                  {data.CustomerName || "Non specificato"}
+                </p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Partita IVA</p>
+                <p className="text-base font-mono">
+                  {data.CustomerVAT || "Non specificata"}
+                </p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Rivenditore</p>
+                <p className="text-base">
+                  {data.ResellerName || "Non specificato"}
+                </p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">
+                  P.IVA Rivenditore
+                </p>
+                <p className="text-base font-mono">
+                  {data.ResellerVAT || "Non specificata"}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Informazioni Sistema */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Server className="h-5 w-5 text-success" />
+              Configurazione Sistema
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">
+                  Versione Applicazione
+                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-base font-semibold">
+                    {data.Version || "N/A"}
+                  </p>
+                  <Badge className={getVersionStatus(data.Version).color}>
+                    {getVersionStatus(data.Version).label}
+                  </Badge>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Build</p>
+                <p className="text-base font-mono">{data.Build || "N/A"}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">SQL Server</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-base">{data.SQLServerVersion || "N/A"}</p>
+                  <Badge
+                    className={
+                      getSQLServerVersionStatus(data.SQLServerVersion).color
+                    }
+                  >
+                    {getSQLServerVersionStatus(data.SQLServerVersion).label}
+                  </Badge>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Database</p>
+                <p className="text-base font-mono">
+                  {data.DatabaseName || "N/A"}
+                </p>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">
+                Directory Installazione
+              </p>
+              <p className="text-sm font-mono bg-muted/50 p-2 rounded border">
+                {data.InstallationDir || "N/A"}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Funzionalità Avanzate */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Package className="h-5 w-5 text-purple-600" />
+              Funzionalità e Plugin
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <span className="text-sm font-medium">Custom Menu</span>
+                <Badge
+                  variant={data.ExistsCustomMenuItems ? "default" : "secondary"}
+                >
+                  {data.ExistsCustomMenuItems
+                    ? `${data.CustomMenuItems?.length || 0} elementi`
+                    : "Nessuno"}
+                </Badge>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <span className="text-sm font-medium">Plugin Documenti</span>
+                <Badge
+                  variant={data.ExistsDocumentPlugins ? "default" : "secondary"}
+                >
+                  {data.ExistsDocumentPlugins
+                    ? `${data.DocumentPlugins?.length || 0} plugin`
+                    : "Nessuno"}
+                </Badge>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <span className="text-sm font-medium">
+                  RegDoc Personalizzati
+                </span>
+                <Badge
+                  variant={data.ExistsRegDocPers ? "default" : "secondary"}
+                >
+                  {data.ExistsRegDocPers ? "Presenti" : "Assenti"}
+                </Badge>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <span className="text-sm font-medium">File Exe Utente</span>
+                <Badge
+                  variant={
+                    data.ExistsUserfileExeFiles ? "default" : "secondary"
+                  }
+                >
+                  {data.ExistsUserfileExeFiles ? "Presenti" : "Assenti"}
+                </Badge>
+              </div>
+            </div>
+
+            {/* Custom Menu Items Details */}
+            {data.ExistsCustomMenuItems &&
+              data.CustomMenuItems &&
+              data.CustomMenuItems.length > 0 && (
+                <div className="mt-4">
+                  <h4 className="font-medium mb-3">
+                    Dettagli Custom Menu Items
+                  </h4>
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {data.CustomMenuItems.map((item) => (
+                      <div
+                        key={item.IDVoceTS}
+                        className="p-2 border rounded-lg bg-white"
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge variant="outline" className="text-xs">
+                            ID: {item.IDVoceTS}
+                          </Badge>
+                          <span className="text-sm font-medium">
+                            {item.Description}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground/70 font-mono">
+                          {item.ClassID}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+          </CardContent>
+        </Card>
+      </div>
+    </ScrollArea>
   );
+
+  // Component per card singolo file
+  const FileCard: React.FC<{ file: ParsedFileData }> = ({ file }) => {
+    const versionStatus = getVersionStatus(file.systemData?.Version);
+    const sqlStatus = getSQLServerVersionStatus(
+      file.systemData?.SQLServerVersion
+    );
+
+    return (
+      <Card className="hover:shadow-md transition-shadow duration-200">
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              {file.isValidSystemData ? (
+                <CheckCircle className="h-5 w-5 text-success flex-shrink-0" />
+              ) : (
+                <AlertCircle className="h-5 w-5 text-warning flex-shrink-0" />
+              )}
+              <div className="min-w-0">
+                <CardTitle className="text-lg truncate">
+                  {file.systemData?.CustomerName || file.name}
+                </CardTitle>
+                {file.systemData?.CustomerVAT && (
+                  <CardDescription className="font-mono">
+                    P.IVA: {file.systemData.CustomerVAT}
+                  </CardDescription>
+                )}
+              </div>
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleViewFile(file.name)}>
+                  <Eye className="h-4 w-4 mr-2" />
+                  Visualizza
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleDownload(file.name)}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Scarica
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleDelete(file.name)}
+                  className="text-destructive"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Elimina
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </CardHeader>
+
+        <CardContent className="space-y-3">
+          {file.isValidSystemData && (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Versione App
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm font-semibold">
+                      {file.systemData?.Version || "N/A"}
+                    </span>
+                    <Badge className={versionStatus.color}>
+                      {versionStatus.label}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    SQL Server
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm">
+                      {file.systemData?.SQLServerVersion || "N/A"}
+                    </span>
+                    <Badge className={sqlStatus.color}>
+                      {sqlStatus.label}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-2 border-t">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground/70">
+                  <Calendar className="h-3 w-3" />
+                  {formatDate(file.modified)}
+                </div>
+                {file.systemData?.ExistsCustomMenuItems && (
+                  <Badge variant="outline">
+                    {file.systemData.CustomMenuItems?.length || 0} custom menu
+                  </Badge>
+                )}
+              </div>
+            </>
+          )}
+
+          {!file.isValidSystemData && (
+            <div className="flex items-center justify-between pt-2">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground/70">
+                <Calendar className="h-3 w-3" />
+                {formatDate(file.modified)}
+              </div>
+              <Badge variant="secondary">
+                Dati non strutturati
+              </Badge>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">Caricamento file...</p>
+      <div className="flex-1 flex items-center justify-center min-h-[60vh]">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+          <div className="space-y-2">
+            <h3 className="text-lg font-semibold">
+              Caricamento file in corso...
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Stiamo analizzando i dati del sistema
+            </p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div className="flex items-center justify-between space-y-2">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Gestione File</h2>
-          <p className="text-muted-foreground">
-            Visualizza, scarica ed elimina i file salvati nel sistema
-          </p>
+    <div className="flex-1 space-y-6 p-6">
+      {/* Header */}
+      <div className="space-y-2">
+        <h1 className="text-3xl font-bold tracking-tight">
+          Gestione File Sistema
+        </h1>
+        <p className="text-muted-foreground">
+          Visualizza e gestisci i file di configurazione salvati nel sistema
+        </p>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-info rounded-lg">
+                <HardDrive className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{files.length}</p>
+                <p className="text-sm text-muted-foreground">File totali</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-success/10 rounded-lg">
+                <CheckCircle className="h-5 w-5 text-success" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">
+                  {files.filter((f) => f.isValidSystemData).length}
+                </p>
+                <p className="text-sm text-muted-foreground">File validi</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-warning/10 rounded-lg">
+                <AlertTriangle className="h-5 w-5 text-warning" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">
+                  {
+                    files.filter((f) => {
+                      const versionStatus = getVersionStatus(
+                        f.systemData?.Version
+                      );
+                      const sqlStatus = getSQLServerVersionStatus(
+                        f.systemData?.SQLServerVersion
+                      );
+                      return (
+                        versionStatus.status === "old" ||
+                        sqlStatus.status === "old"
+                      );
+                    }).length
+                  }
+                </p>
+                <p className="text-sm text-muted-foreground">Obsoleti</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <Menu className="h-5 w-5 text-purple-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">
+                  {
+                    files.filter((f) => f.systemData?.ExistsCustomMenuItems)
+                      .length
+                  }
+                </p>
+                <p className="text-sm text-muted-foreground">Con custom menu</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Controls */}
+      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+        <div className="flex flex-col sm:flex-row gap-3 flex-1">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+            <Input
+              placeholder="Cerca per nome cliente, P.IVA o nome file..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+
+          <Select
+            value={filterType}
+            onValueChange={(value: FilterType) => setFilterType(value)}
+          >
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <Filter className="h-4 w-4 mr-2" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tutti i file</SelectItem>
+              <SelectItem value="valid">Solo file validi</SelectItem>
+              <SelectItem value="invalid">File non validi</SelectItem>
+              <SelectItem value="outdated">Versioni obsolete</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-        <div className="flex items-center space-x-2">
-          <Button onClick={handleRefresh} disabled={refreshing} variant="outline">
-            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+
+        <div className="flex items-center gap-2">
+          <div className="flex items-center border rounded-lg p-1">
+            <Button
+              variant={viewMode === "grid" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("grid")}
+            >
+              <Grid className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === "list" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("list")}
+            >
+              <List className="h-4 w-4" />
+            </Button>
+          </div>
+
+          <Button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            variant="outline"
+          >
+            <RefreshCw
+              className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`}
+            />
             Aggiorna
           </Button>
         </div>
       </div>
 
-      {/* Search and Stats */}
-      <div className="flex items-center space-x-2">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Cerca file..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-8"
-          />
+      {/* Results */}
+      {filteredFiles.length === 0 ? (
+        <Card className="text-center py-12">
+          <CardContent>
+            <AlertTriangle className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              {searchTerm || filterType !== "all"
+                ? "Nessun file trovato"
+                : "Nessun file disponibile"}
+            </h3>
+            <p className="text-muted-foreground mb-4">
+              {searchTerm || filterType !== "all"
+                ? "Prova a modificare i filtri di ricerca"
+                : "I file di configurazione salvati appariranno qui"}
+            </p>
+            {(searchTerm || filterType !== "all") && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSearchTerm("");
+                  setFilterType("all");
+                }}
+              >
+                Rimuovi filtri
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <div
+          className={
+            viewMode === "grid"
+              ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+              : "space-y-4"
+          }
+        >
+          {filteredFiles.map((file) => (
+            <FileCard key={file.name} file={file} />
+          ))}
         </div>
-        <Badge variant="secondary">
-          {filteredFiles.length} file{filteredFiles.length !== 1 ? 's' : ''}
-        </Badge>
-      </div>
+      )}
 
-      {/* Files Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <HardDrive className="h-5 w-5" />
-            File Salvati
-          </CardTitle>
-          <CardDescription>
-            Elenco di tutti i file disponibili nel sistema
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {filteredFiles.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8">
-              <AlertTriangle className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold text-muted-foreground">
-                {searchTerm ? 'Nessun file trovato' : 'Nessun file disponibile'}
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                {searchTerm ? 'Prova a modificare i termini di ricerca' : 'I file salvati appariranno qui'}
-              </p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>SQL Server</TableHead>
-                  <TableHead>Versione</TableHead>
-                  <TableHead>Custom Menu</TableHead>
-                  <TableHead>Data</TableHead>
-                  <TableHead className="text-right">Azioni</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredFiles.map((file) => {
-                  const sqlStatus = getSQLServerVersionStatus(file.systemData?.SQLServerVersion);
-                  const versionStatus = getVersionStatus(file.systemData?.Version);
-                  
-                  return (
-                    <TableRow key={file.name}>
-                      <TableCell className="font-medium">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            {file.isValidSystemData ? (
-                              <CheckCircle className="h-4 w-4 text-green-500" />
-                            ) : (
-                              <AlertCircle className="h-4 w-4 text-yellow-500" />
-                            )}
-                            <span className="font-medium">
-                              {file.systemData?.CustomerName || file.name}
-                            </span>
-                          </div>
-                          {file.systemData?.CustomerVAT && (
-                            <p className="text-xs text-muted-foreground">
-                              P.IVA: {file.systemData.CustomerVAT}
-                            </p>
-                          )}
-                        </div>
-                      </TableCell>
-                      
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <Database className="h-4 w-4 text-muted-foreground" />
-                            <span className={sqlStatus.color}>
-                              {file.systemData?.SQLServerVersion || 'N/A'}
-                            </span>
-                          </div>
-                          <Badge 
-                            variant={sqlStatus.status === 'old' ? 'destructive' : 
-                                   sqlStatus.status === 'current' ? 'default' : 'secondary'}
-                            className="text-xs"
-                          >
-                            {sqlStatus.label}
-                          </Badge>
-                        </div>
-                      </TableCell>
-                      
-                      <TableCell>
-                        <div className="space-y-1">
-                          <span className={versionStatus.color}>
-                            {file.systemData?.Version || 'N/A'}
-                          </span>
-                          <div className="text-xs text-muted-foreground">
-                            Build: {file.systemData?.Build || 'N/A'}
-                          </div>
-                        </div>
-                      </TableCell>
-                      
-                      <TableCell>
-                        {file.systemData?.ExistsCustomMenuItems && 
-                         file.systemData?.CustomMenuItems && 
-                         file.systemData.CustomMenuItems.length > 0 ? (
-                          <CustomMenuItemsSheet items={file.systemData.CustomMenuItems} />
-                        ) : (
-                          <Badge variant="outline" className="text-xs">
-                            Nessuno
-                          </Badge>
-                        )}
-                      </TableCell>
-                      
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                          <div className="text-sm">
-                            {formatDate(file.modified)}
-                          </div>
-                        </div>
-                      </TableCell>
-                      
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleViewFile(file.name)}
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-                              <DialogHeader>
-                                <DialogTitle className="flex items-center gap-2">
-                                  {file.isValidSystemData ? (
-                                    <>
-                                      <CheckCircle className="h-5 w-5 text-green-500" />
-                                      {file.systemData?.CustomerName}
-                                    </>
-                                  ) : (
-                                    <>
-                                      <FileText className="h-5 w-5" />
-                                      {file.name}
-                                    </>
-                                  )}
-                                </DialogTitle>
-                                <DialogDescription>
-                                  {file.isValidSystemData ? (
-                                    <div className="space-y-2 mt-2">
-                                      <div className="flex gap-4">
-                                        <span>P.IVA: {file.systemData?.CustomerVAT}</span>
-                                        <span>Database: {file.systemData?.DatabaseName}</span>
-                                        <span>Versione: {file.systemData?.Version}</span>
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    'Visualizzazione del contenuto del file selezionato'
-                                  )}
-                                </DialogDescription>
-                                <div className="flex gap-2 mt-4">
-                                  <Button
-                                    variant={viewMode === 'structured' ? 'default' : 'outline'}
-                                    size="sm"
-                                    onClick={() => setViewMode('structured')}
-                                  >
-                                    <Info className="h-4 w-4 mr-2" />
-                                    Strutturato
-                                  </Button>
-                                  <Button
-                                    variant={viewMode === 'raw' ? 'default' : 'outline'}
-                                    size="sm"
-                                    onClick={() => setViewMode('raw')}
-                                  >
-                                    <Code className="h-4 w-4 mr-2" />
-                                    JSON Raw
-                                  </Button>
-                                </div>
-                              </DialogHeader>
-                              <div className="mt-4">
-                                {viewMode === 'structured' && file.isValidSystemData ? (
-                                  <StructuredView data={file.systemData!} />
-                                ) : (
-                                  <pre className="bg-muted p-4 rounded-md text-sm overflow-x-auto">
-                                    {selectedFile ? JSON.stringify(selectedFile.content, null, 2) : 'Caricamento...'}
-                                  </pre>
-                                )}
-                              </div>
-                            </DialogContent>
-                          </Dialog>
-                          
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDownload(file.name)}
-                          >
-                            <Download className="h-4 w-4" />
-                          </Button>
-                          
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Conferma eliminazione</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Sei sicuro di voler eliminare il file "{file.systemData?.CustomerName || file.name}"? 
-                                  Questa azione non può essere annullata.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Annulla</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDelete(file.name)}>
-                                  Elimina
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      {/* File Content Dialog */}
+      <Dialog open={!!selectedFile} onOpenChange={() => setSelectedFile(null)}>
+        <DialogContent className="max-w-6xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {selectedFile &&
+              files.find((f) => f.name === selectedFile.name)
+                ?.isValidSystemData ? (
+                <>
+                  <CheckCircle className="h-5 w-5 text-success" />
+                  {
+                    files.find((f) => f.name === selectedFile.name)?.systemData
+                      ?.CustomerName
+                  }
+                </>
+              ) : (
+                <>
+                  <FileText className="h-5 w-5" />
+                  {selectedFile?.name}
+                </>
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              {selectedFile &&
+                files.find((f) => f.name === selectedFile.name)
+                  ?.isValidSystemData && (
+                  <div className="flex flex-wrap gap-4 mt-2 text-sm">
+                    <span>
+                      P.IVA:{" "}
+                      {
+                        files.find((f) => f.name === selectedFile.name)
+                          ?.systemData?.CustomerVAT
+                      }
+                    </span>
+                    <span>
+                      Database:{" "}
+                      {
+                        files.find((f) => f.name === selectedFile.name)
+                          ?.systemData?.DatabaseName
+                      }
+                    </span>
+                    <span>
+                      Versione:{" "}
+                      {
+                        files.find((f) => f.name === selectedFile.name)
+                          ?.systemData?.Version
+                      }
+                    </span>
+                  </div>
+                )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="mt-4">
+            <Tabs
+              value={contentViewMode}
+              onValueChange={(value) =>
+                setContentViewMode(value as "structured" | "raw")
+              }
+            >
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger
+                  value="structured"
+                  className="flex items-center gap-2"
+                >
+                  <Info className="h-4 w-4" />
+                  Vista Strutturata
+                </TabsTrigger>
+                <TabsTrigger value="raw" className="flex items-center gap-2">
+                  <Code className="h-4 w-4" />
+                  JSON Raw
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="structured" className="mt-4">
+                {selectedFile &&
+                files.find((f) => f.name === selectedFile.name)
+                  ?.isValidSystemData ? (
+                  <StructuredView
+                    data={
+                      files.find((f) => f.name === selectedFile.name)!
+                        .systemData!
+                    }
+                  />
+                ) : (
+                  <Card>
+                    <CardContent className="p-8 text-center">
+                      <AlertCircle className="h-12 w-12 text-warning mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">
+                        Dati non strutturati
+                      </h3>
+                      <p className="text-muted-foreground mb-4">
+                        Questo file non contiene dati di sistema in formato
+                        riconosciuto. Utilizza la vista JSON Raw per
+                        visualizzare il contenuto completo.
+                      </p>
+                      <Button
+                        variant="outline"
+                        onClick={() => setContentViewMode("raw")}
+                      >
+                        Visualizza JSON Raw
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+
+              <TabsContent value="raw" className="mt-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm">
+                      Contenuto JSON Raw
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ScrollArea className="h-[50vh] w-full">
+                      <pre className="text-xs bg-muted/50 p-4 rounded-lg overflow-x-auto font-mono">
+                        {selectedFile
+                          ? JSON.stringify(selectedFile.content, null, 2)
+                          : "Caricamento..."}
+                      </pre>
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Conferma eliminazione
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Questa azione eliminerà definitivamente il file selezionato dal
+              sistema. L'operazione non può essere annullata.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive hover:bg-destructive/90">
+              Elimina definitivamente
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

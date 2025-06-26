@@ -1,10 +1,9 @@
-
 @import "tailwindcss";
 
 :root {
   --radius: 0.5rem;
   
-  /* Light mode colors */
+  /* Light mode colors - improved contrast */
   --background: 0 0% 100%;
   --foreground: 222.2 84% 4.9%;
   --card: 0 0% 100%;
@@ -13,17 +12,27 @@
   --popover-foreground: 222.2 84% 4.9%;
   --primary: 222.2 47.4% 11.2%;
   --primary-foreground: 210 40% 98%;
-  --secondary: 210 40% 96%;
+  --secondary: 210 40% 94%;
   --secondary-foreground: 222.2 47.4% 11.2%;
   --muted: 210 40% 96%;
-  --muted-foreground: 215.4 16.3% 46.9%;
-  --accent: 210 40% 96%;
+  --muted-foreground: 215.4 16.3% 44%;
+  --accent: 210 40% 94%;
   --accent-foreground: 222.2 47.4% 11.2%;
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 210 40% 98%;
-  --border: 214.3 31.8% 91.4%;
+  --border: 214.3 31.8% 88%;
   --input: 214.3 31.8% 91.4%;
   --ring: 222.2 84% 4.9%;
+  
+  /* Status colors that work in light mode */
+  --success: 142 71% 45%;
+  --success-foreground: 0 0% 100%;
+  --warning: 38 92% 50%;
+  --warning-foreground: 0 0% 0%;
+  --error: 0 72% 51%;
+  --error-foreground: 0 0% 100%;
+  --info: 204 94% 94%;
+  --info-foreground: 213 94% 14%;
 }
 
 .dark {
@@ -46,6 +55,16 @@
   --border: 217.2 32.6% 17.5%;
   --input: 217.2 32.6% 17.5%;
   --ring: 212.7 26.8% 83.9%;
+  
+  /* Status colors that work in dark mode */
+  --success: 142 76% 36%;
+  --success-foreground: 0 0% 100%;
+  --warning: 38 92% 50%;
+  --warning-foreground: 0 0% 0%;
+  --error: 0 62% 50%;
+  --error-foreground: 0 0% 100%;
+  --info: 204 94% 20%;
+  --info-foreground: 204 94% 94%;
 }
 
 @layer base {
@@ -57,5 +76,225 @@
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
     transition: background-color 0.3s ease, color 0.3s ease;
+  }
+  
+  /* Improve form controls in light mode */
+  input, select, textarea {
+    background-color: hsl(var(--background));
+    border: 1px solid hsl(var(--border));
+    color: hsl(var(--foreground));
+  }
+  
+  input:focus, select:focus, textarea:focus {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+  
+  /* Better table styles */
+  table {
+    background-color: hsl(var(--card));
+    color: hsl(var(--card-foreground));
+  }
+  
+  th {
+    background-color: hsl(var(--muted));
+    color: hsl(var(--muted-foreground));
+  }
+  
+  tr:hover {
+    background-color: hsl(var(--accent));
+  }
+  
+  /* Better code blocks */
+  pre, code {
+    background-color: hsl(var(--muted));
+    color: hsl(var(--muted-foreground));
+    border: 1px solid hsl(var(--border));
+  }
+  
+  /* Ensure good contrast for links */
+  a {
+    color: hsl(var(--primary));
+    text-decoration-color: hsl(var(--primary) / 0.3);
+  }
+  
+  a:hover {
+    color: hsl(var(--primary) / 0.8);
+  }
+  
+  /* Better disabled state */
+  :disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+/* Login page animations and styles */
+@layer utilities {
+  .text-success {
+    color: hsl(var(--success));
+  }
+  
+  .text-warning {
+    color: hsl(var(--warning));
+  }
+  
+  .text-error {
+    color: hsl(var(--error));
+  }
+  
+  .text-info {
+    color: hsl(var(--info-foreground));
+  }
+  
+  .bg-success {
+    background-color: hsl(var(--success));
+    color: hsl(var(--success-foreground));
+  }
+  
+  .bg-warning {
+    background-color: hsl(var(--warning));
+    color: hsl(var(--warning-foreground));
+  }
+  
+  .bg-error {
+    background-color: hsl(var(--error));
+    color: hsl(var(--error-foreground));
+  }
+  
+  .bg-info {
+    background-color: hsl(var(--info));
+    color: hsl(var(--info-foreground));
+  }
+  
+  .border-success {
+    border-color: hsl(var(--success));
+  }
+  
+  .border-warning {
+    border-color: hsl(var(--warning));
+  }
+  
+  .border-error {
+    border-color: hsl(var(--error));
+  }
+  
+  .border-info {
+    border-color: hsl(var(--info));
+  }
+
+  /* Login form specific animations */
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
+    20%, 40%, 60%, 80% { transform: translateX(2px); }
+  }
+  
+  @keyframes pulse-error {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+  }
+  
+  @keyframes slide-in-from-top {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes fade-in-scale {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  
+  @keyframes gradient-xy {
+    0%, 100% {
+      background-size: 400% 400%;
+      background-position: left center;
+    }
+    50% {
+      background-size: 200% 200%;
+      background-position: right center;
+    }
+  }
+  
+  .animate-shake {
+    animation: shake 0.5s ease-in-out;
+  }
+  
+  .animate-pulse-error {
+    animation: pulse-error 1s ease-in-out infinite;
+  }
+  
+  .animate-slide-in-top {
+    animation: slide-in-from-top 0.3s ease-out;
+  }
+  
+  .animate-fade-in-scale {
+    animation: fade-in-scale 0.4s ease-out;
+  }
+  
+  .animate-gradient-xy {
+    animation: gradient-xy 3s ease infinite;
+  }
+  
+  /* Login specific hover effects */
+  .login-input:focus {
+    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.1);
+    transition: box-shadow 0.2s ease;
+  }
+  
+  .login-button:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px hsl(var(--primary) / 0.2);
+  }
+  
+  .login-button:active:not(:disabled) {
+    transform: translateY(0);
+  }
+  
+  /* Error state styling */
+  .input-error {
+    border-color: hsl(var(--error));
+    animation: shake 0.4s ease-in-out;
+  }
+  
+  .input-error:focus {
+    box-shadow: 0 0 0 3px hsl(var(--error) / 0.1);
+  }
+
+  /* Login page background that adapts to theme */
+  .login-bg {
+    background: linear-gradient(
+      135deg,
+      hsl(var(--background)) 0%,
+      hsl(var(--background) / 0.8) 50%,
+      hsl(var(--muted)) 100%
+    );
+    transition: background 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .login-bg-loading {
+    background: linear-gradient(
+      135deg,
+      hsl(var(--background)) 0%,
+      hsl(var(--background) / 0.8) 100%
+    );
+    transition: background 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Ensure decorative elements also transition smoothly */
+  .theme-transition {
+    transition: background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   }
 }

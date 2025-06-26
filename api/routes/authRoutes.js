@@ -7,6 +7,7 @@ const {
   testAuthErrors
 } = require('../controllers/authController');
 const { authenticatePassword, authenticateBearer } = require('../middleware/auth');
+const { loginRateLimit } = require('../middleware/rateLimiting');
 const { validate, authSchema } = require('../utils/validation');
 
 const router = express.Router();
@@ -14,9 +15,9 @@ const router = express.Router();
 /**
  * @route POST /api/auth/login
  * @desc Autenticazione con password e generazione token
- * @access Public
+ * @access Public (con rate limiting)
  */
-router.post('/login', validate(authSchema), authenticatePassword, authenticate);
+router.post('/login', loginRateLimit, validate(authSchema), authenticatePassword, authenticate);
 
 /**
  * @route GET /api/auth/verify
