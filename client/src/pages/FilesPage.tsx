@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { apiService } from "../services/api";
 import type { FileData } from "../services/api";
 import {
@@ -296,7 +296,7 @@ export const FilesPage: React.FC = () => {
     });
   };
 
-  const getFilteredFiles = () => {
+  const filteredFiles = useMemo(() => {
     let filtered = files.filter(
       (file) =>
         file?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -327,9 +327,7 @@ export const FilesPage: React.FC = () => {
     }
 
     return filtered;
-  };
-
-  const filteredFiles = getFilteredFiles();
+  }, [files, searchTerm, filterType]);
 
   // Component per visualizzazione strutturata
   const StructuredView: React.FC<{ data: SystemData }> = ({ data }) => (

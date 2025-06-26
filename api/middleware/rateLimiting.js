@@ -59,7 +59,9 @@ const loginRateLimit = rateLimit({
     const userAgent = req.get('User-Agent') || 'unknown';
     const key = `${ip}:${userAgent.substring(0, 50)}`;
     
-    console.log(`🔑 [LOGIN RATE LIMIT] Key generata per rate limiting: ${key}`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🔑 [LOGIN RATE LIMIT] Key generata per rate limiting: ${key}`);
+    }
     return key;
   },
   

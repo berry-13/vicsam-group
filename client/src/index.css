@@ -297,4 +297,15 @@
   .theme-transition {
     transition: background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   }
+
+  /* Accessibility: Respect user's motion preferences */
+  @media (prefers-reduced-motion: reduce) {
+    .animate-shake,
+    .animate-pulse-error,
+    .animate-slide-in-top,
+    .animate-fade-in-scale,
+    .animate-gradient-xy {
+      animation: none !important;
+    }
+  }
 }

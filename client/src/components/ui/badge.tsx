@@ -21,6 +21,8 @@ const badgeVariants = cva(
           "border-transparent bg-warning text-warning-foreground [a&]:hover:bg-warning/90",
         error:
           "border-transparent bg-error text-error-foreground [a&]:hover:bg-error/90",
+        info:
+          "border-transparent bg-info text-info-foreground [a&]:hover:bg-info/90",
         outline:
           "text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
       },

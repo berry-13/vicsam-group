@@ -30,7 +30,7 @@ export const useToast = () => {
   }, []);
 
   const addToast = useCallback((toast: Omit<ToastProps, 'id' | 'onClose'>) => {
-    const id = Math.random().toString(36).substring(2);
+    const id = `${Date.now()}-${Math.random().toString(36).substring(2)}`;
     const newToast: ToastState = {
       ...toast,
       id,
