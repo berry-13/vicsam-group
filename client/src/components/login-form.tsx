@@ -43,8 +43,8 @@ export function LoginForm({
     if (!value.trim()) {
       return 'La password è richiesta';
     }
-    if (value.length < 3) {
-      return 'La password deve essere di almeno 3 caratteri';
+    if (value.length < 8) {
+      return 'La password deve essere di almeno 8 caratteri';
     }
     return '';
   };
