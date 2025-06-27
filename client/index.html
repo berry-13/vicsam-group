@@ -1,16 +1,6 @@
 <!doctype html>
-<ht    <script>
-      // Applica il tema prima che la pagina venga renderizzata per evitare il flash
-      (function() {
-        const savedTheme = localStorage.getItem('vite-ui-theme');
-        const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-        const theme = savedTheme || systemTheme;
-        
-        if (theme === 'dark') {
-          document.documentElement.classList.add('dark');
-        }
-      })();
-    </script> <head>
+<html>
+  <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
