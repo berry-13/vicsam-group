@@ -21,7 +21,7 @@ const downloadCompression = compression({
     }
     
     // Compress JSON files
-    const contentType = res.getHeader('content-type');
+    const contentType = res.getHeader?.('content-type');
     if (contentType && contentType.includes('application/json')) {
       return true;
     }
