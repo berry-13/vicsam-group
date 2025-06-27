@@ -11,4 +11,7 @@ router.use('/auth', authRoutes);
 // Rotte per la gestione dei dati
 router.use('/data', dataRoutes);
 
+// Rotte per il download dei file
+router.use('/download', downloadRoutes);
+
 module.exports = router;
