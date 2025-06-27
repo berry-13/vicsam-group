@@ -43,7 +43,7 @@ export const PageContainer: React.FC<PageContainerProps> = ({
   // Use forced setting or auto-detected setting
   const usePerformanceMode = forcePerformanceMode ?? performanceSettings.performanceMode;
   const disableAnimations = performanceSettings.disableAnimations;
-  const adjustedIntensity = performanceSettings.reducedIntensity ? Math.min(intensity, 2) as 1 | 2 | 3 | 4 | 5 : intensity;
+  const adjustedIntensity = performanceSettings.reducedIntensity ? Math.min(intensity, 2) as 1 | 2 : intensity;
 
   return (
     <AnimatedBackground 
