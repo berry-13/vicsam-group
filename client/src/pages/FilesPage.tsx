@@ -11,7 +11,6 @@ import {
   Calendar,
   HardDrive,
   AlertTriangle,
-  Loader2,
   AlertCircle,
   CheckCircle,
   Info,
@@ -154,7 +153,6 @@ export const FilesPage: React.FC = () => {
   const [filterType, setFilterType] = useState<FilterType>("all");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [fileToDelete, setFileToDelete] = useState<string | null>(null);
-  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
 
   // Stati per filtri avanzati e ordinamento
   const [columnFilters, setColumnFilters] = useState<ColumnFilter>({
@@ -1130,9 +1128,7 @@ export const FilesPage: React.FC = () => {
             return (
               <TableRow
                 key={file.name}
-                className={`${
-                  selectedRows.has(file.name) ? "bg-muted/50" : ""
-                } hover:bg-muted/30`}
+                className="hover:bg-muted/30"
               >
                 <TableCell>
                   <div className="flex items-center justify-center">
@@ -1529,23 +1525,6 @@ export const FilesPage: React.FC = () => {
             </Button>
           </div>
         </div>
-
-        {/* Indicatori filtri attivi */}
-        {selectedRows.size > 0 && (
-          <div className="flex items-center gap-2 p-3 bg-primary/5 border border-primary/20 rounded-lg">
-            <Info className="h-4 w-4 text-primary" />
-            <span className="text-sm">
-              {selectedRows.size} file selezionati
-            </span>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setSelectedRows(new Set())}
-            >
-              Deseleziona tutti
-            </Button>
-          </div>
-        )}
       </div>
 
       {/* Results */}
