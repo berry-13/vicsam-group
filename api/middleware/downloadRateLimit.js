@@ -23,8 +23,9 @@ const downloadRateLimit = rateLimit({
     // Skip rate limiting for health checks
     return req.path.includes('/health');
   },
-  onLimitReached: (req, res, options) => {
+  handler: (req, res, next, options) => {
     console.log(`[RATE LIMIT] Download rate limit exceeded for IP: ${req.ip}`);
+    res.status(options.statusCode).json(options.message);
   }
 });
 
