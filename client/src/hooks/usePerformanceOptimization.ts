@@ -44,9 +44,11 @@ export const usePerformanceOptimization = (): PerformanceSettings => {
         isLowGPU = true;
       }
 
-      // Check memory constraints
+      // Check memory constraints with fallback for unsupported browsers
       const navigatorWithMemory = navigator as Navigator & { deviceMemory?: number };
-      const hasLowMemory = navigatorWithMemory.deviceMemory ? navigatorWithMemory.deviceMemory <= 4 : false;
+      // Default to assuming adequate memory (8GB) if deviceMemory API is not supported
+      const deviceMemory = navigatorWithMemory.deviceMemory ?? 8;
+      const hasLowMemory = deviceMemory <= 4;
       
       // Determine settings based on capabilities
       const shouldUsePerformanceMode = isLowEnd || isLowGPU || hasLowMemory;
