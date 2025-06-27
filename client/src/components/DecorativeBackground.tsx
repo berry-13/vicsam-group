@@ -49,6 +49,7 @@ export const DecorativeBackground: React.FC<DecorativeBackgroundProps> = ({
           style={{
             backgroundColor: `hsl(var(--primary) / ${getOpacity(0.05)})`,
           }}
+          aria-hidden="true"
         />
         
         {/* Elemento decorativo in basso a sinistra */}
@@ -57,6 +58,7 @@ export const DecorativeBackground: React.FC<DecorativeBackgroundProps> = ({
           style={{
             backgroundColor: `hsl(var(--accent) / ${getOpacity(0.10)})`,
           }}
+          aria-hidden="true"
         />
         
         {/* Elemento decorativo centrale */}
@@ -65,6 +67,7 @@ export const DecorativeBackground: React.FC<DecorativeBackgroundProps> = ({
           style={{
             backgroundColor: `hsl(var(--primary) / ${getOpacity(0.03)})`,
           }}
+          aria-hidden="true"
         />
         
         {/* Elementi decorativi aggiuntivi per intensità maggiore */}
@@ -75,12 +78,14 @@ export const DecorativeBackground: React.FC<DecorativeBackgroundProps> = ({
               style={{
                 backgroundColor: `hsl(var(--secondary) / ${getOpacity(0.08)})`,
               }}
+              aria-hidden="true"
             />
             <div 
               className="absolute bottom-20 right-20 w-60 h-60 rounded-full blur-2xl theme-transition"
               style={{
                 backgroundColor: `hsl(var(--accent) / ${getOpacity(0.06)})`,
               }}
+              aria-hidden="true"
             />
           </>
         )}
@@ -93,12 +98,14 @@ export const DecorativeBackground: React.FC<DecorativeBackgroundProps> = ({
               style={{
                 backgroundColor: `hsl(var(--primary) / ${getOpacity(0.12)})`,
               }}
+              aria-hidden="true"
             />
             <div 
               className="absolute bottom-1/4 left-1/4 w-40 h-40 rounded-full blur-xl theme-transition"
               style={{
                 backgroundColor: `hsl(var(--muted) / ${getOpacity(0.15)})`,
               }}
+              aria-hidden="true"
             />
           </>
         )}
