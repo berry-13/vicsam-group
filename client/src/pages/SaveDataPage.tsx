@@ -277,7 +277,7 @@ export const SaveDataPage: React.FC = () => {
           {/* Drag and Drop Area */}
           <div
           className={cn(
-            "border-2 border-dashed rounded-lg p-8 text-center transition-all duration-200",
+            "border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200",
             dragActive 
               ? "border-primary bg-primary/10 scale-[1.02]" 
               : "border-muted-foreground/25 hover:border-muted-foreground/50",
@@ -385,7 +385,6 @@ export const SaveDataPage: React.FC = () => {
                   <li>• I file JSON devono contenere dati validi con il campo CustomerVAT</li>
                   <li>• Se un file per lo stesso cliente esiste già, verrà aggiornato</li>
                   <li>• I file vengono salvati con un nome univoco basato sulla P.IVA del cliente</li>
-                  <li>• Puoi caricare più file contemporaneamente</li>
                 </ul>
               </div>
             </div>
