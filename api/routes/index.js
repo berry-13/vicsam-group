@@ -1,6 +1,7 @@
 const express = require('express');
 const authRoutes = require('./authRoutes');
 const dataRoutes = require('./dataRoutes');
+const downloadRoutes = require('./downloadRoutes');
 
 const router = express.Router();
 

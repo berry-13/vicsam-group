@@ -11,6 +11,7 @@ const { errorHandler, notFound, requestLogger } = require('./api/middleware/comm
 
 // Import routes
 const apiRoutes = require('./api/routes');
+const downloadRoutes = require('./api/routes/downloadRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -77,6 +78,9 @@ app.use('/api/auth', (req, res, next) => {
 // Body parsing
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Download routes (no authentication required for public downloads)
+app.use('/', downloadRoutes);
 
 // API routes
 app.use('/api', apiRoutes);
@@ -199,6 +203,14 @@ app.get('*', (req, res) => {
             <div class="endpoint">GET /api/auth/info - Informazioni API</div>
             <div class="endpoint">POST /api/data - Salva dati (richiede auth)</div>
             <div class="endpoint">GET /api/data - Ottieni dati (richiede auth)</div>
+          </div>
+
+          <h2>📥 Download Endpoints</h2>
+          <div class="api-list">
+            <div class="endpoint">GET /download - Scarica file dati principale</div>
+            <div class="endpoint">GET /app - Scarica informazioni applicazione</div>
+            <div class="endpoint">GET /downloads/info - Info sui download disponibili</div>
+            <div class="endpoint">GET /downloads/health - Health check servizio download</div>
           </div>
           
           <h2>🔧 Per sviluppatori</h2>
