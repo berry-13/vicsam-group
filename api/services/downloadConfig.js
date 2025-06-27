@@ -100,7 +100,14 @@ class DownloadConfig {
    * Get file mapping for a specific endpoint
    */
   getFileMapping(endpoint) {
-    const cleanEndpoint = endpoint.replace('/', '');
+    // Validate and sanitize the endpoint first
+    let cleanEndpoint;
+    try {
+      cleanEndpoint = this.validateAndSanitizeEndpoint(endpoint);
+    } catch (error) {
+      console.warn(`Invalid endpoint rejected: ${endpoint} - ${error.message}`);
+      return null;
+    }
     
     if (cleanEndpoint === 'download' && this.config.files.download.file) {
       return {
@@ -120,18 +127,65 @@ class DownloadConfig {
       };
     }
 
-    // Check custom endpoints
+    // Check custom endpoints with enhanced security validation
     if (this.config.customEndpoints.includes(`/${cleanEndpoint}`)) {
+      // Validate endpoint against configuration to prevent unauthorized access
+      const endpointConfig = `/${cleanEndpoint}`;
+      if (!this.config.customEndpoints.some(ep => ep === endpointConfig)) {
+        console.warn(`Endpoint not found in configuration: ${cleanEndpoint}`);
+        return null;
+      }
+
+      // Generate environment variable prefix with additional validation
       const envPrefix = `DOWNLOAD_${cleanEndpoint.toUpperCase().replace(/[^A-Z0-9]/g, '_')}`;
+      
+      // Validate prefix length and format
+      if (envPrefix.length > 100) {
+        console.error(`Environment variable prefix too long: ${envPrefix}`);
+        return null;
+      }
+
+      // Get and validate environment variables
       const file = process.env[`${envPrefix}_FILE`];
+      const fileName = process.env[`${envPrefix}_FILENAME`];
+      const mimeType = process.env[`${envPrefix}_MIMETYPE`];
+      const description = process.env[`${envPrefix}_DESCRIPTION`];
       
       if (file) {
-        return {
-          filePath: this.securePathResolve(this.config.baseDir, file),
-          fileName: process.env[`${envPrefix}_FILENAME`] || `${cleanEndpoint}.json`,
-          mimeType: process.env[`${envPrefix}_MIMETYPE`] || 'application/json',
-          description: process.env[`${envPrefix}_DESCRIPTION`] || `Custom ${cleanEndpoint} file`
-        };
+        try {
+          // Validate all environment variables for security
+          const validatedFile = this.validateEnvironmentValue(file, 'file');
+          const validatedFileName = fileName ? 
+            this.validateEnvironmentValue(fileName, 'filename') : 
+            `${cleanEndpoint}.json`;
+          const validatedMimeType = mimeType ? 
+            this.validateEnvironmentValue(mimeType, 'mimetype') : 
+            'application/json';
+          const validatedDescription = description ? 
+            this.validateEnvironmentValue(description, 'description') : 
+            `Custom ${cleanEndpoint} file`;
+
+          // Additional security check: ensure filename has a proper extension
+          if (!validatedFileName.includes('.')) {
+            console.warn(`Filename without extension detected: ${validatedFileName}`);
+          }
+
+          // Secure path resolution with validated file path
+          const secureFilePath = this.securePathResolve(this.config.baseDir, validatedFile);
+
+          return {
+            filePath: secureFilePath,
+            fileName: validatedFileName,
+            mimeType: validatedMimeType,
+            description: validatedDescription
+          };
+        } catch (validationError) {
+          console.error(`Custom endpoint validation failed for ${cleanEndpoint}: ${validationError.message}`);
+          return null;
+        }
+      } else {
+        console.warn(`No file configured for custom endpoint: ${cleanEndpoint}`);
+        return null;
       }
     }
 
@@ -233,6 +287,131 @@ class DownloadConfig {
     this.validateSecurePath(resolvedPath, basePath);
     
     return resolvedPath;
+  }
+
+  /**
+   * Validates and sanitizes an endpoint name to prevent injection attacks
+   * @param {string} endpoint - The endpoint to validate
+   * @returns {string} - The sanitized endpoint
+   * @throws {Error} - If the endpoint is invalid or contains unsafe characters
+   */
+  validateAndSanitizeEndpoint(endpoint) {
+    if (!endpoint || typeof endpoint !== 'string') {
+      throw new Error('Endpoint must be a non-empty string');
+    }
+
+    // Remove leading/trailing slashes and whitespace
+    const cleanEndpoint = endpoint.replace(/^\/+|\/+$/g, '').trim();
+    
+    // Check for empty endpoint after cleaning
+    if (!cleanEndpoint) {
+      throw new Error('Endpoint cannot be empty after sanitization');
+    }
+
+    // Validate endpoint format - only allow alphanumeric, hyphens, underscores
+    const endpointPattern = /^[a-zA-Z0-9_-]+$/;
+    if (!endpointPattern.test(cleanEndpoint)) {
+      throw new Error(`Invalid endpoint format: ${cleanEndpoint}. Only alphanumeric characters, hyphens, and underscores are allowed`);
+    }
+
+    // Prevent reserved/dangerous endpoint names
+    const reservedEndpoints = [
+      'admin', 'api', 'auth', 'config', 'system', 'root', 'bin', 'etc', 'var', 'tmp',
+      'windows', 'program', 'users', 'documents', 'desktop', 'appdata',
+      'con', 'prn', 'aux', 'nul', 'com1', 'com2', 'com3', 'com4', 'com5', 'com6', 'com7', 'com8', 'com9',
+      'lpt1', 'lpt2', 'lpt3', 'lpt4', 'lpt5', 'lpt6', 'lpt7', 'lpt8', 'lpt9'
+    ];
+    
+    if (reservedEndpoints.includes(cleanEndpoint.toLowerCase())) {
+      throw new Error(`Endpoint name '${cleanEndpoint}' is reserved and cannot be used`);
+    }
+
+    // Check length limits
+    if (cleanEndpoint.length > 50) {
+      throw new Error(`Endpoint name too long: ${cleanEndpoint.length} characters. Maximum allowed is 50`);
+    }
+
+    return cleanEndpoint;
+  }
+
+  /**
+   * Validates environment variable values for security issues
+   * @param {string} value - The environment variable value to validate
+   * @param {string} type - The type of value ('file', 'filename', 'mimetype', 'description')
+   * @returns {string} - The validated value
+   * @throws {Error} - If the value contains unsafe patterns
+   */
+  validateEnvironmentValue(value, type) {
+    if (!value || typeof value !== 'string') {
+      throw new Error(`${type} must be a non-empty string`);
+    }
+
+    // Common security checks for all types
+    const dangerousPatterns = [
+      /\.\./,           // Path traversal
+      /[<>"|*?]/,       // Invalid filename characters
+      /[\x00-\x1f]/,    // Control characters
+      /^-/,             // Leading dash (command injection)
+      /\$\(/,           // Command substitution
+      /`/,              // Backtick command execution
+      /\${/,            // Variable substitution
+      /\|\|/,           // Logical OR (potential injection)
+      /&&/,             // Logical AND (potential injection)
+      /;/,              // Command separator
+      /\|/              // Pipe operator
+    ];
+
+    for (const pattern of dangerousPatterns) {
+      if (pattern.test(value)) {
+        throw new Error(`${type} contains unsafe pattern: ${value}`);
+      }
+    }
+
+    // Type-specific validation
+    switch (type) {
+      case 'file':
+        // File path validation
+        if (value.length > 255) {
+          throw new Error(`File path too long: ${value.length} characters`);
+        }
+        if (!/^[a-zA-Z0-9._/-]+$/.test(value)) {
+          throw new Error(`File path contains invalid characters: ${value}`);
+        }
+        break;
+
+      case 'filename':
+        // Filename validation
+        if (value.length > 255) {
+          throw new Error(`Filename too long: ${value.length} characters`);
+        }
+        if (!/^[a-zA-Z0-9._-]+$/.test(value)) {
+          throw new Error(`Filename contains invalid characters: ${value}`);
+        }
+        break;
+
+      case 'mimetype':
+        // MIME type validation
+        if (!/^[a-zA-Z0-9][a-zA-Z0-9!#$&\-\^]*\/[a-zA-Z0-9][a-zA-Z0-9!#$&\-\^]*$/.test(value)) {
+          throw new Error(`Invalid MIME type format: ${value}`);
+        }
+        break;
+
+      case 'description':
+        // Description validation
+        if (value.length > 500) {
+          throw new Error(`Description too long: ${value.length} characters`);
+        }
+        // Allow most characters but block script tags and dangerous HTML
+        if (/<script|javascript:|data:/i.test(value)) {
+          throw new Error(`Description contains potentially dangerous content: ${value}`);
+        }
+        break;
+
+      default:
+        throw new Error(`Unknown validation type: ${type}`);
+    }
+
+    return value;
   }
 
 }
