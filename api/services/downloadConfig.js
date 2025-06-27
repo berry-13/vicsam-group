@@ -104,7 +104,7 @@ class DownloadConfig {
     
     if (cleanEndpoint === 'download' && this.config.files.download.file) {
       return {
-        filePath: path.resolve(this.config.baseDir, this.config.files.download.file),
+        filePath: this.securePathResolve(this.config.baseDir, this.config.files.download.file),
         fileName: this.config.files.download.filename,
         mimeType: this.config.files.download.mimetype,
         description: this.config.files.download.description
@@ -113,7 +113,7 @@ class DownloadConfig {
 
     if (cleanEndpoint === 'app' && this.config.files.app.file) {
       return {
-        filePath: path.resolve(this.config.baseDir, this.config.files.app.file),
+        filePath: this.securePathResolve(this.config.baseDir, this.config.files.app.file),
         fileName: this.config.files.app.filename,
         mimeType: this.config.files.app.mimetype,
         description: this.config.files.app.description
@@ -127,7 +127,7 @@ class DownloadConfig {
       
       if (file) {
         return {
-          filePath: path.resolve(this.config.baseDir, file),
+          filePath: this.securePathResolve(this.config.baseDir, file),
           fileName: process.env[`${envPrefix}_FILENAME`] || `${cleanEndpoint}.json`,
           mimeType: process.env[`${envPrefix}_MIMETYPE`] || 'application/json',
           description: process.env[`${envPrefix}_DESCRIPTION`] || `Custom ${cleanEndpoint} file`
@@ -182,6 +182,59 @@ class DownloadConfig {
       endpointCount: Object.keys(this.getAllFileMappings()).length
     };
   }
+
+  /**
+   * Validates that a resolved file path is safe and doesn't escape the base directory
+   * @param {string} resolvedPath - The resolved absolute file path
+   * @param {string} basePath - The base directory path (absolute)
+   * @returns {boolean} - True if the path is safe, false otherwise
+   * @throws {Error} - If path traversal attack is detected
+   */
+  validateSecurePath(resolvedPath, basePath) {
+    try {
+      // Normalize both paths to handle different path separators and resolve any remaining .. segments
+      const normalizedResolved = path.normalize(path.resolve(resolvedPath));
+      const normalizedBase = path.normalize(path.resolve(basePath));
+      
+      // Check if the resolved path starts with the base path
+      const isWithinBase = normalizedResolved.startsWith(normalizedBase + path.sep) || 
+                          normalizedResolved === normalizedBase;
+      
+      if (!isWithinBase) {
+        const error = new Error(`Path traversal attack detected: ${resolvedPath} attempts to escape base directory ${basePath}`);
+        error.code = 'PATH_TRAVERSAL_DETECTED';
+        throw error;
+      }
+      
+      return true;
+    } catch (error) {
+      if (error.code === 'PATH_TRAVERSAL_DETECTED') {
+        throw error;
+      }
+      // If path validation fails due to other reasons, be conservative and reject
+      const securityError = new Error(`Invalid file path detected: ${resolvedPath}`);
+      securityError.code = 'INVALID_PATH';
+      throw securityError;
+    }
+  }
+
+  /**
+   * Securely resolves a file path and validates it against path traversal attacks
+   * @param {string} basePath - The base directory path
+   * @param {string} filePath - The relative file path to resolve
+   * @returns {string} - The validated absolute file path
+   * @throws {Error} - If path traversal attack is detected
+   */
+  securePathResolve(basePath, filePath) {
+    // First resolve the path
+    const resolvedPath = path.resolve(basePath, filePath);
+    
+    // Then validate it's secure
+    this.validateSecurePath(resolvedPath, basePath);
+    
+    return resolvedPath;
+  }
+
 }
 
 module.exports = new DownloadConfig();
