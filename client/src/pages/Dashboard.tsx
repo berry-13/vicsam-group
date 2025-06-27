@@ -171,26 +171,64 @@ export const Dashboard: React.FC = () => {
       };
     }
 
-    // Memory Usage Check (Client-side estimation)
-    const memoryInfo = (navigator as unknown as { memory?: { usedJSMemorySize: number; totalJSMemorySize: number; jsMemoryLimit: number } }).memory;
-    if (memoryInfo) {
-      const memoryUsage = (memoryInfo.usedJSMemorySize / memoryInfo.totalJSMemorySize) * 100;
+    // Memory Usage Check (Chrome-specific performance.memory API)
+    // Check for feature availability and browser compatibility
+    const performanceAPI = window.performance as unknown as { 
+      memory?: { 
+        usedJSHeapSize: number; 
+        totalJSHeapSize: number; 
+        jsHeapSizeLimit: number 
+      } 
+    };
+    
+    if (performanceAPI && performanceAPI.memory && typeof performanceAPI.memory.usedJSHeapSize === 'number') {
+      const memoryInfo = performanceAPI.memory;
+      const memoryUsage = (memoryInfo.usedJSHeapSize / memoryInfo.totalJSHeapSize) * 100;
       status.memory = {
         status: memoryUsage < 70 ? 'healthy' : memoryUsage < 90 ? 'warning' : 'critical',
         message: `Memoria JS: ${memoryUsage.toFixed(1)}%`,
         lastChecked: now,
         details: {
-          used: Math.round(memoryInfo.usedJSMemorySize / 1024 / 1024),
-          total: Math.round(memoryInfo.totalJSMemorySize / 1024 / 1024),
-          limit: Math.round(memoryInfo.jsMemoryLimit / 1024 / 1024)
+          used: Math.round(memoryInfo.usedJSHeapSize / 1024 / 1024),
+          total: Math.round(memoryInfo.totalJSHeapSize / 1024 / 1024),
+          limit: Math.round(memoryInfo.jsHeapSizeLimit / 1024 / 1024),
+          browser: 'Chrome/Chromium-based'
         }
       };
     } else {
-      status.memory = {
-        status: 'warning',
-        message: 'Informazioni memoria non disponibili',
-        lastChecked: now
-      };
+      // Fallback: Check if navigator.memory exists (older/alternative implementation)
+      const navigatorMemory = (navigator as unknown as { 
+        memory?: { 
+          usedJSHeapSize?: number; 
+          totalJSHeapSize?: number; 
+          jsHeapSizeLimit?: number 
+        } 
+      }).memory;
+      
+      if (navigatorMemory && typeof navigatorMemory.usedJSHeapSize === 'number') {
+        const memoryUsage = (navigatorMemory.usedJSHeapSize / navigatorMemory.totalJSHeapSize!) * 100;
+        status.memory = {
+          status: memoryUsage < 70 ? 'healthy' : memoryUsage < 90 ? 'warning' : 'critical',
+          message: `Memoria JS: ${memoryUsage.toFixed(1)}%`,
+          lastChecked: now,
+          details: {
+            used: Math.round(navigatorMemory.usedJSHeapSize / 1024 / 1024),
+            total: Math.round(navigatorMemory.totalJSHeapSize! / 1024 / 1024),
+            limit: Math.round((navigatorMemory.jsHeapSizeLimit || 0) / 1024 / 1024),
+            browser: 'Legacy API'
+          }
+        };
+      } else {
+        status.memory = {
+          status: 'warning',
+          message: 'Informazioni memoria non disponibili (non supportato dal browser)',
+          lastChecked: now,
+          details: {
+            reason: 'Memory API not supported',
+            browser: navigator.userAgent.includes('Chrome') ? 'Chrome (API disabled)' : 'Non-Chrome browser'
+          }
+        };
+      }
     }
 
     // Network Connectivity Check
