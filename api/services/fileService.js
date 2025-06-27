@@ -7,6 +7,24 @@ class FileService {
   constructor() {
     this.dataDir = path.join(__dirname, '../../dati');
     this.generalFilePath = path.join(this.dataDir, 'dati_generali.json');
+    
+    // Ensure the data directory exists
+    this.ensureDataDirectoryExists();
+  }
+
+  /**
+   * Ensures that the data directory exists, creating it if necessary
+   */
+  ensureDataDirectoryExists() {
+    try {
+      if (!fsSync.existsSync(this.dataDir)) {
+        fsSync.mkdirSync(this.dataDir, { recursive: true });
+        console.log(`✅ Created data directory: ${this.dataDir}`);
+      }
+    } catch (error) {
+      console.error(`❌ Failed to create data directory: ${this.dataDir}`, error);
+      throw new Error(`Unable to create data directory: ${error.message}`);
+    }
   }
 
   /**
