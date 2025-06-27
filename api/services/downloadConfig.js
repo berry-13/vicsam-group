@@ -349,8 +349,8 @@ class DownloadConfig {
     // Common security checks for all types
     const dangerousPatterns = [
       /\.\./,           // Path traversal
-      /[<>"|*?]/,       // Invalid filename characters
-      /[\x00-\x1f]/,    // Control characters
+      /[<>"|*?]/,        // Invalid filename characters
+      /[\u0000-\u001f]/, // Control characters
       /^-/,             // Leading dash (command injection)
       /\$\(/,           // Command substitution
       /`/,              // Backtick command execution
