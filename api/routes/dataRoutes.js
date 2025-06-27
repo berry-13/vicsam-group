@@ -5,7 +5,8 @@ const {
   getFileContent,
   downloadFile,
   deleteFile,
-  getStats
+  getStats,
+  getRecentActivities
 } = require('../controllers/dataController');
 const { authenticateBearer } = require('../middleware/auth');
 const { validate, saveDataSchema, fileParamsSchema } = require('../utils/validation');
@@ -56,5 +57,12 @@ router.delete('/file/:filename', validate(fileParamsSchema, 'params'), deleteFil
  * @access Private (Bearer Token required)
  */
 router.get('/stats', getStats);
+
+/**
+ * @route GET /api/data/activities
+ * @desc Ottiene le attività recenti del sistema
+ * @access Private (Bearer Token required)
+ */
+router.get('/activities', getRecentActivities);
 
 module.exports = router;

@@ -97,10 +97,14 @@ export const Dashboard: React.FC = () => {
       overallHealth: 'checking'
     };
 
-    // API Health Check
+    // API Health Check - use public health endpoint instead of authenticated stats
     try {
       const apiStartTime = performance.now();
-      await apiService.getStats();
+      const response = await fetch('/health');
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      await response.json(); // Ensure response is valid JSON
       const apiResponseTime = performance.now() - apiStartTime;
       
       status.api = {
@@ -109,7 +113,7 @@ export const Dashboard: React.FC = () => {
         responseTime: Math.round(apiResponseTime),
         lastChecked: now,
         details: {
-          endpoint: '/api/stats',
+          endpoint: '/health',
           responseTime: Math.round(apiResponseTime),
           threshold: '1000ms'
         }
@@ -127,7 +131,14 @@ export const Dashboard: React.FC = () => {
 
     // Storage Health Check
     try {
-      const storageData = await apiService.getStats();
+      let storageData;
+      try {
+        // Try to get storage data if authenticated
+        storageData = await apiService.getStats();
+      } catch {
+        // If not authenticated, use default values
+        storageData = { totalSize: 0, totalFiles: 0 };
+      }
       
       // Try to get storage limit from various sources
       let storageLimit: number;
@@ -143,10 +154,8 @@ export const Dashboard: React.FC = () => {
       // Fallback to environment variables if not available from API
       if (!storageLimit) {
         storageLimit = 
-          parseFloat(process.env.REACT_APP_STORAGE_LIMIT_GB || '') * 1024 * 1024 * 1024 || // React env var in GB
-          parseFloat(process.env.VITE_STORAGE_LIMIT_GB || '') * 1024 * 1024 * 1024 || // Vite env var in GB
-          parseFloat(process.env.REACT_APP_STORAGE_LIMIT_BYTES || '') || // React env var in bytes
-          parseFloat(process.env.VITE_STORAGE_LIMIT_BYTES || '') || // Vite env var in bytes
+          parseFloat(import.meta.env.VITE_STORAGE_LIMIT_GB || '') * 1024 * 1024 * 1024 || // Vite env var in GB
+          parseFloat(import.meta.env.VITE_STORAGE_LIMIT_BYTES || '') || // Vite env var in bytes
           10 * 1024 * 1024 * 1024; // Default: 10 GB in bytes
       }
       
@@ -154,7 +163,9 @@ export const Dashboard: React.FC = () => {
       
       status.storage = {
         status: usagePercentage < 70 ? 'healthy' : usagePercentage < 90 ? 'warning' : 'critical',
-        message: `Utilizzo: ${usagePercentage.toFixed(1)}% (${formatBytes(storageData.totalSize || 0)} / ${formatBytes(storageLimit)})`,
+        message: storageData.totalSize > 0 
+          ? `Utilizzo: ${usagePercentage.toFixed(1)}% (${formatBytes(storageData.totalSize || 0)} / ${formatBytes(storageLimit)})`
+          : 'Storage disponibile',
         lastChecked: now,
         details: {
           totalFiles: storageData.totalFiles || 0,
@@ -248,16 +259,28 @@ export const Dashboard: React.FC = () => {
       } : {}
     };
 
-    // File System Integrity Check (via enhanced API health endpoint)
+    // File System Integrity Check (via health endpoint)
     try {
-      const healthEndpoint = '/api/health';
+      const healthEndpoint = '/health';
       const healthStartTime = performance.now();
       const response = await fetch(healthEndpoint);
       const healthResponseTime = performance.now() - healthStartTime;
       
       if (response.ok) {
         const healthData = await response.json();
-        const serverMemoryUsage = healthData.system?.memory?.percentage || 0;
+        console.log('Health data received:', healthData); // Debug log
+        
+        // Extract memory usage - handle both production and development formats
+        let serverMemoryUsage = 0;
+        if (healthData.system?.memory?.percentage !== undefined) {
+          // Development format
+          serverMemoryUsage = healthData.system.memory.percentage;
+        } else if (healthData.system?.memory?.status) {
+          // Production format - convert status to percentage estimate
+          const memoryStatus = healthData.system.memory.status;
+          serverMemoryUsage = memoryStatus === 'good' ? 30 : memoryStatus === 'moderate' ? 65 : 95;
+        }
+        
         const serverUptime = healthData.system?.uptime || 0;
         
         const systemStatus = healthData.status === 'healthy' ? 'healthy' : 
@@ -276,13 +299,15 @@ export const Dashboard: React.FC = () => {
           }
         };
       } else {
+        console.warn('Health endpoint returned status:', response.status);
         status.fileSystem = {
           status: 'warning',
           message: `Server HTTP ${response.status}`,
           lastChecked: now
         };
       }
-    } catch {
+    } catch (error) {
+      console.error('Health check failed:', error);
       status.fileSystem = {
         status: 'warning',
         message: 'Server non raggiungibile',
@@ -291,16 +316,19 @@ export const Dashboard: React.FC = () => {
     }
 
     // Security Check (HTTPS and Origin validation against whitelist)
-    const isSecure = window.location.protocol === 'https:' || window.location.hostname === 'localhost';
+    const isSecure = window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     
     // Define allowed origins based on deployment environment
     const allowedOrigins = [
       'http://localhost:3000',
       'http://localhost:5173', // Vite dev server
+      'http://127.0.0.1:3000',
+      'http://127.0.0.1:5173',
       'https://localhost:3000',
       'https://localhost:5173',
-      process.env.REACT_APP_ALLOWED_ORIGIN,
-      process.env.VITE_ALLOWED_ORIGIN,
+      'https://127.0.0.1:3000',
+      'https://127.0.0.1:5173',
+      import.meta.env.VITE_ALLOWED_ORIGIN,
       // Add production domains here
       'https://vicsam-group.com',
       'https://app.vicsam-group.com',
@@ -311,11 +339,11 @@ export const Dashboard: React.FC = () => {
     const hasValidOrigin = allowedOrigins.includes(currentOrigin);
     
     status.security = {
-      status: isSecure && hasValidOrigin ? 'healthy' : 'warning',
+      status: isSecure && hasValidOrigin ? 'healthy' : !isSecure ? 'warning' : 'warning',
       message: !isSecure 
-        ? 'Connessione non sicura rilevata' 
+        ? 'Connessione non sicura (HTTP)' 
         : !hasValidOrigin 
-        ? 'Origine non autorizzata rilevata'
+        ? `Origine non in whitelist: ${currentOrigin}`
         : 'Connessione sicura e origine verificata',
       lastChecked: now,
       details: {
@@ -363,26 +391,46 @@ export const Dashboard: React.FC = () => {
     try {
       setError(null);
       const [statsData, systemStatusData] = await Promise.all([
-        apiService.getStats(),
-        checkSystemStatus(),
-        fetchRecentActivity()
+        apiService.getStats().catch(err => {
+          console.error("Errore nel caricamento statistiche:", err);
+          throw new Error(`Statistiche non disponibili: ${err.message}`);
+        }),
+        checkSystemStatus().catch(err => {
+          console.error("Errore nel controllo sistema:", err);
+          const now = new Date().toISOString();
+          return {
+            api: { status: 'critical' as const, message: 'API non raggiungibile', lastChecked: now },
+            storage: { status: 'warning' as const, message: 'Storage non verificabile', lastChecked: now },
+            memory: { status: 'warning' as const, message: 'Memoria client non verificabile', lastChecked: now },
+            network: { status: 'warning' as const, message: 'Rete non verificabile', lastChecked: now },
+            fileSystem: { status: 'warning' as const, message: 'Server non verificabile', lastChecked: now },
+            security: { status: 'warning' as const, message: 'Sicurezza non verificabile', lastChecked: now },
+            performance: { status: 'warning' as const, message: 'Prestazioni non verificabili', lastChecked: now },
+            overallHealth: 'critical' as const
+          };
+        }),
+        fetchRecentActivity().catch(err => {
+          console.error("Errore nel caricamento attività:", err);
+          // Don't fail the whole dashboard if activities fail
+        })
       ]);
       
       setStats(statsData);
       setSystemStatus(systemStatusData);
     } catch (error) {
       console.error("Errore nel caricamento dati dashboard:", error);
-      setError("Errore nel caricamento dei dati. Riprova più tardi.");
+      const errorMessage = error instanceof Error ? error.message : "Errore nel caricamento dei dati. Riprova più tardi.";
+      setError(errorMessage);
       const now = new Date().toISOString();
       setSystemStatus({
-        api: { status: 'critical', message: 'API non raggiungibile', lastChecked: now },
-        storage: { status: 'warning', message: 'Storage non verificabile', lastChecked: now },
-        memory: { status: 'warning', message: 'Memoria client non verificabile', lastChecked: now },
-        network: { status: 'warning', message: 'Rete non verificabile', lastChecked: now },
-        fileSystem: { status: 'warning', message: 'Server non verificabile', lastChecked: now },
-        security: { status: 'warning', message: 'Sicurezza non verificabile', lastChecked: now },
-        performance: { status: 'warning', message: 'Prestazioni non verificabili', lastChecked: now },
-        overallHealth: 'critical'
+        api: { status: 'critical' as const, message: 'API non raggiungibile', lastChecked: now },
+        storage: { status: 'warning' as const, message: 'Storage non verificabile', lastChecked: now },
+        memory: { status: 'warning' as const, message: 'Memoria client non verificabile', lastChecked: now },
+        network: { status: 'warning' as const, message: 'Rete non verificabile', lastChecked: now },
+        fileSystem: { status: 'warning' as const, message: 'Server non verificabile', lastChecked: now },
+        security: { status: 'warning' as const, message: 'Sicurezza non verificabile', lastChecked: now },
+        performance: { status: 'warning' as const, message: 'Prestazioni non verificabili', lastChecked: now },
+        overallHealth: 'critical' as const
       });
     } finally {
       setLoading(false);
