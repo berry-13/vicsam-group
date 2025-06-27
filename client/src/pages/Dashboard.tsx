@@ -229,20 +229,39 @@ export const Dashboard: React.FC = () => {
       };
     }
 
-    // Security Check (Basic HTTPS and Origin validation)
+    // Security Check (HTTPS and Origin validation against whitelist)
     const isSecure = window.location.protocol === 'https:' || window.location.hostname === 'localhost';
-    const hasValidOrigin = window.location.origin === window.origin;
+    
+    // Define allowed origins based on deployment environment
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://localhost:5173', // Vite dev server
+      'https://localhost:3000',
+      'https://localhost:5173',
+      process.env.REACT_APP_ALLOWED_ORIGIN,
+      process.env.VITE_ALLOWED_ORIGIN,
+      // Add production domains here
+      'https://vicsam-group.com',
+      'https://app.vicsam-group.com',
+      'https://www.vicsam-group.com'
+    ].filter(Boolean); // Remove undefined values
+    
+    const currentOrigin = window.location.origin;
+    const hasValidOrigin = allowedOrigins.includes(currentOrigin);
     
     status.security = {
       status: isSecure && hasValidOrigin ? 'healthy' : 'warning',
-      message: isSecure 
-        ? 'Connessione sicura attiva' 
-        : 'Connessione non sicura rilevata',
+      message: !isSecure 
+        ? 'Connessione non sicura rilevata' 
+        : !hasValidOrigin 
+        ? 'Origine non autorizzata rilevata'
+        : 'Connessione sicura e origine verificata',
       lastChecked: now,
       details: {
         protocol: window.location.protocol,
         secure: isSecure,
-        origin: window.location.origin
+        origin: currentOrigin,
+        originValidated: hasValidOrigin
       }
     };
 
