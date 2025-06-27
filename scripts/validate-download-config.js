@@ -45,14 +45,22 @@ try {
       console.log(`  Type: ${config.mimeType}`);
       console.log(`  Desc: ${config.description}`);
       
-      // Check if file exists
-      const exists = fs.existsSync(config.filePath);
-      console.log(`  Exists: ${exists ? '✅' : '❌'}`);
-      
-      if (exists) {
-        const stats = fs.statSync(config.filePath);
-        const sizeKB = (stats.size / 1024).toFixed(2);
-        console.log(`  Size: ${sizeKB} KB`);
+      // Check if file exists with error handling
+      try {
+        const exists = fs.existsSync(config.filePath);
+        console.log(`  Exists: ${exists ? '✅' : '❌'}`);
+        
+        if (exists) {
+          try {
+            const stats = fs.statSync(config.filePath);
+            const sizeKB = (stats.size / 1024).toFixed(2);
+            console.log(`  Size: ${sizeKB} KB`);
+          } catch (statError) {
+            console.log(`  Size: ❌ Error reading file stats - ${statError.message}`);
+          }
+        }
+      } catch (existsError) {
+        console.log(`  Exists: ❌ Error checking file existence - ${existsError.message}`);
       }
     });
   }
