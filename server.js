@@ -112,6 +112,8 @@ app.get('/health', (req, res) => {
   const memoryUsage = process.memoryUsage();
   const cpuUsage = process.cpuUsage();
   const uptime = process.uptime();
+  const environment = process.env.NODE_ENV || 'development';
+  const isProduction = environment === 'production';
   
   // Calculate memory usage percentages (assuming 1GB as reference)
   const totalMemoryMB = memoryUsage.heapTotal / 1024 / 1024;
@@ -120,35 +122,55 @@ app.get('/health', (req, res) => {
   
   // Determine health status based on metrics
   const isHealthy = memoryUsagePercent < 80 && uptime > 60; // At least 1 minute uptime
-  
-  res.json({
+
+  // Base response for all environments
+  const baseResponse = {
     success: true,
     status: isHealthy ? 'healthy' : 'warning',
     message: isHealthy ? 'Server is running optimally' : 'Server performance issues detected',
     timestamp: new Date().toISOString(),
-    system: {
-      uptime: Math.round(uptime),
-      memory: {
-        used: Math.round(usedMemoryMB),
-        total: Math.round(totalMemoryMB),
-        percentage: Math.round(memoryUsagePercent),
-        external: Math.round(memoryUsage.external / 1024 / 1024),
-        rss: Math.round(memoryUsage.rss / 1024 / 1024)
-      },
-      cpu: {
-        user: cpuUsage.user,
-        system: cpuUsage.system
-      },
-      node: {
-        version: process.version,
-        platform: process.platform,
-        arch: process.arch
-      }
-    },
     version: '2.0.0',
     clientBuild: hasClientBuild,
-    environment: process.env.NODE_ENV || 'development'
-  });
+    environment: environment
+  };
+
+  // In production, return minimal information
+  if (isProduction) {
+    res.json({
+      ...baseResponse,
+      system: {
+        uptime: Math.round(uptime),
+        // Only expose basic memory usage percentage, not detailed values
+        memory: {
+          status: memoryUsagePercent < 50 ? 'good' : memoryUsagePercent < 80 ? 'moderate' : 'high'
+        }
+      }
+    });
+  } else {
+    // In development/staging, return full system information
+    res.json({
+      ...baseResponse,
+      system: {
+        uptime: Math.round(uptime),
+        memory: {
+          used: Math.round(usedMemoryMB),
+          total: Math.round(totalMemoryMB),
+          percentage: Math.round(memoryUsagePercent),
+          external: Math.round(memoryUsage.external / 1024 / 1024),
+          rss: Math.round(memoryUsage.rss / 1024 / 1024)
+        },
+        cpu: {
+          user: cpuUsage.user,
+          system: cpuUsage.system
+        },
+        node: {
+          version: process.version,
+          platform: process.platform,
+          arch: process.arch
+        }
+      }
+    });
+  }
 });
 
 // SPA fallback: tutte le altre rotte servono index.html o messaggio di fallback
