@@ -182,8 +182,9 @@ class DownloadController {
         res.removeHeader('Content-Length');
       }
 
-      // Log download attempt
-      this.log('info', `${req.ip} downloading ${fileConfig.fileName} (${(stats.size / 1024).toFixed(2)}KB)${shouldCompress ? ' [GZIPPED]' : ''}`);
+      // Log download attempt with anonymized IP for privacy compliance
+      const anonymizedIP = this.anonymizeIP(req.ip);
+      this.log('info', `${anonymizedIP} downloading ${fileConfig.fileName} (${(stats.size / 1024).toFixed(2)}KB)${shouldCompress ? ' [GZIPPED]' : ''}`);
       
       // Stream the file
       await this.streamFile(res, fileConfig.filePath, shouldCompress);
@@ -283,6 +284,40 @@ class DownloadController {
     }
 
     res.json(status);
+  }
+
+  /**
+   * Anonymize IP address for privacy compliance
+   * Masks the last octet for IPv4 and last 80 bits for IPv6
+   * @param {string} ip - Original IP address
+   * @returns {string} - Anonymized IP address
+   */
+  anonymizeIP(ip) {
+    if (!ip) return 'unknown';
+    
+    // Check if IP logging is disabled via environment variable
+    if (process.env.DOWNLOAD_LOG_IPS === 'false') {
+      return '[IP_HIDDEN]';
+    }
+    
+    // IPv4 anonymization (mask last octet)
+    if (ip.includes('.') && !ip.includes(':')) {
+      const parts = ip.split('.');
+      if (parts.length === 4) {
+        return `${parts[0]}.${parts[1]}.${parts[2]}.xxx`;
+      }
+    }
+    
+    // IPv6 anonymization (mask last 80 bits, keep first 48 bits)
+    if (ip.includes(':')) {
+      const parts = ip.split(':');
+      if (parts.length >= 3) {
+        return `${parts[0]}:${parts[1]}:${parts[2]}:xxxx:xxxx:xxxx:xxxx:xxxx`;
+      }
+    }
+    
+    // Fallback for unknown format
+    return '[IP_MASKED]';
   }
 }
 
