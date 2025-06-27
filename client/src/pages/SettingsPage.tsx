@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useSettings } from "../hooks/useSettings";
+import { useTheme } from "../hooks/useTheme";
 import { useToastContext } from "../hooks/useToast";
 import {
   ArrowLeft,
@@ -29,7 +30,6 @@ import { PageContainer } from "@/components/PageContainer";
 
 interface SimpleSettings {
   debug: boolean;
-  theme: "light" | "dark" | "system";
   soundEnabled: boolean;
   notifications: boolean;
   language: "it" | "en";
@@ -38,11 +38,11 @@ interface SimpleSettings {
 export const SettingsPage: React.FC = () => {
   const navigate = useNavigate();
   const { settings, updateSettings } = useSettings();
+  const { theme, setTheme } = useTheme();
   const toast = useToastContext();
 
   const [tempSettings, setTempSettings] = useState<SimpleSettings>({
     debug: settings.debug || false,
-    theme: "system",
     soundEnabled: true,
     notifications: true,
     language: "it",
@@ -85,9 +85,9 @@ export const SettingsPage: React.FC = () => {
               <div className="flex items-center justify-between">
                 <Label>Tema</Label>
                 <Select
-                  value={tempSettings.theme}
+                  value={theme}
                   onValueChange={(value: "light" | "dark" | "system") =>
-                    setTempSettings((prev) => ({ ...prev, theme: value }))
+                    setTheme(value)
                   }
                 >
                   <SelectTrigger className="w-32">

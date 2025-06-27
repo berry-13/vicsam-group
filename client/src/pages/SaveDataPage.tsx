@@ -161,140 +161,133 @@ export const SaveDataPage: React.FC = () => {
 
   return (
     <PageContainer intensity={2}>
-      <div className="flex items-center justify-between space-y-2">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Salva File JSON</h2>
-          <p className="text-muted-foreground">
-            Carica e salva file JSON nel sistema tramite drag-and-drop
-          </p>
-        </div>
-      </div>
-
-      <div className="max-w-2xl mx-auto">
+      <div className="flex items-center justify-center min-h-[80vh]">
+      <div className="w-full max-w-2xl">
         <Card className="enhanced-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Database className="h-5 w-5" />
-              Caricamento File JSON
-            </CardTitle>
-            <CardDescription>
-              Trascina e rilascia i file JSON o clicca per selezionarli
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {/* Success/Error Messages */}
-            {success && (
-              <Alert className="mb-6">
-                <CheckCircle className="h-4 w-4" />
-                <AlertDescription>
-                  <div className="space-y-2">
-                    <p className="font-medium">{success.message}</p>
-                    {success.results.length > 0 && (
-                      <div className="mt-3 space-y-1">
-                        <p className="text-sm font-medium">Dettagli:</p>
-                        {success.results.map((result, index) => (
-                          <div key={index} className="flex items-center gap-2 text-sm">
-                            <Badge variant={result.isUpdate ? "secondary" : "default"} className="text-xs">
-                              {result.isUpdate ? "Aggiornato" : "Nuovo"}
-                            </Badge>
-                            <span className="text-muted-foreground">
-                              {result.originalFile} → {result.savedAs}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              (P.IVA: {result.customerVAT})
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {error && (
-              <Alert variant="destructive" className="mb-6">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-
-            {/* Drag and Drop Area */}
-            <div
-              className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-                dragActive 
-                  ? 'border-primary bg-primary/10' 
-                  : 'border-muted-foreground/25 hover:border-muted-foreground/50'
-              }`}
-              onDragEnter={handleDrag}
-              onDragLeave={handleDrag}
-              onDragOver={handleDrag}
-              onDrop={handleDrop}
-            >
-              <Upload className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-lg font-semibold mb-2">
-                Trascina i file JSON qui
-              </h3>
-              <p className="text-muted-foreground mb-4">
-                Oppure clicca per selezionare i file dal tuo computer
-              </p>
-              <input
-                type="file"
-                multiple
-                accept=".json,application/json"
-                onChange={handleFileInput}
-                className="hidden"
-                id="file-input"
-              />
-              <Button asChild variant="outline">
-                <label htmlFor="file-input" className="cursor-pointer">
-                  <FileText className="h-4 w-4 mr-2" />
-                  Seleziona File JSON
-                </label>
-              </Button>
-            </div>
-
-            {/* File List */}
-            {files.length > 0 && (
-              <div className="mt-6 space-y-3">
-                <h4 className="font-medium">File selezionati:</h4>
-                {files.map((file, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <FileText className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium">{file.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {formatFileSize(file.size)}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary">JSON</Badge>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeFile(index)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+          <Database className="h-5 w-5" />
+          Caricamento File JSON
+          </CardTitle>
+          <CardDescription>
+          Trascina e rilascia i file JSON o clicca per selezionarli
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {/* Success/Error Messages */}
+          {success && (
+          <Alert className="mb-6">
+            <CheckCircle className="h-4 w-4" />
+            <AlertDescription>
+            <div className="space-y-2">
+              <p className="font-medium">{success.message}</p>
+              {success.results.length > 0 && (
+              <div className="mt-3 space-y-1">
+                <p className="text-sm font-medium">Dettagli:</p>
+                {success.results.map((result, index) => (
+                <div key={index} className="flex items-center gap-2 text-sm">
+                  <Badge variant={result.isUpdate ? "secondary" : "default"} className="text-xs">
+                  {result.isUpdate ? "Aggiornato" : "Nuovo"}
+                  </Badge>
+                  <span className="text-muted-foreground">
+                  {result.originalFile} → {result.savedAs}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                  (P.IVA: {result.customerVAT})
+                  </span>
+                </div>
                 ))}
               </div>
-            )}
+              )}
+            </div>
+            </AlertDescription>
+          </Alert>
+          )}
 
-            {/* Upload Button */}
-            {files.length > 0 && (
-              <div className="mt-6">
-                <Button onClick={uploadFiles} className="w-full" disabled={loading}>
-                  <Upload className="h-4 w-4 mr-2" />
-                  {loading ? 'Caricamento in corso...' : `Carica ${files.length} file`}
-                </Button>
+          {error && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+          )}
+
+          {/* Drag and Drop Area */}
+          <div
+          className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+            dragActive 
+            ? 'border-primary bg-primary/10' 
+            : 'border-muted-foreground/25 hover:border-muted-foreground/50'
+          }`}
+          onDragEnter={handleDrag}
+          onDragLeave={handleDrag}
+          onDragOver={handleDrag}
+          onDrop={handleDrop}
+          >
+          <Upload className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+          <h3 className="text-lg font-semibold mb-2">
+            Trascina i file JSON qui
+          </h3>
+          <p className="text-muted-foreground mb-4">
+            Oppure clicca per selezionare i file dal tuo computer
+          </p>
+          <input
+            type="file"
+            multiple
+            accept=".json,application/json"
+            onChange={handleFileInput}
+            className="hidden"
+            id="file-input"
+          />
+          <Button asChild variant="outline">
+            <label htmlFor="file-input" className="cursor-pointer">
+            <FileText className="h-4 w-4 mr-2" />
+            Seleziona File JSON
+            </label>
+          </Button>
+          </div>
+
+          {/* File List */}
+          {files.length > 0 && (
+          <div className="mt-6 space-y-3">
+            <h4 className="font-medium">File selezionati:</h4>
+            {files.map((file, index) => (
+            <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+              <div className="flex items-center gap-3">
+              <FileText className="h-4 w-4 text-muted-foreground" />
+              <div>
+                <p className="font-medium">{file.name}</p>
+                <p className="text-sm text-muted-foreground">
+                {formatFileSize(file.size)}
+                </p>
               </div>
-            )}
-          </CardContent>
+              </div>
+              <div className="flex items-center gap-2">
+              <Badge variant="secondary">JSON</Badge>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => removeFile(index)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+              </div>
+            </div>
+            ))}
+          </div>
+          )}
+
+          {/* Upload Button */}
+          {files.length > 0 && (
+          <div className="mt-6">
+            <Button onClick={uploadFiles} className="w-full" disabled={loading}>
+            <Upload className="h-4 w-4 mr-2" />
+            {loading ? 'Caricamento in corso...' : `Carica ${files.length} file`}
+            </Button>
+          </div>
+          )}
+        </CardContent>
         </Card>
+      </div>
       </div>
     </PageContainer>
   );

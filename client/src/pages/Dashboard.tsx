@@ -78,13 +78,7 @@ export const Dashboard: React.FC = () => {
 
   return (
     <PageContainer intensity={2}>
-      <div className="flex items-center justify-between space-y-2">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-          <p className="text-muted-foreground">
-            Panoramica generale del sistema Vicsam Group
-          </p>
-        </div>
+      <div className="flex items-center justify-end space-y-2">
         <div className="flex items-center space-x-2">
           <Button
             onClick={handleRefresh}
@@ -195,7 +189,7 @@ export const Dashboard: React.FC = () => {
               Impostazioni
             </Button>
           </CardContent>
-          <div className="border border-border bg-background p-4 rounded-b-lg">
+          <div className="border border-border bg-text p-4 rounded-b-lg">
             <p className="text-xs text-muted-foreground">
               Per ulteriori azioni, visita la pagina delle impostazioni.
             </p>

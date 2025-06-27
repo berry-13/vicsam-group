@@ -1,97 +1,92 @@
-import React, { createContext, useState, useEffect } from 'react';
-import type { ReactNode } from 'react';
+import React, { createContext, useEffect, useState } from 'react';
 
-type Theme = 'light' | 'dark';
+export type Theme = 'dark' | 'light' | 'system';
 
-interface ThemeContextType {
+export type ThemeProviderProps = {
+  children: React.ReactNode;
+  defaultTheme?: Theme;
+  storageKey?: string;
+};
+
+export type ThemeProviderState = {
   theme: Theme;
   setTheme: (theme: Theme) => void;
-  toggleTheme: () => void;
-}
+  toggleTheme: () => void; // Add this for backward compatibility
+};
 
-const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+const initialState: ThemeProviderState = {
+  theme: 'system',
+  setTheme: () => null,
+  toggleTheme: () => null,
+};
 
-export { ThemeContext };
+const ThemeProviderContext = createContext<ThemeProviderState>(initialState);
 
-interface ThemeProviderProps {
-  children: ReactNode;
-}
+export { ThemeProviderContext };
 
-export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
-  const [theme, setThemeState] = useState<Theme>(() => {
-    // Inizializza subito il tema per evitare il flash
-    if (typeof window !== 'undefined') {
-      const savedTheme = localStorage.getItem('theme') as Theme | null;
-      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-      const initialTheme = savedTheme || systemTheme;
-      
-      console.log('ThemeProvider init:', { savedTheme, systemTheme, initialTheme });
-      
-      // Applica immediatamente al documento
-      if (initialTheme === 'dark') {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
-      
-      console.log('Document classes after init:', document.documentElement.className);
-      
-      return initialTheme;
-    }
-    return 'light';
-  });
+export function ThemeProvider({
+  children,
+  defaultTheme = 'system',
+  storageKey = 'vite-ui-theme',
+  ...props
+}: ThemeProviderProps) {
+  const [theme, setTheme] = useState<Theme>(
+    () => (typeof window !== 'undefined' && (localStorage.getItem(storageKey) as Theme)) || defaultTheme
+  );
 
   useEffect(() => {
-    // Assicurati che il tema sia applicato dopo il mount e salva nelle preferenze
-    const savedTheme = localStorage.getItem('theme') as Theme | null;
-    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    const initialTheme = savedTheme || systemTheme;
+    const root = window.document.documentElement;
+    root.classList.remove('light', 'dark');
     
-    setThemeState(initialTheme);
-    document.documentElement.classList.toggle('dark', initialTheme === 'dark');
-    
-    // Listener per cambiamenti del tema di sistema se non c'è un tema salvato
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = (e: MediaQueryListEvent) => {
-      if (!localStorage.getItem('theme')) {
-        const newTheme = e.matches ? 'dark' : 'light';
-        setThemeState(newTheme);
-        document.documentElement.classList.toggle('dark', newTheme === 'dark');
-      }
-    };
-    
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
-  }, []);
-
-  const setTheme = (newTheme: Theme) => {
-    console.log('Setting theme to:', newTheme);
-    setThemeState(newTheme);
-    localStorage.setItem('theme', newTheme);
-    
-    if (newTheme === 'dark') {
-      document.documentElement.classList.add('dark');
+    if (theme === 'system') {
+      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      root.classList.add(systemTheme);
+      console.log('Applied system theme:', systemTheme, 'Classes:', root.className);
     } else {
-      document.documentElement.classList.remove('dark');
+      root.classList.add(theme);
+      console.log('Applied theme:', theme, 'Classes:', root.className);
     }
-    
-    console.log('Document classes after setTheme:', document.documentElement.className);
-  };
+  }, [theme]);
+
+  useEffect(() => {
+    // Listen for system theme changes when theme is set to 'system'
+    if (theme === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const handleChange = (e: MediaQueryListEvent) => {
+        const root = window.document.documentElement;
+        root.classList.remove('light', 'dark');
+        root.classList.add(e.matches ? 'dark' : 'light');
+        console.log('System theme changed:', e.matches ? 'dark' : 'light');
+      };
+
+      mediaQuery.addEventListener('change', handleChange);
+      return () => mediaQuery.removeEventListener('change', handleChange);
+    }
+  }, [theme]);
 
   const toggleTheme = () => {
-    const newTheme = theme === 'light' ? 'dark' : 'light';
-    setTheme(newTheme);
+    if (theme === 'light') {
+      setTheme('dark');
+    } else if (theme === 'dark') {
+      setTheme('system');
+    } else {
+      setTheme('light');
+    }
   };
 
   const value = {
     theme,
-    setTheme,
+    setTheme: (theme: Theme) => {
+      console.log('Setting theme to:', theme);
+      localStorage.setItem(storageKey, theme);
+      setTheme(theme);
+    },
     toggleTheme,
   };
 
   return (
-    <ThemeContext.Provider value={value}>
+    <ThemeProviderContext.Provider {...props} value={value}>
       {children}
-    </ThemeContext.Provider>
+    </ThemeProviderContext.Provider>
   );
-};
+}

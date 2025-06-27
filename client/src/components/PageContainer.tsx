@@ -1,5 +1,5 @@
 import React from 'react';
-import { DecorativeBackground } from './DecorativeBackground';
+import { AnimatedBackground } from './AnimatedBackground';
 
 interface PageContainerProps {
   /**
@@ -32,9 +32,9 @@ export const PageContainer: React.FC<PageContainerProps> = ({
   withPadding = true,
 }) => {
   return (
-    <DecorativeBackground 
-      withGradient={withGradient} 
+    <AnimatedBackground 
       intensity={intensity}
+      className={withGradient ? 'login-bg' : ''}
     >
       {/* Contenuto principale con z-index per stare sopra gli elementi decorativi */}
       <div 
@@ -46,6 +46,6 @@ export const PageContainer: React.FC<PageContainerProps> = ({
       >
         {children}
       </div>
-    </DecorativeBackground>
+    </AnimatedBackground>
   );
 };

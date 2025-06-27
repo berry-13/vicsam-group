@@ -1,6 +1,7 @@
 import React from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { DiffusedLight } from './DiffusedLight';
 import { 
   Home, 
   FileText, 
@@ -85,8 +86,8 @@ const DesktopSidebar: React.FC = () => (
     <div className="flex h-full max-h-screen flex-col gap-2">
       <div className="flex h-14 items-center border-b border-border/30 px-4 lg:h-[60px] lg:px-6">
         <NavLink to="/" className="flex items-center gap-2 font-semibold text-foreground hover:text-primary transition-colors">
-          <Shield className="h-6 w-6" />
-          <span className="">Vicsam Group</span>
+          <img src="/logo.png" alt="Vicsam Group Logo" className="h-6 w-6" />
+          <span className="text-xl">Vicsam Group</span>
         </NavLink>
       </div>
       <div className="flex-1 custom-scrollbar">
@@ -121,9 +122,26 @@ export const Layout: React.FC = () => {
   const pageTitle = navigation.find(item => item.href === location.pathname)?.name || 'Dashboard';
 
   return (
-    <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
+    <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr] relative">
+      {/* Background diffused light for entire layout */}
+      <div className="absolute inset-0 pointer-events-none z-0">
+        <div 
+          className="absolute inset-0 diffused-light-enhanced"
+          style={{
+            background: `radial-gradient(
+              ellipse 300% 200% at 30% 40%,
+              hsl(var(--primary) / 0.01) 0%,
+              hsl(var(--primary) / 0.008) 20%,
+              hsl(var(--accent) / 0.006) 40%,
+              hsl(var(--secondary) / 0.004) 60%,
+              transparent 80%
+            )`
+          }}
+        />
+      </div>
+      
       <DesktopSidebar />
-      <div className="flex flex-col">
+      <div className="flex flex-col relative z-10">
         <header className="flex h-14 items-center gap-4 glass-header px-4 lg:h-[60px] lg:px-6">
           <MobileSidebar />
           <div className="w-full flex-1">
@@ -132,32 +150,9 @@ export const Layout: React.FC = () => {
           <UserMenu />
         </header>
         <main className="flex flex-1 flex-col relative overflow-auto custom-scrollbar">
-          {/* Elementi decorativi di sfondo per il layout principale */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <div 
-              className="absolute -top-40 -right-40 w-80 h-80 rounded-full blur-3xl theme-transition"
-              style={{
-                backgroundColor: `hsl(var(--primary) / 0.02)`,
-              }}
-            />
-            <div 
-              className="absolute -bottom-40 -left-40 w-80 h-80 rounded-full blur-3xl theme-transition"
-              style={{
-                backgroundColor: `hsl(var(--accent) / 0.04)`,
-              }}
-            />
-            <div 
-              className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full blur-3xl theme-transition"
-              style={{
-                backgroundColor: `hsl(var(--primary) / 0.015)`,
-              }}
-            />
-          </div>
-          
-          {/* Contenuto delle pagine con z-index per stare sopra gli elementi decorativi */}
-          <div className="relative z-10">
+          <DiffusedLight intensity={3}>
             <Outlet />
-          </div>
+          </DiffusedLight>
         </main>
       </div>
     </div>

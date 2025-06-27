@@ -1152,20 +1152,6 @@ export const FilesPage: React.FC = () => {
                 } hover:bg-muted/30`}
               >
                 <TableCell>
-                  <Checkbox
-                    checked={selectedRows.has(file.name)}
-                    onCheckedChange={(checked) => {
-                      const newSelected = new Set(selectedRows);
-                      if (checked) {
-                        newSelected.add(file.name);
-                      } else {
-                        newSelected.delete(file.name);
-                      }
-                      setSelectedRows(newSelected);
-                    }}
-                  />
-                </TableCell>
-                <TableCell>
                   <div className="flex items-center justify-center">
                     <ApplicationIcon
                       version={file.systemData?.ApplicationVersion}
@@ -1318,16 +1304,7 @@ export const FilesPage: React.FC = () => {
   }
 
   return (
-    <PageContainer intensity={2} withPadding={false} className="space-y-6 p-6">
-      {/* Header */}
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">
-          Gestione File Sistema
-        </h1>
-        <p className="text-muted-foreground">
-          Visualizza e gestisci i file di configurazione salvati nel sistema
-        </p>
-      </div>
+    <PageContainer intensity={4} withPadding={false} className="space-y-6 p-6">
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">

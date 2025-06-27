@@ -26,7 +26,7 @@ import "./index.css";
  */
 function App() {
   return (
-    <ThemeProvider>
+    <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
       <ToastProvider>
         <AuthProvider>
           <Router>
