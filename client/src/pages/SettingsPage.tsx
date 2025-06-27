@@ -30,8 +30,6 @@ import { PageContainer } from "@/components/PageContainer";
 
 interface SimpleSettings {
   debug: boolean;
-  soundEnabled: boolean;
-  notifications: boolean;
   language: "it" | "en";
 }
 
@@ -43,8 +41,6 @@ export const SettingsPage: React.FC = () => {
 
   const [tempSettings, setTempSettings] = useState<SimpleSettings>({
     debug: settings.debug || false,
-    soundEnabled: true,
-    notifications: true,
     language: "it",
   });
 
