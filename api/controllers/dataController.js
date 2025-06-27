@@ -1,6 +1,50 @@
 const fileService = require('../services/fileService');
 const { successResponse, errorResponse } = require('../utils/helpers');
 
+// Mock data for activities - in a real application, this would come from a database
+let mockActivities = [
+  {
+    id: '1',
+    type: 'system_update',
+    message: 'Sistema di monitoraggio aggiornato',
+    timestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+    status: 'success',
+    userId: 'system'
+  },
+  {
+    id: '2',
+    type: 'data_sync',
+    message: 'Controlli di integrità completati',
+    timestamp: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
+    status: 'success',
+    userId: 'system'
+  },
+  {
+    id: '3',
+    type: 'file_upload',
+    message: 'File caricato con successo',
+    timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+    status: 'success',
+    userId: 'user'
+  },
+  {
+    id: '4',
+    type: 'backup',
+    message: 'Backup automatico eseguito',
+    timestamp: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
+    status: 'success',
+    userId: 'system'
+  },
+  {
+    id: '5',
+    type: 'user_action',
+    message: 'Accesso utente effettuato',
+    timestamp: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+    status: 'success',
+    userId: 'user'
+  }
+];
+
 /**
  * Controller per salvare nuovi dati JSON
  * Il nome del file sarà basato sul CustomerVAT presente nel JSON
@@ -22,6 +66,14 @@ const saveData = async (req, res, next) => {
     
     console.log('✅ [SAVE DATA] Salvataggio completato:', message);
     
+    // Log activity
+    addActivity(
+      'file_upload',
+      result.isUpdate ? `File aggiornato: ${result.fileName}` : `Nuovo file caricato: ${result.fileName}`,
+      'success',
+      req.user?.id || 'user'
+    );
+    
     res.status(result.isUpdate ? 200 : 201).json(
       successResponse(
         { 
@@ -35,6 +87,15 @@ const saveData = async (req, res, next) => {
     );
   } catch (error) {
     console.error('❌ [SAVE DATA] Errore durante il salvataggio:', error.message);
+    
+    // Log failed activity
+    addActivity(
+      'file_upload',
+      `Errore nel salvataggio file: ${error.message}`,
+      'error',
+      req.user?.id || 'user'
+    );
+    
     next(error);
   }
 };
@@ -122,6 +183,14 @@ const deleteFile = async (req, res, next) => {
     const { filename } = req.params;
     await fileService.deleteFile(filename);
     
+    // Log activity
+    addActivity(
+      'user_action',
+      `File eliminato: ${filename}`,
+      'success',
+      req.user?.id || 'user'
+    );
+    
     res.json(
       successResponse(
         { filename },
@@ -129,6 +198,14 @@ const deleteFile = async (req, res, next) => {
       )
     );
   } catch (error) {
+    // Log failed activity
+    addActivity(
+      'user_action',
+      `Errore nell'eliminazione file: ${req.params.filename} - ${error.message}`,
+      'error',
+      req.user?.id || 'user'
+    );
+    
     if (error.message === 'File non trovato') {
       return res.status(404).json(
         errorResponse('File non trovato', 404)
@@ -176,11 +253,53 @@ const getStats = async (req, res, next) => {
   }
 };
 
+/**
+ * Controller per ottenere le attività recenti
+ */
+const getRecentActivities = async (req, res, next) => {
+  try {
+    const limit = parseInt(req.query.limit) || 10;
+    const activities = mockActivities
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+      .slice(0, limit);
+    
+    res.json(
+      successResponse(activities, 'Attività recenti recuperate con successo')
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Aggiunge una nuova attività al log (per uso interno)
+ */
+const addActivity = (type, message, status = 'success', userId = 'system', details = null) => {
+  const newActivity = {
+    id: Date.now().toString(),
+    type,
+    message,
+    timestamp: new Date().toISOString(),
+    status,
+    userId,
+    details
+  };
+  
+  // Mantieni solo le ultime 50 attività
+  mockActivities.unshift(newActivity);
+  if (mockActivities.length > 50) {
+    mockActivities = mockActivities.slice(0, 50);
+  }
+  
+  return newActivity;
+};
+
 module.exports = {
   saveData,
   getFiles,
   getFileContent,
   downloadFile,
   deleteFile,
-  getStats
+  getStats,
+  getRecentActivities
 };

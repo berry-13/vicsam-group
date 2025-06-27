@@ -121,9 +121,6 @@ export function LoginForm({
                 <Shield className="h-5 w-5 text-primary" />
                 <CardTitle className="text-xl">Login</CardTitle>
               </div>
-              <CardDescription className="text-muted-foreground">
-                Inserisci la password master per accedere al pannello di controllo
-              </CardDescription>
             </div>
             <div className="-mt-1">
               <ThemeToggle />

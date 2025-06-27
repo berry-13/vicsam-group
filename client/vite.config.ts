@@ -35,7 +35,8 @@ export default defineConfig({
       interval: 1000
     },
     proxy: {
-      '/api': 'http://localhost:3000'
+      '/api': 'http://localhost:3000',
+      '/health': 'http://localhost:3000'
     }
   }
 })

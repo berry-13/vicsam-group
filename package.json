@@ -15,10 +15,14 @@
     "test:ci": "jest --ci --coverage --watchAll=false --maxWorkers=2",
     "test:watch": "jest --watch",
     "lint": "eslint .",
-    "clean": "powershell -Command \"Remove-Item -Recurse -Force client/dist -ErrorAction SilentlyContinue\""
+    "clean": "powershell -Command \"Remove-Item -Recurse -Force client/dist -ErrorAction SilentlyContinue\"",
+    "config:validate": "node scripts/validate-download-config.js",
+    "downloads:info": "curl -s http://localhost:3000/downloads/info | json_pp",
+    "downloads:health": "curl -s http://localhost:3000/downloads/health | json_pp"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
+    "compression": "^1.8.0",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",

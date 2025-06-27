@@ -11,6 +11,7 @@ const { errorHandler, notFound, requestLogger } = require('./api/middleware/comm
 
 // Import routes
 const apiRoutes = require('./api/routes');
+const downloadRoutes = require('./api/routes/downloadRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -78,6 +79,9 @@ app.use('/api/auth', (req, res, next) => {
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Download routes (no authentication required for public downloads)
+app.use('/', downloadRoutes);
+
 // API routes
 app.use('/api', apiRoutes);
 
@@ -103,16 +107,70 @@ if (hasClientBuild) {
   console.log('⚠️  Client React build non trovato. API-only mode.');
 }
 
-// Health check endpoint
+// Health check endpoint with comprehensive system information
 app.get('/health', (req, res) => {
-  res.json({
+  const memoryUsage = process.memoryUsage();
+  const cpuUsage = process.cpuUsage();
+  const uptime = process.uptime();
+  const environment = process.env.NODE_ENV || 'development';
+  const isProduction = environment === 'production';
+  
+  // Calculate memory usage percentages (assuming 1GB as reference)
+  const totalMemoryMB = memoryUsage.heapTotal / 1024 / 1024;
+  const usedMemoryMB = memoryUsage.heapUsed / 1024 / 1024;
+  const memoryUsagePercent = (usedMemoryMB / totalMemoryMB) * 100;
+  
+  // Determine health status based on metrics
+  const isHealthy = memoryUsagePercent < 80 && uptime > 60; // At least 1 minute uptime
+
+  // Base response for all environments
+  const baseResponse = {
     success: true,
-    message: 'Server is running',
+    status: isHealthy ? 'healthy' : 'warning',
+    message: isHealthy ? 'Server is running optimally' : 'Server performance issues detected',
     timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
     version: '2.0.0',
-    clientBuild: hasClientBuild
-  });
+    clientBuild: hasClientBuild,
+    environment: environment
+  };
+
+  // In production, return minimal information
+  if (isProduction) {
+    res.json({
+      ...baseResponse,
+      system: {
+        uptime: Math.round(uptime),
+        // Only expose basic memory usage percentage, not detailed values
+        memory: {
+          status: memoryUsagePercent < 50 ? 'good' : memoryUsagePercent < 80 ? 'moderate' : 'high'
+        }
+      }
+    });
+  } else {
+    // In development/staging, return full system information
+    res.json({
+      ...baseResponse,
+      system: {
+        uptime: Math.round(uptime),
+        memory: {
+          used: Math.round(usedMemoryMB),
+          total: Math.round(totalMemoryMB),
+          percentage: Math.round(memoryUsagePercent),
+          external: Math.round(memoryUsage.external / 1024 / 1024),
+          rss: Math.round(memoryUsage.rss / 1024 / 1024)
+        },
+        cpu: {
+          user: cpuUsage.user,
+          system: cpuUsage.system
+        },
+        node: {
+          version: process.version,
+          platform: process.platform,
+          arch: process.arch
+        }
+      }
+    });
+  }
 });
 
 // SPA fallback: tutte le altre rotte servono index.html o messaggio di fallback
@@ -167,6 +225,14 @@ app.get('*', (req, res) => {
             <div class="endpoint">GET /api/auth/info - Informazioni API</div>
             <div class="endpoint">POST /api/data - Salva dati (richiede auth)</div>
             <div class="endpoint">GET /api/data - Ottieni dati (richiede auth)</div>
+          </div>
+
+          <h2>📥 Download Endpoints</h2>
+          <div class="api-list">
+            <div class="endpoint">GET /download - Scarica file dati principale</div>
+            <div class="endpoint">GET /app - Scarica informazioni applicazione</div>
+            <div class="endpoint">GET /downloads/info - Info sui download disponibili</div>
+            <div class="endpoint">GET /downloads/health - Health check servizio download</div>
           </div>
           
           <h2>🔧 Per sviluppatori</h2>

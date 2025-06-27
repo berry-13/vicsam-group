@@ -1,6 +1,7 @@
 import React from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { DiffusedLight } from './DiffusedLight';
 import { 
   Home, 
   FileText, 
@@ -81,15 +82,15 @@ const UserMenu: React.FC = () => {
 };
 
 const DesktopSidebar: React.FC = () => (
-  <div className="hidden border-r bg-muted/40 md:block">
+  <div className="hidden md:block glass-nav">
     <div className="flex h-full max-h-screen flex-col gap-2">
-      <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
-        <NavLink to="/" className="flex items-center gap-2 font-semibold">
-          <Shield className="h-6 w-6" />
-          <span className="">Vicsam Group</span>
+      <div className="flex h-14 items-center px-4 lg:h-[60px] lg:px-6">
+        <NavLink to="/" className="flex items-center gap-2 font-semibold text-foreground hover:text-primary transition-colors">
+          <img src="/logo.png" alt="Vicsam Group Logo" className="h-6 w-6" />
+          <span className="text-xl">Vicsam Group</span>
         </NavLink>
       </div>
-      <div className="flex-1">
+      <div className="flex-1 custom-scrollbar">
         <NavContent />
       </div>
     </div>
@@ -121,18 +122,37 @@ export const Layout: React.FC = () => {
   const pageTitle = navigation.find(item => item.href === location.pathname)?.name || 'Dashboard';
 
   return (
-    <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
+    <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr] relative overflow-hidden">
+      {/* Background diffused light for entire layout */}
+      <div className="absolute inset-0 pointer-events-none z-0">
+        <div 
+          className="absolute inset-0 diffused-light-enhanced"
+          style={{
+            background: `radial-gradient(
+              ellipse 300% 200% at 30% 40%,
+              hsl(var(--primary) / 0.01) 0%,
+              hsl(var(--primary) / 0.008) 20%,
+              hsl(var(--accent) / 0.006) 40%,
+              hsl(var(--secondary) / 0.004) 60%,
+              transparent 80%
+            )`
+          }}
+        />
+      </div>
+      
       <DesktopSidebar />
-      <div className="flex flex-col">
-        <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6">
+      <div className="flex flex-col relative z-10 min-h-0">
+        <header className="flex h-14 items-center gap-4 glass-header px-4 lg:h-[60px] lg:px-6 flex-shrink-0">
           <MobileSidebar />
-          <div className="w-full flex-1">
-            <h1 className="text-lg font-semibold md:text-xl">{pageTitle}</h1>
+          <div className="w-full flex-1 min-w-0">
+            <h1 className="text-lg font-semibold md:text-xl text-foreground truncate">{pageTitle}</h1>
           </div>
           <UserMenu />
         </header>
-        <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 overflow-auto">
-          <Outlet />
+        <main className="flex flex-1 flex-col relative min-h-0">
+          <DiffusedLight intensity={3}>
+            <Outlet />
+          </DiffusedLight>
         </main>
       </div>
     </div>

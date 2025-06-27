@@ -1,31 +1,34 @@
-import { useEffect, useState } from 'react';
-import { Moon, Sun } from 'lucide-react';
+import { Moon, Sun, Monitor } from 'lucide-react';
 import { Button } from './ui/button';
+import { useTheme } from '../hooks/useTheme';
 
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const { theme, toggleTheme } = useTheme();
 
-  useEffect(() => {
-    // Controlla se c'è un tema salvato in localStorage
-    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
-    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    
-    const initialTheme = savedTheme || systemTheme;
-    setTheme(initialTheme);
-    
-    // Applica il tema al documento
-    document.documentElement.classList.toggle('dark', initialTheme === 'dark');
-  }, []);
+  const getIcon = () => {
+    switch (theme) {
+      case 'light':
+        return <Sun className="h-4 w-4" />;
+      case 'dark':
+        return <Moon className="h-4 w-4" />;
+      case 'system':
+        return <Monitor className="h-4 w-4" />;
+      default:
+        return <Sun className="h-4 w-4" />;
+    }
+  };
 
-  const toggleTheme = () => {
-    const newTheme = theme === 'light' ? 'dark' : 'light';
-    setTheme(newTheme);
-    
-    // Salva il tema in localStorage
-    localStorage.setItem('theme', newTheme);
-    
-    // Applica il tema al documento
-    document.documentElement.classList.toggle('dark', newTheme === 'dark');
+  const getAriaLabel = () => {
+    switch (theme) {
+      case 'light':
+        return 'Cambia a tema scuro';
+      case 'dark':
+        return 'Cambia a tema sistema';
+      case 'system':
+        return 'Cambia a tema chiaro';
+      default:
+        return 'Cambia tema';
+    }
   };
 
   return (
@@ -33,13 +36,9 @@ export function ThemeToggle() {
       variant="outline"
       size="icon"
       onClick={toggleTheme}
-      aria-label={`Cambia a tema ${theme === 'light' ? 'scuro' : 'chiaro'}`}
+      aria-label={getAriaLabel()}
     >
-      {theme === 'light' ? (
-        <Moon className="h-4 w-4" />
-      ) : (
-        <Sun className="h-4 w-4" />
-      )}
+      {getIcon()}
     </Button>
   );
 }

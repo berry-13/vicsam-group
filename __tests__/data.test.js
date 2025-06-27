@@ -62,7 +62,7 @@ describe('Data API', () => {
         .expect(201);
 
       // I file di dati generali non vengono più creati automaticamente
-      const generalFile = path.join(__dirname, '..', 'dati_generali.json');
+      const generalFile = path.join(__dirname, '..', 'dati', 'dati_generali.json');
       // I file di dati generali non vengono più creati automaticamente
       // Il file generale potrebbe esistere da test precedenti, ma non viene aggiornato
     });
@@ -71,14 +71,18 @@ describe('Data API', () => {
   describe('GET /api/data/files', () => {
     test('should return empty list when no files exist', async () => {
       // Pulisci tutti i file prima di questo test specifico
-      const testDir = path.join(__dirname, '..');
-      const files = fs.readdirSync(testDir);
+      const testDir = path.join(__dirname, '..', 'dati');
       
-      files.forEach(file => {
-        if (file.startsWith('dati_') && file.endsWith('.json')) {
-          fs.unlinkSync(path.join(testDir, file));
-        }
-      });
+      // Verifica che la cartella dati esista
+      if (fs.existsSync(testDir)) {
+        const files = fs.readdirSync(testDir);
+        
+        files.forEach(file => {
+          if (file.startsWith('dati_') && file.endsWith('.json')) {
+            fs.unlinkSync(path.join(testDir, file));
+          }
+        });
+      }
       
       const response = await request(app)
         .get('/api/data/files')
@@ -231,7 +235,7 @@ describe('Data API', () => {
       expect(response.body.data).toHaveProperty('filename', savedFileName);
 
       // Verifica che il file sia stato effettivamente eliminato
-      const filePath = path.join(__dirname, '..', savedFileName);
+      const filePath = path.join(__dirname, '..', 'dati', savedFileName);
       expect(fs.existsSync(filePath)).toBe(false);
     });
 

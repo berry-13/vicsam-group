@@ -1,5 +1,5 @@
 import { useState, useCallback, useContext, createContext } from 'react';
-import type { ToastProps } from '../components/ui/toast';
+import type { ToastProps } from '@/components/ui/toast';
 
 interface ToastState extends ToastProps {
   id: string;

@@ -150,8 +150,7 @@ tmp/
 !README.md
 
 # Data files (questi non dovrebbero essere nell'immagine)
-dati_*.json
-dati_generali.json
+dati/
 
 # Logs
 logs

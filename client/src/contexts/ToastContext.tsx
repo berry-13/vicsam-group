@@ -1,6 +1,6 @@
 import React from 'react';
 import { useToast, ToastContext, type ToastContextType } from '../hooks/useToast';
-import { ToastContainer } from '../components/ToastContainer';
+import { ToastContainer } from '@/components/ToastContainer';
 
 interface ToastProviderProps {
   children: React.ReactNode;
