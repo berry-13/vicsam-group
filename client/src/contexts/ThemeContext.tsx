@@ -30,33 +30,78 @@ export function ThemeProvider({
   storageKey = 'vite-ui-theme',
   ...props
 }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(
-    () => (typeof window !== 'undefined' && (localStorage.getItem(storageKey) as Theme)) || defaultTheme
-  );
+  const [theme, setTheme] = useState<Theme>(() => {
+    // Safety check for browser environment
+    if (typeof window === 'undefined') {
+      return defaultTheme;
+    }
+    
+    try {
+      // Safely access localStorage with error handling
+      const storedTheme = localStorage.getItem(storageKey) as Theme;
+      return storedTheme || defaultTheme;
+    } catch (error) {
+      // Fallback to defaultTheme if localStorage access fails
+      console.warn('Failed to access localStorage for theme:', error);
+      return defaultTheme;
+    }
+  });
 
   useEffect(() => {
+    // Safety check for browser environment
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      return;
+    }
+
     const root = window.document.documentElement;
-    root.classList.remove('light', 'dark');
+    const currentClasses = root.classList;
     
+    // Determine the target theme
+    let targetTheme: string;
     if (theme === 'system') {
-      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-      root.classList.add(systemTheme);
-      console.log('Applied system theme:', systemTheme, 'Classes:', root.className);
+      targetTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     } else {
-      root.classList.add(theme);
-      console.log('Applied theme:', theme, 'Classes:', root.className);
+      targetTheme = theme;
+    }
+    
+    // Optimize by checking if the current class list already matches the intended theme
+    const hasTargetTheme = currentClasses.contains(targetTheme);
+    const hasOtherTheme = (targetTheme === 'dark' && currentClasses.contains('light')) || 
+                          (targetTheme === 'light' && currentClasses.contains('dark'));
+    
+    // Only modify classes if necessary
+    if (!hasTargetTheme || hasOtherTheme) {
+      currentClasses.remove('light', 'dark');
+      currentClasses.add(targetTheme);
+      console.log('Applied theme:', targetTheme, 'Classes:', root.className);
     }
   }, [theme]);
 
   useEffect(() => {
     // Listen for system theme changes when theme is set to 'system'
     if (theme === 'system') {
+      // Safety check for browser environment
+      if (typeof window === 'undefined' || typeof document === 'undefined') {
+        return;
+      }
+
       const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
       const handleChange = (e: MediaQueryListEvent) => {
         const root = window.document.documentElement;
-        root.classList.remove('light', 'dark');
-        root.classList.add(e.matches ? 'dark' : 'light');
-        console.log('System theme changed:', e.matches ? 'dark' : 'light');
+        const targetTheme = e.matches ? 'dark' : 'light';
+        const currentClasses = root.classList;
+        
+        // Optimize by checking if the current class list already matches the intended theme
+        const hasTargetTheme = currentClasses.contains(targetTheme);
+        const hasOtherTheme = (targetTheme === 'dark' && currentClasses.contains('light')) || 
+                              (targetTheme === 'light' && currentClasses.contains('dark'));
+        
+        // Only modify classes if necessary
+        if (!hasTargetTheme || hasOtherTheme) {
+          currentClasses.remove('light', 'dark');
+          currentClasses.add(targetTheme);
+          console.log('System theme changed:', targetTheme);
+        }
       };
 
       mediaQuery.addEventListener('change', handleChange);
