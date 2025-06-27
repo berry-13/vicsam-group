@@ -84,7 +84,7 @@ const UserMenu: React.FC = () => {
 const DesktopSidebar: React.FC = () => (
   <div className="hidden md:block glass-nav">
     <div className="flex h-full max-h-screen flex-col gap-2">
-      <div className="flex h-14 items-center border-b border-border/30 px-4 lg:h-[60px] lg:px-6">
+      <div className="flex h-14 items-center px-4 lg:h-[60px] lg:px-6">
         <NavLink to="/" className="flex items-center gap-2 font-semibold text-foreground hover:text-primary transition-colors">
           <img src="/logo.png" alt="Vicsam Group Logo" className="h-6 w-6" />
           <span className="text-xl">Vicsam Group</span>
@@ -122,7 +122,7 @@ export const Layout: React.FC = () => {
   const pageTitle = navigation.find(item => item.href === location.pathname)?.name || 'Dashboard';
 
   return (
-    <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr] relative">
+    <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr] relative overflow-hidden">
       {/* Background diffused light for entire layout */}
       <div className="absolute inset-0 pointer-events-none z-0">
         <div 
@@ -141,15 +141,15 @@ export const Layout: React.FC = () => {
       </div>
       
       <DesktopSidebar />
-      <div className="flex flex-col relative z-10">
-        <header className="flex h-14 items-center gap-4 glass-header px-4 lg:h-[60px] lg:px-6">
+      <div className="flex flex-col relative z-10 min-h-0">
+        <header className="flex h-14 items-center gap-4 glass-header px-4 lg:h-[60px] lg:px-6 flex-shrink-0">
           <MobileSidebar />
-          <div className="w-full flex-1">
-            <h1 className="text-lg font-semibold md:text-xl text-foreground">{pageTitle}</h1>
+          <div className="w-full flex-1 min-w-0">
+            <h1 className="text-lg font-semibold md:text-xl text-foreground truncate">{pageTitle}</h1>
           </div>
           <UserMenu />
         </header>
-        <main className="flex flex-1 flex-col relative overflow-auto custom-scrollbar">
+        <main className="flex flex-1 flex-col relative min-h-0">
           <DiffusedLight intensity={3}>
             <Outlet />
           </DiffusedLight>

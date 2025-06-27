@@ -981,23 +981,6 @@ export const FilesPage: React.FC = () => {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-12">
-              <Checkbox
-                checked={
-                  selectedRows.size === filteredAndSortedFiles.length &&
-                  filteredAndSortedFiles.length > 0
-                }
-                onCheckedChange={(checked: boolean) => {
-                  if (checked) {
-                    setSelectedRows(
-                      new Set(filteredAndSortedFiles.map((f) => f.name))
-                    );
-                  } else {
-                    setSelectedRows(new Set());
-                  }
-                }}
-              />
-            </TableHead>
             <SortableTableHead column="applicationVersion" className="w-20">
               App
             </SortableTableHead>
@@ -1287,16 +1270,16 @@ export const FilesPage: React.FC = () => {
     return (
       <PageContainer intensity={1}>
         <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center space-y-4">
-            <Spinner className="h-8 w-8 text-primary" />
-            <div className="space-y-2">
-              <h3 className="text-lg font-semibold">
-                Caricamento file in corso...
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                Stiamo analizzando i dati del sistema
-              </p>
-            </div>
+          <div className="flex flex-col items-center justify-center text-center space-y-4">
+        <div className="flex items-center gap-3">
+          <Spinner className="h-8 w-8 text-primary" />
+          <h3 className="text-lg font-semibold">
+            Caricamento file in corso...
+          </h3>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Stiamo analizzando i dati del sistema
+        </p>
           </div>
         </div>
       </PageContainer>

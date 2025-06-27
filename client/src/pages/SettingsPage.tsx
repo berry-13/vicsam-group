@@ -143,46 +143,6 @@ export const SettingsPage: React.FC = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  {tempSettings.soundEnabled ? (
-                    <Volume2 className="h-4 w-4" />
-                  ) : (
-                    <VolumeX className="h-4 w-4" />
-                  )}
-                  <Label>Suoni</Label>
-                </div>
-                <Switch
-                  checked={tempSettings.soundEnabled}
-                  onCheckedChange={(checked) =>
-                    setTempSettings((prev) => ({
-                      ...prev,
-                      soundEnabled: checked,
-                    }))
-                  }
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  {tempSettings.notifications ? (
-                    <Bell className="h-4 w-4" />
-                  ) : (
-                    <BellOff className="h-4 w-4" />
-                  )}
-                  <Label>Notifiche</Label>
-                </div>
-                <Switch
-                  checked={tempSettings.notifications}
-                  onCheckedChange={(checked) =>
-                    setTempSettings((prev) => ({
-                      ...prev,
-                      notifications: checked,
-                    }))
-                  }
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
                 <Label>Modalità debug</Label>
                 <Switch
                   checked={tempSettings.debug}

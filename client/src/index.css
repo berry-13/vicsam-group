@@ -2,7 +2,7 @@
 
 :root {
   --radius: 0.625rem;
-  
+
   /* Light theme colors in HSL format */
   --background: 0 0% 100%;
   --foreground: 224 71.4% 4.1%;
@@ -23,14 +23,14 @@
   --border: 220 13% 91%;
   --input: 220 13% 91%;
   --ring: 224 71.4% 4.1%;
-  
+
   /* Chart colors */
   --chart-1: 12 76% 61%;
   --chart-2: 173 58% 39%;
   --chart-3: 197 37% 24%;
   --chart-4: 43 74% 66%;
   --chart-5: 27 87% 67%;
-  
+
   /* Sidebar colors */
   --sidebar: 0 0% 98%;
   --sidebar-foreground: 224 71.4% 4.1%;
@@ -50,6 +50,8 @@
   --error-foreground: 0 0% 100%;
   --info: 204 94% 94%;
   --info-foreground: 213 94% 14%;
+
+  --nav-bg-color: hsl(var(--background) / 0.95);
 }
 
 .dark {
@@ -73,14 +75,14 @@
   --border: 215 27.9% 16.9%;
   --input: 215 27.9% 16.9%;
   --ring: 216 12.2% 83.9%;
-  
+
   /* Chart colors for dark theme */
   --chart-1: 220 70% 50%;
   --chart-2: 160 60% 45%;
   --chart-3: 30 80% 55%;
   --chart-4: 280 65% 60%;
   --chart-5: 340 75% 55%;
-  
+
   /* Sidebar colors for dark theme */
   --sidebar: 224 71.4% 4.1%;
   --sidebar-foreground: 210 20% 98%;
@@ -387,67 +389,68 @@
     transform: translateY(-1px);
   }
 
-  /* Enhanced liquid glass effect for navigation and sidebars */
   .glass-nav {
-    backdrop-filter: blur(16px) saturate(200%);
-    background: linear-gradient(
-      135deg,
-      hsl(var(--background) / 0.85) 0%,
-      hsl(var(--background) / 0.9) 50%,
-      hsl(var(--background) / 0.88) 100%
-    );
-    border-right: 1px solid hsl(var(--border) / 0.2);
+    background-color: hsl(var(--background) / 0.95);
+    backdrop-filter: blur(10px);
     position: relative;
+    z-index: 10;
   }
 
+  /* Replace the current ::before with this completely redesigned one */
   .glass-nav::before {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
-    right: 0;
+    right: -40px; /* Extend beyond the navbar */
     bottom: 0;
-    width: 1px;
+    width: 60px; /* Much wider transition */
     background: linear-gradient(
-      180deg,
-      transparent 0%,
-      hsl(var(--primary) / 0.1) 20%,
-      hsl(var(--accent) / 0.15) 50%,
-      hsl(var(--primary) / 0.1) 80%,
+      90deg,
+      hsl(var(--background) / 0.95) 0%,
+      hsl(var(--background) / 0.95) 20%,
+      hsl(var(--background) / 0.6) 50%,
+      hsl(var(--background) / 0.2) 85%,
       transparent 100%
     );
-    opacity: 0.6;
+    backdrop-filter: blur(10px);
+    -webkit-mask-image: linear-gradient(
+      90deg,
+      black 0%,
+      black 20%,
+      black 50%,
+      transparent 100%
+    );
+    pointer-events: none;
   }
 
   .glass-header {
     backdrop-filter: blur(20px) saturate(180%);
     background: linear-gradient(
       90deg,
-      hsl(var(--background) / 0.85) 0%,
-      hsl(var(--background) / 0.9) 30%,
-      hsl(var(--background) / 0.92) 70%,
-      hsl(var(--background) / 0.88) 100%
+      hsl(var(--background) / 0.95) 0%,
+      hsl(var(--background) / 0.98) 30%,
+      hsl(var(--background) / 0.99) 70%,
+      hsl(var(--background) / 0.96) 100%
     );
-    border-bottom: 1px solid hsl(var(--border) / 0.2);
     position: relative;
     z-index: 100;
   }
 
   .glass-header::after {
-    content: '';
+    content: "";
     position: absolute;
     bottom: 0;
     left: 0;
     right: 0;
-    height: 1px;
+    height: 20px;
     background: linear-gradient(
-      90deg,
-      transparent 0%,
-      hsl(var(--primary) / 0.1) 20%,
-      hsl(var(--accent) / 0.2) 50%,
-      hsl(var(--primary) / 0.1) 80%,
+      180deg,
+      hsl(var(--foreground) / 0.008) 0%,
+      hsl(var(--foreground) / 0.012) 40%,
       transparent 100%
     );
-    opacity: 0.8;
+    opacity: 0.4;
+    pointer-events: none;
   }
 
   /* Ensure the diffused light can show through properly */
@@ -460,21 +463,44 @@
   }
 }
 
-/* GPU-accelerated diffused light effect */
+/* GPU-accelerated diffused light effect - optimized */
 .diffused-light-container {
   /* Force GPU layer for better performance */
   transform: translate3d(0, 0, 0);
   backface-visibility: hidden;
-  perspective: 1000px;
+}
+
+.diffused-light-optimized {
+  /* Minimal GPU usage with very gentle animation */
+  transform: translate3d(0, 0, 0);
+  animation: gentle-float 60s ease-in-out infinite;
+}
+
+.diffused-light-static {
+  /* Completely static for maximum performance */
+  transform: translate3d(0, 0, 0);
 }
 
 .diffused-light-enhanced {
-  /* GPU acceleration for the light gradient */
+  /* Legacy - kept for compatibility but optimized */
   transform: translate3d(0, 0, 0);
-  will-change: transform;
-  animation: enhanced-float 20s ease-in-out infinite;
-  transition: transform 0.1s ease-out;
-  filter: blur(0.5px); /* Reduced blur for more visibility */
+  animation: gentle-float 45s ease-in-out infinite;
+}
+
+/* Gentle animations for better performance */
+@keyframes gentle-float {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  25% {
+    transform: translate3d(10px, -8px, 0);
+  }
+  50% {
+    transform: translate3d(-8px, 12px, 0);
+  }
+  75% {
+    transform: translate3d(12px, -6px, 0);
+  }
 }
 
 @keyframes enhanced-float {
@@ -504,21 +530,91 @@
   }
 }
 
-/* Performance optimizations */
-@media (prefers-reduced-motion: reduce) {
-  .diffused-light,
-  .diffused-light-enhanced {
-    animation: none;
+/* Optimized animations for better performance - minimal GPU usage */
+.animate-float-gentle {
+  animation: float-gentle 40s ease-in-out infinite;
+}
+
+.animate-float-gentle-reverse {
+  animation: float-gentle-reverse 45s ease-in-out infinite;
+}
+
+.animate-pulse-gentle {
+  animation: pulse-gentle 30s ease-in-out infinite;
+}
+
+.animate-drift-gentle {
+  animation: drift-gentle 50s ease-in-out infinite;
+}
+
+@keyframes float-gentle {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(15px, -10px, 0);
   }
 }
 
-/* Enhanced for high DPI displays */
-@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
-  .diffused-light {
-    filter: blur(0.5px);
+@keyframes float-gentle-reverse {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
   }
+  50% {
+    transform: translate3d(-12px, 8px, 0);
+  }
+}
+
+@keyframes pulse-gentle {
+  0%, 100% {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+}
+
+@keyframes drift-gentle {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  33% {
+    transform: translate3d(8px, -5px, 0);
+  }
+  66% {
+    transform: translate3d(-5px, 10px, 0);
+  }
+}
+
+/* Performance optimizations for all animations */
+@media (prefers-reduced-motion: reduce) {
+  .diffused-light-optimized,
+  .diffused-light-enhanced,
+  .animate-float-gentle,
+  .animate-float-gentle-reverse,
+  .animate-pulse-gentle,
+  .animate-drift-gentle {
+    animation: none !important;
+  }
+}
+
+/* For devices with limited GPU - further reduce animations */
+@media (max-width: 768px) and (max-device-width: 768px) {
+  .diffused-light-optimized,
   .diffused-light-enhanced {
-    filter: blur(0.8px); /* Reduced blur for high DPI too */
+    animation-duration: 120s; /* Much slower */
+  }
+  
+  .animate-float-gentle,
+  .animate-float-gentle-reverse {
+    animation-duration: 80s; /* Much slower */
+  }
+  
+  .animate-pulse-gentle,
+  .animate-drift-gentle {
+    animation-duration: 100s; /* Much slower */
   }
 }
 
@@ -535,20 +631,50 @@ body,
 }
 
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
+  height: 0px; /* Prevent horizontal scrollbar */
 }
 
 ::-webkit-scrollbar-track {
-  background: hsl(var(--muted));
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted-foreground) / 0.3);
-  border-radius: 3px;
+  background: hsl(var(--muted-foreground) / 0.2);
+  border-radius: 2px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground) / 0.5);
+  background: hsl(var(--muted-foreground) / 0.3);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Custom scrollbar for specific elements */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.2) transparent;
+  overflow-x: hidden; /* Prevent horizontal scrollbar */
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 0px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.15);
+  border-radius: 2px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.25);
 }
 
 .animate-spin {
@@ -584,7 +710,8 @@ body,
 
 /* Smooth decorative background animations */
 @keyframes float-slow {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0px) translateX(0px);
   }
   25% {
@@ -599,7 +726,8 @@ body,
 }
 
 @keyframes float-reverse {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0px) translateX(0px);
   }
   25% {
@@ -618,7 +746,8 @@ body,
     transform: translate(-50%, -50%) rotate(0deg) translateX(40px) rotate(0deg);
   }
   100% {
-    transform: translate(-50%, -50%) rotate(360deg) translateX(40px) rotate(-360deg);
+    transform: translate(-50%, -50%) rotate(360deg) translateX(40px)
+      rotate(-360deg);
   }
 }
 
@@ -627,12 +756,14 @@ body,
     transform: translate(-50%, -50%) rotate(0deg) translateX(35px) rotate(0deg);
   }
   100% {
-    transform: translate(-50%, -50%) rotate(-360deg) translateX(35px) rotate(360deg);
+    transform: translate(-50%, -50%) rotate(-360deg) translateX(35px)
+      rotate(360deg);
   }
 }
 
 @keyframes pulse-slow {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.3;
     transform: scale(1);
   }
@@ -643,7 +774,8 @@ body,
 }
 
 @keyframes bounce-slow {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0px);
   }
   50% {
@@ -652,7 +784,8 @@ body,
 }
 
 @keyframes wiggle {
-  0%, 100% {
+  0%,
+  100% {
     transform: rotate(0deg);
   }
   25% {
@@ -679,7 +812,8 @@ body,
 }
 
 @keyframes drift {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateX(0px) translateY(0px);
   }
   33% {

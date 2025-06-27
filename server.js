@@ -103,15 +103,47 @@ if (hasClientBuild) {
   console.log('⚠️  Client React build non trovato. API-only mode.');
 }
 
-// Health check endpoint
+// Health check endpoint with comprehensive system information
 app.get('/health', (req, res) => {
+  const memoryUsage = process.memoryUsage();
+  const cpuUsage = process.cpuUsage();
+  const uptime = process.uptime();
+  
+  // Calculate memory usage percentages (assuming 1GB as reference)
+  const totalMemoryMB = memoryUsage.heapTotal / 1024 / 1024;
+  const usedMemoryMB = memoryUsage.heapUsed / 1024 / 1024;
+  const memoryUsagePercent = (usedMemoryMB / totalMemoryMB) * 100;
+  
+  // Determine health status based on metrics
+  const isHealthy = memoryUsagePercent < 80 && uptime > 60; // At least 1 minute uptime
+  
   res.json({
     success: true,
-    message: 'Server is running',
+    status: isHealthy ? 'healthy' : 'warning',
+    message: isHealthy ? 'Server is running optimally' : 'Server performance issues detected',
     timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
+    system: {
+      uptime: Math.round(uptime),
+      memory: {
+        used: Math.round(usedMemoryMB),
+        total: Math.round(totalMemoryMB),
+        percentage: Math.round(memoryUsagePercent),
+        external: Math.round(memoryUsage.external / 1024 / 1024),
+        rss: Math.round(memoryUsage.rss / 1024 / 1024)
+      },
+      cpu: {
+        user: cpuUsage.user,
+        system: cpuUsage.system
+      },
+      node: {
+        version: process.version,
+        platform: process.platform,
+        arch: process.arch
+      }
+    },
     version: '2.0.0',
-    clientBuild: hasClientBuild
+    clientBuild: hasClientBuild,
+    environment: process.env.NODE_ENV || 'development'
   });
 });
 

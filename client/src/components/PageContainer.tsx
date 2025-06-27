@@ -1,5 +1,7 @@
 import React from 'react';
 import { AnimatedBackground } from './AnimatedBackground';
+import { DiffusedLight } from './DiffusedLight';
+import { usePerformanceOptimization } from '../hooks/usePerformanceOptimization';
 
 interface PageContainerProps {
   /**
@@ -22,6 +24,10 @@ interface PageContainerProps {
    * Se true, applica padding al contenuto principale
    */
   withPadding?: boolean;
+  /**
+   * Forza modalità performance (overrides auto-detection)
+   */
+  forcePerformanceMode?: boolean;
 }
 
 export const PageContainer: React.FC<PageContainerProps> = ({
@@ -30,22 +36,36 @@ export const PageContainer: React.FC<PageContainerProps> = ({
   withGradient = false,
   intensity = 2,
   withPadding = true,
+  forcePerformanceMode,
 }) => {
+  const performanceSettings = usePerformanceOptimization();
+  
+  // Use forced setting or auto-detected setting
+  const usePerformanceMode = forcePerformanceMode ?? performanceSettings.performanceMode;
+  const disableAnimations = performanceSettings.disableAnimations;
+  const adjustedIntensity = performanceSettings.reducedIntensity ? Math.min(intensity, 2) as 1 | 2 | 3 | 4 | 5 : intensity;
+
   return (
     <AnimatedBackground 
-      intensity={intensity}
+      intensity={adjustedIntensity}
+      performanceMode={usePerformanceMode}
       className={withGradient ? 'login-bg' : ''}
     >
-      {/* Contenuto principale con z-index per stare sopra gli elementi decorativi */}
-      <div 
-        className={`
-          relative z-10 min-h-screen
-          ${withPadding ? 'flex-1 space-y-4 p-4 md:p-8 pt-6' : ''}
-          ${className}
-        `}
+      <DiffusedLight 
+        intensity={adjustedIntensity} 
+        disableAnimation={disableAnimations}
       >
-        {children}
-      </div>
+        {/* Contenuto principale con z-index per stare sopra gli elementi decorativi */}
+        <div 
+          className={`
+            relative z-10 min-h-screen
+            ${withPadding ? 'flex-1 space-y-4 p-4 md:p-8 pt-6' : ''}
+            ${className}
+          `}
+        >
+          {children}
+        </div>
+      </DiffusedLight>
     </AnimatedBackground>
   );
 };

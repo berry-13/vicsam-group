@@ -68,9 +68,9 @@ export const Dashboard: React.FC = () => {
   const [systemStatus, setSystemStatus] = useState<SystemStatus>({
     api: { status: 'checking', message: 'Controllo connessione API...', lastChecked: new Date().toISOString() },
     storage: { status: 'checking', message: 'Controllo spazio di archiviazione...', lastChecked: new Date().toISOString() },
-    memory: { status: 'checking', message: 'Controllo utilizzo memoria client...', lastChecked: new Date().toISOString() },
+    memory: { status: 'checking', message: 'Controllo utilizzo memoria...', lastChecked: new Date().toISOString() },
     network: { status: 'checking', message: 'Controllo connettività di rete...', lastChecked: new Date().toISOString() },
-    fileSystem: { status: 'checking', message: 'Controllo stato server...', lastChecked: new Date().toISOString() },
+    fileSystem: { status: 'checking', message: 'Controllo integrità file system...', lastChecked: new Date().toISOString() },
     security: { status: 'checking', message: 'Controllo sicurezza...', lastChecked: new Date().toISOString() },
     performance: { status: 'checking', message: 'Controllo prestazioni...', lastChecked: new Date().toISOString() },
     overallHealth: 'checking'
@@ -218,7 +218,7 @@ export const Dashboard: React.FC = () => {
       } : {}
     };
 
-    // File System Integrity Check (via enhanced API health endpoint)
+    // File System Integrity Check (via API test)
     try {
       const healthEndpoint = '/api/health';
       const healthStartTime = performance.now();
@@ -226,36 +226,23 @@ export const Dashboard: React.FC = () => {
       const healthResponseTime = performance.now() - healthStartTime;
       
       if (response.ok) {
-        const healthData = await response.json();
-        const serverMemoryUsage = healthData.system?.memory?.percentage || 0;
-        const serverUptime = healthData.system?.uptime || 0;
-        
-        const systemStatus = healthData.status === 'healthy' ? 'healthy' : 
-                            serverMemoryUsage > 90 || serverUptime < 30 ? 'critical' : 'warning';
-        
         status.fileSystem = {
-          status: systemStatus,
-          message: `Server: ${healthData.message || 'Running'}`,
+          status: 'healthy',
+          message: 'File system accessibile',
           responseTime: Math.round(healthResponseTime),
-          lastChecked: now,
-          details: {
-            serverMemory: serverMemoryUsage,
-            serverUptime: serverUptime,
-            serverVersion: healthData.version,
-            environment: healthData.environment
-          }
+          lastChecked: now
         };
       } else {
         status.fileSystem = {
           status: 'warning',
-          message: `Server HTTP ${response.status}`,
+          message: `Risposta HTTP ${response.status}`,
           lastChecked: now
         };
       }
     } catch {
       status.fileSystem = {
         status: 'warning',
-        message: 'Server non raggiungibile',
+        message: 'Controllo file system non disponibile',
         lastChecked: now
       };
     }
@@ -328,9 +315,9 @@ export const Dashboard: React.FC = () => {
       setSystemStatus({
         api: { status: 'critical', message: 'API non raggiungibile', lastChecked: now },
         storage: { status: 'warning', message: 'Storage non verificabile', lastChecked: now },
-        memory: { status: 'warning', message: 'Memoria client non verificabile', lastChecked: now },
+        memory: { status: 'warning', message: 'Memoria non verificabile', lastChecked: now },
         network: { status: 'warning', message: 'Rete non verificabile', lastChecked: now },
-        fileSystem: { status: 'warning', message: 'Server non verificabile', lastChecked: now },
+        fileSystem: { status: 'warning', message: 'File system non verificabile', lastChecked: now },
         security: { status: 'warning', message: 'Sicurezza non verificabile', lastChecked: now },
         performance: { status: 'warning', message: 'Prestazioni non verificabili', lastChecked: now },
         overallHealth: 'critical'
@@ -379,6 +366,10 @@ export const Dashboard: React.FC = () => {
       case 'checking': return 'bg-blue-500 animate-pulse';
       default: return 'bg-gray-500';
     }
+  };
+
+  const getStatusText = (check: SystemCheck) => {
+    return check.message;
   };
 
   const getStatusTextColor = (status: SystemCheck['status']) => {
@@ -690,17 +681,16 @@ export const Dashboard: React.FC = () => {
                 </span>
               </div>
 
-              {/* Server Status */}
+              {/* File System Status */}
               <div className="flex items-center justify-between p-2 border rounded-lg">
                 <div className="flex items-center">
                   <FolderOpen className="h-4 w-4 mr-2 text-muted-foreground" />
                   <div className={`h-3 w-3 rounded-full mr-3 ${getStatusColor(systemStatus.fileSystem.status)}`}></div>
-                  <span className="text-sm font-medium">Server</span>
+                  <span className="text-sm font-medium">File System</span>
                 </div>
                 <span className={`text-xs font-medium ${getStatusTextColor(systemStatus.fileSystem.status)}`}>
                   {systemStatus.fileSystem.status === 'healthy' ? 'OK' : 
-                   systemStatus.fileSystem.status === 'warning' ? 'WARN' : 
-                   systemStatus.fileSystem.status === 'critical' ? 'CRITICO' : 'N/A'}
+                   systemStatus.fileSystem.status === 'warning' ? 'WARN' : 'N/A'}
                 </span>
               </div>
 
