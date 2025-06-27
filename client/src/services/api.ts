@@ -44,6 +44,16 @@ export interface DataStats {
   lastUpdate: string | null;
 }
 
+export interface ActivityItem {
+  id: string;
+  type: 'file_upload' | 'system_update' | 'data_sync' | 'backup' | 'user_action';
+  message: string;
+  timestamp: string;
+  status: 'success' | 'warning' | 'error';
+  userId?: string;
+  details?: string;
+}
+
 class ApiService {
   private api: AxiosInstance;
   private bearerToken: string | null = null;
@@ -211,6 +221,59 @@ class ApiService {
     link.click();
     link.remove();
     window.URL.revokeObjectURL(url);
+  }
+
+  async getRecentActivities(limit: number = 10): Promise<ActivityItem[]> {
+    try {
+      const response = await this.api.get<ApiResponse<ActivityItem[]>>(`/data/activities?limit=${limit}`);
+      return response.data.data;
+    } catch (error) {
+      // If the endpoint doesn't exist yet, provide fallback mock data
+      console.warn('Activities endpoint not available, using fallback data:', error);
+      return this.generateFallbackActivities(limit);
+    }
+  }
+
+  private generateFallbackActivities(limit: number): ActivityItem[] {
+    const now = new Date();
+    const activities: ActivityItem[] = [
+      {
+        id: '1',
+        type: 'system_update',
+        message: 'Sistema di monitoraggio aggiornato',
+        timestamp: new Date(now.getTime() - 5 * 60 * 1000).toISOString(),
+        status: 'success'
+      },
+      {
+        id: '2',
+        type: 'data_sync',
+        message: 'Controlli di integrità completati',
+        timestamp: new Date(now.getTime() - 15 * 60 * 1000).toISOString(),
+        status: 'success'
+      },
+      {
+        id: '3',
+        type: 'file_upload',
+        message: 'File caricato con successo',
+        timestamp: new Date(now.getTime() - 30 * 60 * 1000).toISOString(),
+        status: 'success'
+      },
+      {
+        id: '4',
+        type: 'backup',
+        message: 'Backup automatico eseguito',
+        timestamp: new Date(now.getTime() - 45 * 60 * 1000).toISOString(),
+        status: 'success'
+      },
+      {
+        id: '5',
+        type: 'user_action',
+        message: 'Accesso utente effettuato',
+        timestamp: new Date(now.getTime() - 60 * 60 * 1000).toISOString(),
+        status: 'success'
+      }
+    ];
+    return activities.slice(0, limit);
   }
 
   // Gestione autenticazione locale

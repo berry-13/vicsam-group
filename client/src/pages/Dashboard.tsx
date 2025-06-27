@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiService } from "../services/api";
-import type { DataStats } from "../services/api";
+import type { DataStats, ActivityItem } from "../services/api";
 import {
   BarChart3,
   FileText,
@@ -19,6 +19,7 @@ import {
   FolderOpen,
   Shield,
   Zap,
+  User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -52,14 +53,6 @@ interface SystemStatus {
   overallHealth: 'healthy' | 'warning' | 'critical' | 'checking';
 }
 
-interface ActivityItem {
-  id: string;
-  type: 'file_upload' | 'system_update' | 'data_sync' | 'backup';
-  message: string;
-  timestamp: string;
-  status: 'success' | 'warning' | 'error';
-}
-
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const [stats, setStats] = useState<DataStats | null>(null);
@@ -78,40 +71,16 @@ export const Dashboard: React.FC = () => {
   const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const generateRecentActivity = (): ActivityItem[] => {
-    const now = new Date();
-    const activities: ActivityItem[] = [
-      {
-        id: '1',
-        type: 'system_update',
-        message: 'Sistema di monitoraggio aggiornato',
-        timestamp: new Date(now.getTime() - 5 * 60 * 1000).toISOString(),
-        status: 'success'
-      },
-      {
-        id: '2',
-        type: 'data_sync',
-        message: 'Controlli di integrità completati',
-        timestamp: new Date(now.getTime() - 15 * 60 * 1000).toISOString(),
-        status: 'success'
-      },
-      {
-        id: '3',
-        type: 'file_upload',
-        message: 'File caricato con successo',
-        timestamp: new Date(now.getTime() - 30 * 60 * 1000).toISOString(),
-        status: 'success'
-      },
-      {
-        id: '4',
-        type: 'backup',
-        message: 'Backup automatico eseguito',
-        timestamp: new Date(now.getTime() - 45 * 60 * 1000).toISOString(),
-        status: 'success'
-      }
-    ];
-    return activities;
-  };
+  const fetchRecentActivity = useCallback(async (): Promise<void> => {
+    try {
+      const activities = await apiService.getRecentActivities(5);
+      setRecentActivity(activities);
+    } catch (error) {
+      console.error("Errore nel caricamento delle attività recenti:", error);
+      // In case of error, keep the current activity data or set empty array
+      setRecentActivity([]);
+    }
+  }, []);
 
   const checkSystemStatus = useCallback(async (): Promise<SystemStatus> => {
     const now = new Date().toISOString();
@@ -315,12 +284,12 @@ export const Dashboard: React.FC = () => {
       setError(null);
       const [statsData, systemStatusData] = await Promise.all([
         apiService.getStats(),
-        checkSystemStatus()
+        checkSystemStatus(),
+        fetchRecentActivity()
       ]);
       
       setStats(statsData);
       setSystemStatus(systemStatusData);
-      setRecentActivity(generateRecentActivity());
     } catch (error) {
       console.error("Errore nel caricamento dati dashboard:", error);
       setError("Errore nel caricamento dei dati. Riprova più tardi.");
@@ -339,7 +308,7 @@ export const Dashboard: React.FC = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [checkSystemStatus]);
+  }, [checkSystemStatus, fetchRecentActivity]);
 
   useEffect(() => {
     loadData();
@@ -397,6 +366,7 @@ export const Dashboard: React.FC = () => {
       case 'system_update': return Settings;
       case 'data_sync': return Database;
       case 'backup': return Activity;
+      case 'user_action': return User;
       default: return Activity;
     }
   };
