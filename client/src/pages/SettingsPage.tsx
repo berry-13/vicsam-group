@@ -51,11 +51,14 @@ export const SettingsPage: React.FC = () => {
   const [hasChanges, setHasChanges] = useState(false);
 
   React.useEffect(() => {
-    setHasChanges(JSON.stringify(tempSettings) !== JSON.stringify(settings));
+    // Only compare the properties that exist in both objects
+    const hasDebugChanges = tempSettings.debug !== settings.debug;
+    setHasChanges(hasDebugChanges);
   }, [tempSettings, settings]);
 
   const handleSave = () => {
-    updateSettings(tempSettings);
+    // Only update the properties that exist in the settings object
+    updateSettings({ debug: tempSettings.debug });
     setHasChanges(false);
     toast.success("Impostazioni salvate!");
   };
