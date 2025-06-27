@@ -128,15 +128,38 @@ export const Dashboard: React.FC = () => {
     // Storage Health Check
     try {
       const storageData = await apiService.getStats();
-      const usagePercentage = storageData.totalSize ? (storageData.totalSize / (1024 * 1024 * 1024)) * 100 : 0; // GB usage
+      
+      // Try to get storage limit from various sources
+      let storageLimit: number;
+      
+      try {
+        // First, try to get from API info (if available)
+        const apiInfo = await apiService.getApiInfo();
+        storageLimit = (apiInfo as unknown as { storageLimit?: number }).storageLimit || 0;
+      } catch {
+        storageLimit = 0;
+      }
+      
+      // Fallback to environment variables if not available from API
+      if (!storageLimit) {
+        storageLimit = 
+          parseFloat(process.env.REACT_APP_STORAGE_LIMIT_GB || '') * 1024 * 1024 * 1024 || // React env var in GB
+          parseFloat(process.env.VITE_STORAGE_LIMIT_GB || '') * 1024 * 1024 * 1024 || // Vite env var in GB
+          parseFloat(process.env.REACT_APP_STORAGE_LIMIT_BYTES || '') || // React env var in bytes
+          parseFloat(process.env.VITE_STORAGE_LIMIT_BYTES || '') || // Vite env var in bytes
+          10 * 1024 * 1024 * 1024; // Default: 10 GB in bytes
+      }
+      
+      const usagePercentage = storageData.totalSize ? (storageData.totalSize / storageLimit) * 100 : 0;
       
       status.storage = {
         status: usagePercentage < 70 ? 'healthy' : usagePercentage < 90 ? 'warning' : 'critical',
-        message: `Utilizzo: ${usagePercentage.toFixed(1)}% (${formatBytes(storageData.totalSize || 0)})`,
+        message: `Utilizzo: ${usagePercentage.toFixed(1)}% (${formatBytes(storageData.totalSize || 0)} / ${formatBytes(storageLimit)})`,
         lastChecked: now,
         details: {
           totalFiles: storageData.totalFiles || 0,
           totalSize: storageData.totalSize || 0,
+          storageLimit: storageLimit,
           usagePercentage: Math.round(usagePercentage)
         }
       };
