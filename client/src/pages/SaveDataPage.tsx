@@ -7,6 +7,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { PageContainer } from '@/components/PageContainer';
 import { Progress } from "@/components/ui/progress";
+import Spinner from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 
 export const SaveDataPage: React.FC = () => {
@@ -362,7 +363,7 @@ export const SaveDataPage: React.FC = () => {
             >
               {loading ? (
                 <>
-                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-r-transparent" />
+                  <Spinner size={16} className="mr-2" />
                   Caricamento in corso...
                 </>
               ) : (
