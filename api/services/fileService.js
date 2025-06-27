@@ -5,7 +5,7 @@ const { generateFileName } = require('../utils/helpers');
 
 class FileService {
   constructor() {
-    this.dataDir = path.join(__dirname, '../../');
+    this.dataDir = path.join(__dirname, '../../dati');
     this.generalFilePath = path.join(this.dataDir, 'dati_generali.json');
   }
 

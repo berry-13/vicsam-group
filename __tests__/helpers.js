@@ -42,7 +42,13 @@ const getAuthHeaders = () => ({
 
 // Helper per pulire i file di test
 const cleanupTestFiles = () => {
-  const testDir = path.join(__dirname, '..');
+  const testDir = path.join(__dirname, '..', 'dati');
+  
+  // Verifica che la cartella dati esista
+  if (!fs.existsSync(testDir)) {
+    return;
+  }
+  
   const files = fs.readdirSync(testDir);
   
   files.forEach(file => {
