@@ -17,7 +17,22 @@
     "version:simple": "node -e \"console.log(require('./api/utils/version').getSimpleVersion())\"",
     "test": "jest",
     "test:ci": "jest --ci --coverage --watchAll=false --maxWorkers=2",
+    "test:coverage": "jest --coverage",
     "test:watch": "jest --watch",
+    "test:auth": "jest --testPathPattern=auth",
+    "test:integration": "jest --testPathPattern=integration",
+    "test:unit": "jest --testPathIgnorePatterns=integration",
+    "db:migrate": "node database/migrate.js",
+    "db:seed": "node database/seed.js",
+    "db:reset": "node database/reset.js",
+    "db:migrate-passwords": "node scripts/migrate-passwords.js migrate",
+    "db:migrate-passwords-status": "node scripts/migrate-passwords.js status",
+    "db:migrate-passwords-rollback": "node scripts/migrate-passwords.js rollback",
+    "security:scan": "node scripts/security-scan.js",
+    "performance:test": "node scripts/performance-test.js",
+    "performance:test-prod": "node scripts/performance-test.js https://your-production-url.com",
+    "system:test": "node scripts/test-system.js",
+    "system:verify": "npm run system:test && npm run security:scan",
     "lint": "eslint .",
     "clean": "powershell -Command \"Remove-Item -Recurse -Force client/dist -ErrorAction SilentlyContinue\"",
     "config:validate": "node scripts/validate-download-config.js",
@@ -25,15 +40,20 @@
     "downloads:health": "curl -s http://localhost:3000/downloads/health | json_pp"
   },
   "dependencies": {
+    "argon2": "^0.41.1",
     "bcryptjs": "^2.4.3",
     "compression": "^1.8.0",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^4.21.2",
     "express-rate-limit": "^7.5.1",
+    "express-validator": "^7.2.0",
     "helmet": "^7.2.0",
     "joi": "^17.13.3",
-    "jsonwebtoken": "^9.0.2"
+    "jsonwebtoken": "^9.0.2",
+    "mysql2": "^3.11.3",
+    "node-forge": "^1.3.1",
+    "uuid": "^10.0.0"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",
@@ -47,23 +67,43 @@
   },
   "jest": {
     "testEnvironment": "node",
+    "setupFilesAfterEnv": [
+      "<rootDir>/__tests__/setup.js"
+    ],
     "collectCoverageFrom": [
       "api/**/*.js",
+      "database/**/*.js",
+      "scripts/**/*.js",
       "!api/**/*.test.js",
-      "!**/node_modules/**"
+      "!**/node_modules/**",
+      "!coverage/**",
+      "!**/__tests__/**"
     ],
     "coverageDirectory": "coverage",
     "coverageReporters": [
       "text",
       "lcov",
-      "html"
+      "html",
+      "json-summary"
     ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 85,
+        "functions": 85,
+        "lines": 90,
+        "statements": 90
+      }
+    },
     "testMatch": [
       "**/__tests__/**/*.test.js",
       "**/?(*.)+(spec|test).js"
     ],
     "testPathIgnorePatterns": [
-      "/__tests__/helpers.js"
-    ]
+      "/__tests__/helpers.js",
+      "/__tests__/setup.js"
+    ],
+    "verbose": true,
+    "detectOpenHandles": true,
+    "forceExit": true
   }
 }

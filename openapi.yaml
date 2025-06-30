@@ -1,0 +1,815 @@
+openapi: 3.0.3
+info:
+  title: Vicsam Group Authentication API
+  description: |
+    Advanced authentication and authorization system for the Vicsam Group Platform.
+    
+    ## Features
+    - Email + Password authentication
+    - JWT tokens with RS256 signing
+    - Role-Based Access Control (RBAC)
+    - Refresh token rotation
+    - Session management
+    - Audit logging
+    - Password strength validation
+    - Account lockout protection
+    
+    ## Security
+    - Argon2id password hashing
+    - Web Crypto API for key generation
+    - Rate limiting
+    - CSRF protection
+    - Input validation and sanitization
+    
+  version: 2.0.0
+  contact:
+    name: Vicsam Group Development Team
+    email: dev@vicsamgroup.com
+  license:
+    name: Proprietary
+    
+servers:
+  - url: http://localhost:3000/api/auth
+    description: Development server
+  - url: https://api.vicsamgroup.com/auth
+    description: Production server
+
+paths:
+  /register:
+    post:
+      summary: Register a new user
+      description: Create a new user account with email and password
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRegistration'
+            examples:
+              basic:
+                summary: Basic user registration
+                value:
+                  email: "john.doe@example.com"
+                  password: "StrongP@ssw0rd123"
+                  firstName: "John"
+                  lastName: "Doe"
+              withRole:
+                summary: Registration with specific role
+                value:
+                  email: "admin@example.com"
+                  password: "AdminP@ssw0rd123"
+                  firstName: "Admin"
+                  lastName: "User"
+                  role: "admin"
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistrationResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                weakPassword:
+                  summary: Weak password error
+                  value:
+                    success: false
+                    message: "Validation failed"
+                    data:
+                      error: "WEAK_PASSWORD"
+                      details: "Password must be at least 8 characters long"
+                missingFields:
+                  summary: Missing required fields
+                  value:
+                    success: false
+                    message: "Missing required fields"
+                    data:
+                      error: "MISSING_FIELDS"
+                      required: ["email", "password", "firstName", "lastName"]
+        '409':
+          description: Email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                message: "Email already registered"
+                data:
+                  error: "EMAIL_EXISTS"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /login:
+    post:
+      summary: User login
+      description: Authenticate user with email and password
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserLogin'
+            example:
+              email: "john.doe@example.com"
+              password: "StrongP@ssw0rd123"
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidCredentials:
+                  summary: Wrong email or password
+                  value:
+                    success: false
+                    message: "Invalid credentials"
+                    data:
+                      error: "INVALID_CREDENTIALS"
+        '423':
+          description: Account locked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                message: "Account temporarily locked"
+                data:
+                  error: "ACCOUNT_LOCKED"
+                  lockedUntil: "2024-01-15T10:30:00Z"
+
+  /refresh:
+    post:
+      summary: Refresh access token
+      description: Get a new access token using a refresh token
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+            example:
+              refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshTokenResponse'
+        '401':
+          description: Invalid or expired refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /logout:
+    post:
+      summary: User logout
+      description: Logout user and invalidate session
+      tags:
+        - Authentication
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogoutRequest'
+            example:
+              sessionId: "sess_1234567890abcdef"
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /me:
+    get:
+      summary: Get current user information
+      description: Get information about the currently authenticated user
+      tags:
+        - User Management
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: User information retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserInfoResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /change-password:
+    post:
+      summary: Change user password
+      description: Change the password for the currently authenticated user
+      tags:
+        - User Management
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordChangeRequest'
+            example:
+              currentPassword: "OldP@ssw0rd123"
+              newPassword: "NewStr0ng!P@ssw0rd"
+      responses:
+        '200':
+          description: Password changed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Validation error or incorrect current password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /users:
+    get:
+      summary: List users (Admin only)
+      description: Get a paginated list of all users in the system
+      tags:
+        - User Management
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          description: Page number (1-based)
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Number of users per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: search
+          in: query
+          description: Search term for filtering users
+          schema:
+            type: string
+        - name: role
+          in: query
+          description: Filter by role
+          schema:
+            type: string
+        - name: sortBy
+          in: query
+          description: Field to sort by
+          schema:
+            type: string
+            enum: [email, firstName, lastName, createdAt, lastLoginAt]
+            default: createdAt
+        - name: sortOrder
+          in: query
+          description: Sort order
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        '200':
+          description: Users retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsersListResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /assign-role:
+    post:
+      summary: Assign role to user (Admin only)
+      description: Assign a role to a specific user
+      tags:
+        - Role Management
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleAssignmentRequest'
+            example:
+              userId: 123
+              roleName: "editor"
+              expiresAt: "2024-12-31T23:59:59Z"
+      responses:
+        '200':
+          description: Role assigned successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User or role not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /roles:
+    get:
+      summary: List available roles (Admin only)
+      description: Get all available roles in the system
+      tags:
+        - Role Management
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Roles retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RolesListResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /info:
+    get:
+      summary: Get API information
+      description: Get information about the authentication API
+      tags:
+        - System
+      responses:
+        '200':
+          description: API information retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiInfoResponse'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token for API authentication
+
+  schemas:
+    UserRegistration:
+      type: object
+      required:
+        - email
+        - password
+        - firstName
+        - lastName
+      properties:
+        email:
+          type: string
+          format: email
+          description: User's email address
+          example: "john.doe@example.com"
+        password:
+          type: string
+          minLength: 8
+          description: User's password (must meet strength requirements)
+          example: "StrongP@ssw0rd123"
+        firstName:
+          type: string
+          minLength: 2
+          maxLength: 50
+          description: User's first name
+          example: "John"
+        lastName:
+          type: string
+          minLength: 2
+          maxLength: 50
+          description: User's last name
+          example: "Doe"
+        role:
+          type: string
+          enum: [user, editor, admin, super_admin]
+          default: user
+          description: User's initial role
+
+    UserLogin:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          description: User's email address
+          example: "john.doe@example.com"
+        password:
+          type: string
+          description: User's password
+          example: "StrongP@ssw0rd123"
+
+    RefreshTokenRequest:
+      type: object
+      required:
+        - refreshToken
+      properties:
+        refreshToken:
+          type: string
+          description: Refresh token to exchange for new access token
+
+    LogoutRequest:
+      type: object
+      required:
+        - sessionId
+      properties:
+        sessionId:
+          type: string
+          description: Session ID to logout
+
+    PasswordChangeRequest:
+      type: object
+      required:
+        - currentPassword
+        - newPassword
+      properties:
+        currentPassword:
+          type: string
+          description: Current password
+        newPassword:
+          type: string
+          minLength: 8
+          description: New password (must meet strength requirements)
+
+    RoleAssignmentRequest:
+      type: object
+      required:
+        - userId
+        - roleName
+      properties:
+        userId:
+          oneOf:
+            - type: integer
+            - type: string
+          description: User ID (numeric or UUID)
+        roleName:
+          type: string
+          enum: [user, editor, admin, super_admin]
+          description: Role to assign
+        expiresAt:
+          type: string
+          format: date-time
+          description: Optional expiration date for the role assignment
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          description: User UUID
+        email:
+          type: string
+          format: email
+        firstName:
+          type: string
+        lastName:
+          type: string
+        name:
+          type: string
+          description: Full name
+        isActive:
+          type: boolean
+        isVerified:
+          type: boolean
+        roles:
+          type: array
+          items:
+            type: string
+        permissions:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        lastLoginAt:
+          type: string
+          format: date-time
+
+    Role:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        displayName:
+          type: string
+        description:
+          type: string
+        permissions:
+          type: array
+          items:
+            type: string
+        isSystemRole:
+          type: boolean
+        userCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+
+    RegistrationResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "User registered successfully"
+        data:
+          type: object
+          properties:
+            user:
+              $ref: '#/components/schemas/User'
+
+    LoginResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Login successful"
+        data:
+          type: object
+          properties:
+            accessToken:
+              type: string
+              description: JWT access token
+            refreshToken:
+              type: string
+              description: Refresh token for getting new access tokens
+            sessionId:
+              type: string
+              description: Session identifier
+            expiresIn:
+              type: integer
+              description: Access token expiration time in seconds
+            tokenType:
+              type: string
+              example: "Bearer"
+            user:
+              $ref: '#/components/schemas/User'
+
+    RefreshTokenResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Token refreshed successfully"
+        data:
+          type: object
+          properties:
+            accessToken:
+              type: string
+              description: New JWT access token
+            expiresIn:
+              type: integer
+              description: Access token expiration time in seconds
+
+    UserInfoResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "User information retrieved successfully"
+        data:
+          type: object
+          properties:
+            user:
+              $ref: '#/components/schemas/User'
+            session:
+              type: object
+              properties:
+                jti:
+                  type: string
+                roles:
+                  type: array
+                  items:
+                    type: string
+                permissions:
+                  type: array
+                  items:
+                    type: string
+
+    UsersListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Users retrieved successfully"
+        data:
+          type: object
+          properties:
+            users:
+              type: array
+              items:
+                $ref: '#/components/schemas/User'
+            pagination:
+              type: object
+              properties:
+                page:
+                  type: integer
+                limit:
+                  type: integer
+                total:
+                  type: integer
+                pages:
+                  type: integer
+
+    RolesListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Roles retrieved successfully"
+        data:
+          type: object
+          properties:
+            roles:
+              type: array
+              items:
+                $ref: '#/components/schemas/Role'
+
+    ApiInfoResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "API information retrieved successfully"
+        data:
+          type: object
+          properties:
+            name:
+              type: string
+              example: "Vicsam Group Authentication API"
+            version:
+              type: string
+              example: "2.0.0"
+            features:
+              type: array
+              items:
+                type: string
+            endpoints:
+              type: object
+            security:
+              type: object
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+        data:
+          type: object
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            error:
+              type: string
+              description: Error code
+            details:
+              type: string
+              description: Error details
+            timestamp:
+              type: string
+              format: date-time
+
+tags:
+  - name: Authentication
+    description: User authentication operations
+  - name: User Management
+    description: User account management
+  - name: Role Management
+    description: Role and permission management
+  - name: System
+    description: System information and health checks

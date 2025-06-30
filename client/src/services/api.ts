@@ -276,6 +276,104 @@ class ApiService {
     return activities.slice(0, limit);
   }
 
+  // Nuovi metodi di autenticazione per l'API v2
+  async registerUser(data: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    role?: string;
+  }): Promise<any> {
+    const response: AxiosResponse<ApiResponse<any>> = await this.api.post('/v2/auth/register', data);
+    return response.data;
+  }
+
+  async loginUser(email: string, password: string): Promise<any> {
+    const response: AxiosResponse<ApiResponse<any>> = await this.api.post('/v2/auth/login', {
+      email,
+      password
+    });
+    
+    if (response.data.success) {
+      // Store the new auth format if needed
+      return response.data;
+    }
+    
+    throw new Error(response.data.message || 'Login failed');
+  }
+
+  async refreshToken(refreshToken: string): Promise<any> {
+    const response: AxiosResponse<ApiResponse<any>> = await this.api.post('/v2/auth/refresh', {
+      refreshToken
+    });
+    return response.data;
+  }
+
+  async logoutUser(): Promise<any> {
+    const response: AxiosResponse<ApiResponse<any>> = await this.api.post('/v2/auth/logout');
+    return response.data;
+  }
+
+  async getUserMe(): Promise<any> {
+    const response: AxiosResponse<ApiResponse<any>> = await this.api.get('/v2/auth/me');
+    return response.data;
+  }
+
+  async changeUserPassword(data: {
+    currentPassword: string;
+    newPassword: string;
+  }): Promise<any> {
+    const response: AxiosResponse<ApiResponse<any>> = await this.api.post('/v2/auth/change-password', data);
+    return response.data;
+  }
+
+  // Metodi di gestione utenti
+  async listUsers(params: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    role?: string;
+  } = {}): Promise<any> {
+    const searchParams = new URLSearchParams();
+    
+    if (params.page) searchParams.append('page', params.page.toString());
+    if (params.limit) searchParams.append('limit', params.limit.toString());
+    if (params.search) searchParams.append('search', params.search);
+    if (params.role) searchParams.append('role', params.role);
+
+    const response: AxiosResponse<ApiResponse<any>> = await this.api.get(`/v2/auth/users?${searchParams.toString()}`);
+    return response.data;
+  }
+
+  async assignUserRole(data: {
+    userId: string;
+    role: string;
+    expiresAt?: string;
+  }): Promise<any> {
+    const response: AxiosResponse<ApiResponse<any>> = await this.api.post('/v2/auth/assign-role', data);
+    return response.data;
+  }
+
+  async listRoles(): Promise<any> {
+    const response: AxiosResponse<ApiResponse<any>> = await this.api.get('/v2/auth/roles');
+    return response.data;
+  }
+
+  async getRoleDetails(roleName: string): Promise<any> {
+    const response: AxiosResponse<ApiResponse<any>> = await this.api.get(`/v2/auth/roles/${roleName}`);
+    return response.data;
+  }
+
+  async getAuthInfoV2(): Promise<any> {
+    const response: AxiosResponse<ApiResponse<any>> = await this.api.get('/v2/auth/info');
+    return response.data;
+  }
+
+  // Gestione token
+  setToken(token: string): void {
+    this.bearerToken = token;
+  }
+
   // Gestione autenticazione locale
   private saveAuthToStorage(authData: AuthResponse): void {
     localStorage.setItem('vicsam_auth', JSON.stringify(authData));

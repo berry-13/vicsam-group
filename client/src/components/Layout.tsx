@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../contexts/AuthContext';
 import { DiffusedLight } from './DiffusedLight';
 import { 
   Home, 
@@ -9,7 +9,8 @@ import {
   BarChart3, 
   LogOut, 
   Menu,
-  Shield
+  Shield,
+  Users
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,7 @@ const navigation = [
   { name: 'Gestione File', href: '/files', icon: FileText },
   { name: 'Salva Dati', href: '/save-data', icon: Database },
   { name: 'Statistiche', href: '/stats', icon: BarChart3 },
+  { name: 'Gestione Utenti', href: '/users', icon: Users },
 ];
 
 const NavContent: React.FC = () => {
