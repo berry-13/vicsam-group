@@ -7,19 +7,14 @@ const healthRoutes = require('./healthRoutes');
 
 const router = express.Router();
 
-// Rotte di autenticazione
 router.use('/auth', authRoutes);
 
-// Rotte per la gestione dei dati
 router.use('/data', dataRoutes);
 
-// Rotte per il download dei file
-router.use('/download', downloadRoutes);
+router.use('/', downloadRoutes);
 
-// Rotte per informazioni sulla versione
 router.use('/version', versionRoutes);
 
-// Rotte per health check
 router.use('/', healthRoutes);
 
 module.exports = router;

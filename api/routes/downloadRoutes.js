@@ -8,11 +8,11 @@ const router = express.Router();
 router.use(downloadRateLimit);
 
 /**
- * @route GET /download
+ * @route GET /get
  * @desc Download the main data file
  * @access Public
  */
-router.get('/download', downloadController.handleDownload.bind(downloadController));
+router.get('/get', downloadController.handleDownload.bind(downloadController));
 
 /**
  * @route GET /app

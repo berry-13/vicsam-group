@@ -103,7 +103,7 @@ function generateFallbackHTML() {
 
         <h2>📥 Endpoints di Download</h2>
         <div class="api-list">
-          <div class="endpoint">GET /download - Scarica file dati principale</div>
+          <div class="endpoint">GET /get - Scarica file dati principale</div>
           <div class="endpoint">GET /app - Scarica informazioni applicazione</div>
           <div class="endpoint">GET /downloads/info - Informazioni sui download disponibili</div>
           <div class="endpoint">GET /downloads/health - Controllo stato servizio download</div>
