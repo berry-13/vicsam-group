@@ -8,22 +8,21 @@ class FileService {
     this.dataDir = path.join(__dirname, '../../dati');
     this.generalFilePath = path.join(this.dataDir, 'dati_generali.json');
     
-    // Ensure the data directory exists
     this.ensureDataDirectoryExists();
   }
 
   /**
-   * Ensures that the data directory exists, creating it if necessary
+   * Assicura che la directory dei dati esista, creandola se necessario
    */
   ensureDataDirectoryExists() {
     try {
       if (!fsSync.existsSync(this.dataDir)) {
         fsSync.mkdirSync(this.dataDir, { recursive: true });
-        console.log(`✅ Created data directory: ${this.dataDir}`);
+        console.log(`✅ Directory dei dati creata: ${this.dataDir}`);
       }
     } catch (error) {
-      console.error(`❌ Failed to create data directory: ${this.dataDir}`, error);
-      throw new Error(`Unable to create data directory: ${error.message}`);
+      console.error(`❌ Impossibile creare la directory dei dati: ${this.dataDir}`, error);
+      throw new Error(`Impossibile creare la directory dei dati: ${error.message}`);
     }
   }
 
@@ -102,7 +101,7 @@ class FileService {
             size: stats.size,
             created: stats.birthtime,
             modified: stats.mtime,
-            type: file.endsWith('.json') ? 'application/json' : 'unknown'
+            type: file.endsWith('.json') ? 'application/json' : 'sconosciuto'
           };
         })
       );
