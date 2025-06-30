@@ -3,6 +3,7 @@ const authRoutes = require('./authRoutes');
 const dataRoutes = require('./dataRoutes');
 const downloadRoutes = require('./downloadRoutes');
 const versionRoutes = require('./versionRoutes');
+const healthRoutes = require('./healthRoutes');
 
 const router = express.Router();
 
@@ -17,5 +18,8 @@ router.use('/download', downloadRoutes);
 
 // Rotte per informazioni sulla versione
 router.use('/version', versionRoutes);
+
+// Rotte per health check
+router.use('/', healthRoutes);
 
 module.exports = router;
