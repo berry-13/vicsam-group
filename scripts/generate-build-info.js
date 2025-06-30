@@ -62,9 +62,26 @@ function generateBuildInfo() {
 
   // Write build info
   const buildInfoPath = path.join(__dirname, '../build-info.json');
-  fs.writeFileSync(buildInfoPath, JSON.stringify(buildInfo, null, 2));
+  
+  try {
+    fs.writeFileSync(buildInfoPath, JSON.stringify(buildInfo, null, 2));
+    console.log('✅ Build information generated:');
+  } catch (error) {
+    console.error('❌ Failed to write build-info.json:', error.message);
+    console.error('   Path:', buildInfoPath);
+    
+    // Provide specific guidance based on error type
+    if (error.code === 'EACCES') {
+      console.error('   💡 Solution: Check file permissions or run with appropriate privileges');
+    } else if (error.code === 'ENOSPC') {
+      console.error('   💡 Solution: Free up disk space and try again');
+    } else if (error.code === 'ENOENT') {
+      console.error('   💡 Solution: Ensure the target directory exists');
+    }
+    
+    throw error; // Re-throw to be caught by the outer try-catch
+  }
 
-  console.log('✅ Build information generated:');
   console.log(`   📦 Package: ${buildInfo.package?.name}@${buildInfo.package?.version}`);
   console.log(`   🏗️  Build: ${buildInfo.number || 'local'} (${buildInfo.ci ? 'CI' : 'local'})`);
   console.log(`   🌿 Branch: ${buildInfo.git?.branch || 'unknown'}`);

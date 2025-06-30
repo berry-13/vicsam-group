@@ -131,9 +131,8 @@ const UserManagementPage: React.FC = () => {
     }
   };
 
-  // Check if user has admin permissions - for now assume all authenticated users can see this
-  // TODO: Update when user roles are properly implemented in AuthContext
-  const isAdmin = true; // user?.roles?.includes('admin');
+  // Check if user has admin permissions
+  const isAdmin = hasRole('admin') || user?.roles?.includes('admin');
 
   if (!isAdmin) {
     return (
