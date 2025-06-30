@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Users, Shield, Search, Crown, AlertCircle } from 'lucide-react';
+import { Users, Shield, Search, Crown, AlertCircle, Loader2 } from 'lucide-react';
 import { authService } from '@/services/authService';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -58,6 +58,7 @@ const UserManagementPage: React.FC = () => {
   const [isAssignRoleDialogOpen, setIsAssignRoleDialogOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [selectedRole, setSelectedRole] = useState<string>('');
+  const [isAssigningRole, setIsAssigningRole] = useState(false);
 
   // Load data
   const loadData = useCallback(async () => {
@@ -99,6 +100,9 @@ const UserManagementPage: React.FC = () => {
       return;
     }
 
+    setIsAssigningRole(true);
+    setError(null); // Clear any previous errors
+    
     try {
       await authService.assignRole({
         userId: selectedUserId,
@@ -114,6 +118,8 @@ const UserManagementPage: React.FC = () => {
       const error = err as Error;
       setError(error.message || 'Failed to assign role');
       console.error('Error assigning role:', err);
+    } finally {
+      setIsAssigningRole(false);
     }
   };
 
@@ -208,11 +214,21 @@ const UserManagementPage: React.FC = () => {
               </div>
               
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsAssignRoleDialogOpen(false)}>
+                <Button variant="outline" onClick={() => setIsAssignRoleDialogOpen(false)} disabled={isAssigningRole}>
                   Cancel
                 </Button>
-                <Button onClick={handleAssignRole}>
-                  Assign Role
+                <Button onClick={handleAssignRole} disabled={isAssigningRole}>
+                  {isAssigningRole ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Assigning...
+                    </>
+                  ) : (
+                    <>
+                      <Crown className="mr-2 h-4 w-4" />
+                      Assign Role
+                    </>
+                  )}
                 </Button>
               </DialogFooter>
             </DialogContent>

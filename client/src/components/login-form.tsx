@@ -28,7 +28,6 @@ export function LoginForm({
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [role, setRole] = useState('user');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -130,7 +129,7 @@ export function LoginForm({
         await login(email, password);
         toast.success('Accesso effettuato', 'Benvenuto nel sistema!');
       } else {
-        await register(email, password, firstName, lastName, role);
+        await register(email, password, firstName, lastName);
         toast.success('Registrazione completata', 'Account creato con successo!');
       }
       setHasError(false);
@@ -158,7 +157,6 @@ export function LoginForm({
     setPassword('');
     setFirstName('');
     setLastName('');
-    setRole('user');
   };
 
   return (
@@ -241,26 +239,6 @@ export function LoginForm({
                       />
                     </div>
                   </div>
-                </div>
-              )}
-
-              {mode === 'register' && (
-                <div className="space-y-2">
-                  <Label htmlFor="role" className="text-sm font-medium">
-                    Ruolo
-                  </Label>
-                  <select
-                    id="role"
-                    value={role}
-                    onChange={(e) => setRole(e.target.value)}
-                    className="w-full px-3 py-2 pl-10 border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                    disabled={loading}
-                    required
-                  >
-                    <option value="user">Utente</option>
-                    <option value="manager">Manager</option>
-                    <option value="admin">Amministratore</option>
-                  </select>
                 </div>
               )}
 

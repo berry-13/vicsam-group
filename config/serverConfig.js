@@ -30,7 +30,22 @@ function getServerConfig() {
   const NODE_ENV = process.env.NODE_ENV || 'development';
   const isProduction = NODE_ENV === 'production';
   const isDevelopment = NODE_ENV === 'development';
-  const trustProxy = process.env.TRUST_PROXY === 'true';
+  
+  // Parse TRUST_PROXY to support both numeric and boolean values
+  let trustProxy = false;
+  if (process.env.TRUST_PROXY) {
+    const trustProxyValue = process.env.TRUST_PROXY.toLowerCase();
+    if (trustProxyValue === 'true') {
+      trustProxy = true;
+    } else if (trustProxyValue === 'false') {
+      trustProxy = false;
+    } else if (!isNaN(parseInt(trustProxyValue))) {
+      trustProxy = parseInt(trustProxyValue);
+    } else {
+      // For other string values like 'loopback', 'linklocal', 'uniquelocal'
+      trustProxy = process.env.TRUST_PROXY;
+    }
+  }
 
   return {
     PORT,
@@ -69,7 +84,7 @@ function getRateLimitConfig() {
       // Usa l'IP più specifico disponibile, fallback a req.ip
       const forwarded = req.get('X-Forwarded-For');
       const realIp = req.get('X-Real-IP');
-      const clientIp = realIp || (forwarded && forwarded.split(',')[0].trim()) || req.ip;
+      const clientIp = realIp || forwarded?.split(',')[0].trim() || req.ip;
       
       // In sviluppo, aggiungi logging per debug
       if (process.env.NODE_ENV === 'development') {

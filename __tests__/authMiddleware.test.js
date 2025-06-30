@@ -1,7 +1,7 @@
 const {
-  authenticateToken,
-  requireRole,
-  requirePermission,
+  authenticateJWT: authenticateToken,
+  requireRoles: requireRole,
+  requirePermissions: requirePermission,
   requireOwnership,
   optionalAuth
 } = require('../api/middleware/authMiddleware');

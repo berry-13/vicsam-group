@@ -3,6 +3,7 @@
 const { exec } = require('child_process');
 const { promisify } = require('util');
 const path = require('path');
+const db = require('./database/database').db;
 
 const execAsync = promisify(exec);
 
@@ -56,19 +57,44 @@ class AuthSystemTester {
     console.log('🗄️ [TEST] Testing database connection...');
     
     try {
-      await execAsync('node -e "require(\'./database/database\').db.testConnection().then(r => process.exit(r ? 0 : 1))"');
+      // Direct import and call to db.testConnection() instead of using execAsync with 'node -e'
+      const testConnection = async () => {
+        try {
+          const result = await db.testConnection();
+          if (result) {
+            console.log('✅ Database connection successful');
+            return true;
+          } else {
+            console.log('❌ Database connection failed');
+            return false;
+          }
+        } catch (error) {
+          console.log(`❌ Database connection failed: ${error.message}`);
+          return false;
+        }
+      };
+
+      const isConnected = await testConnection();
       
-      this.addResult({
-        name: 'Database Connection',
-        status: 'PASS',
-        message: 'Database connection successful'
-      });
+      if (isConnected) {
+        this.addResult({
+          name: 'Database Connection',
+          status: 'PASS',
+          message: 'Database connection successful'
+        });
+      } else {
+        this.addResult({
+          name: 'Database Connection',
+          status: 'FAIL',
+          message: 'Database connection failed'
+        });
+      }
       
     } catch (error) {
       this.addResult({
         name: 'Database Connection',
         status: 'FAIL',
-        message: 'Database connection failed'
+        message: `Database connection failed: ${error.message}`
       });
     }
   }
@@ -244,8 +270,6 @@ class AuthSystemTester {
     console.log('👥 [TEST] Testing role-based access control...');
     
     try {
-      const { db } = require('./database/database');
-      
       // Test che le tabelle RBAC esistano
       const tables = await db.query(`
         SELECT table_name 

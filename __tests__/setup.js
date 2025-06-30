@@ -45,8 +45,28 @@ jest.mock('crypto', () => ({
 jest.mock('argon2', () => ({
   hash: jest.fn(async (password) => `$argon2id$v=19$m=65536,t=3,p=1$mock-salt$mock-hash-${password}`),
   verify: jest.fn(async (hash, password) => {
-    // Simple mock verification - in real tests you'd want more sophisticated logic
-    return hash.includes(password) || password === 'correct-password';
+    // More accurate mock verification using hash-password mapping
+    // Extract the original password from the hash format
+    const hashMatch = hash.match(/mock-hash-(.+)$/);
+    if (hashMatch) {
+      return hashMatch[1] === password;
+    }
+    
+    // Fallback for specific test cases with known hash-password pairs
+    const knownValidPairs = {
+      '$argon2id$v=19$m=65536,t=3,p=1$test-salt$test-hash': 'correct-password',
+      '$argon2id$v=19$m=65536,t=3,p=1$salt$hash': 'test-password',
+      'legacy-hash-format': 'legacy-password',
+      '$argon2id$v=19$m=65536,t=3,p=1$salt$hashedPassword123': 'password123',
+      '$argon2id$v=19$m=65536,t=3,p=1$salt$hashedStrongP@ssw0rd123': 'StrongP@ssw0rd123'
+    };
+    
+    // Handle null/undefined hash or password
+    if (!hash || !password) {
+      return false;
+    }
+    
+    return knownValidPairs[hash] === password;
   }),
   argon2id: 0
 }));
@@ -56,7 +76,28 @@ jest.mock('bcryptjs', () => ({
   genSalt: jest.fn(async (rounds) => `mock-salt-rounds-${rounds}`),
   hash: jest.fn(async (password, salt) => `$2b$12$mock-bcrypt-hash-${password}`),
   compare: jest.fn(async (password, hash) => {
-    return hash.includes(password) || password === 'correct-password';
+    // More accurate mock verification using hash-password mapping
+    // Extract the original password from the hash format
+    const hashMatch = hash.match(/mock-bcrypt-hash-(.+)$/);
+    if (hashMatch) {
+      return hashMatch[1] === password;
+    }
+    
+    // Fallback for specific test cases with known hash-password pairs
+    const knownValidPairs = {
+      '$2b$12$mock-salt$mock-bcrypt-hash': 'correct-password',
+      '$2b$12$test-salt$test-hash': 'test-password',
+      'legacy-bcrypt-hash': 'legacy-password',
+      '$2b$12$salt$hashedPassword123': 'password123',
+      '$2b$12$salt$hashedStrongP@ssw0rd123': 'StrongP@ssw0rd123'
+    };
+    
+    // Handle null/undefined hash or password
+    if (!hash || !password) {
+      return false;
+    }
+    
+    return knownValidPairs[hash] === password;
   })
 }));
 
@@ -95,6 +136,50 @@ jest.mock('node-forge', () => ({
     }
   }
 }));
+
+// Enhanced database mock for better test reliability
+jest.mock('../database/database', () => {
+  const mockTransaction = {
+    query: jest.fn().mockResolvedValue({ rows: [], insertId: 1 }),
+    commit: jest.fn().mockResolvedValue(),
+    rollback: jest.fn().mockResolvedValue()
+  };
+
+  return {
+    query: jest.fn().mockResolvedValue({ rows: [] }),
+    beginTransaction: jest.fn().mockResolvedValue(mockTransaction),
+    testConnection: jest.fn().mockResolvedValue(true),
+    close: jest.fn().mockResolvedValue()
+  };
+});
+
+// Mock for authService to handle common test scenarios
+jest.mock('../api/services/authService', () => {
+  const AuthError = class extends Error {
+    constructor(message, code) {
+      super(message);
+      this.name = 'AuthError';
+      this.code = code;
+    }
+  };
+
+  const authService = {
+    registerUser: jest.fn(),
+    loginUser: jest.fn(),
+    verifyAccessToken: jest.fn(),
+    refreshAccessToken: jest.fn(),
+    logoutUser: jest.fn(),
+    changePassword: jest.fn(),
+    assignRoleToUser: jest.fn(),
+    listUsers: jest.fn(),
+    listRoles: jest.fn(),
+    findUserByEmail: jest.fn(),
+    getUserById: jest.fn(),
+    logAuditEvent: jest.fn()
+  };
+
+  return { authService, AuthError };
+});
 
 // Global test helpers
 global.testHelpers = {
