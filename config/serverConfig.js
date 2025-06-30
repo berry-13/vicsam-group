@@ -2,6 +2,26 @@
 // SERVER CONFIGURATION
 // ============================================================================
 
+const path = require('path');
+
+/**
+ * Configurazione dei percorsi del progetto
+ */
+function getPathConfig() {
+  // Risolve il percorso della root del progetto
+  const PROJECT_ROOT = process.env.PROJECT_ROOT || path.resolve(__dirname, '..');
+  const CLIENT_DIR = process.env.CLIENT_DIR || path.join(PROJECT_ROOT, 'client');
+  const CLIENT_DIST_DIR = process.env.CLIENT_DIST_DIR || path.join(CLIENT_DIR, 'dist');
+  const CLIENT_INDEX_PATH = path.join(CLIENT_DIST_DIR, 'index.html');
+
+  return {
+    PROJECT_ROOT,
+    CLIENT_DIR,
+    CLIENT_DIST_DIR,
+    CLIENT_INDEX_PATH
+  };
+}
+
 /**
  * Configurazione principale del server
  */
@@ -91,5 +111,6 @@ module.exports = {
   getServerConfig,
   getRateLimitConfig,
   getBodyParserOptions,
-  getStaticOptions
+  getStaticOptions,
+  getPathConfig
 };

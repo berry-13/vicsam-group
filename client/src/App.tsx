@@ -45,9 +45,16 @@ function App() {
                 <Route path="files" element={<FilesPage />} />
                 <Route path="save-data" element={<SaveDataPage />} />
                 <Route path="stats" element={<StatsPage />} />
-                <Route path="users" element={<UserManagementPage />} />
+                <Route 
+                  path="users" 
+                  element={
+                    <ProtectedRoute requiredRoles={['admin']} requiredPermissions={['user_management']}>
+                      <UserManagementPage />
+                    </ProtectedRoute>
+                  } 
+                />
                 <Route path="settings" element={<SettingsPage />} />
-                <Route path="user-management" element={<UserManagementPage />} />
+                <Route path="user-management" element={<Navigate to="/users" replace />} />
               </Route>
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

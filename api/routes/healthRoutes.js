@@ -3,8 +3,10 @@
 // ============================================================================
 
 const express = require('express');
+const fs = require('fs');
 const { getSimpleVersion } = require('../utils/version');
 const { getSystemMetrics } = require('../utils/serverUtils');
+const { getPathConfig } = require('../../config/serverConfig');
 
 const router = express.Router();
 
@@ -17,10 +19,8 @@ router.get('/health', (req, res) => {
   const isProduction = NODE_ENV === 'production';
   
   // Verifica se il client build esiste
-  const fs = require('fs');
-  const path = require('path');
-  const clientIndexPath = path.join(__dirname, '../../client/dist/index.html');
-  const clientBuildStatus = fs.existsSync(clientIndexPath);
+  const { CLIENT_INDEX_PATH } = getPathConfig();
+  const clientBuildStatus = fs.existsSync(CLIENT_INDEX_PATH);
   
   const baseResponse = {
     success: true,

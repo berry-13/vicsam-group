@@ -5,10 +5,18 @@ import Spinner from "@/components/ui/spinner";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
+  requiredRoles?: string[];
+  requiredPermissions?: string[];
+  requireAll?: boolean; // If true, user must have ALL roles/permissions, otherwise ANY
 }
 
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
+export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
+  children, 
+  requiredRoles = [],
+  requiredPermissions = [],
+  requireAll = false
+}) => {
+  const { isAuthenticated, loading, hasRole, hasPermission } = useAuth();
 
   if (loading) {
     return (
@@ -21,5 +29,31 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     );
   }
 
-  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // Check role requirements
+  if (requiredRoles.length > 0) {
+    const hasRequiredRoles = requireAll 
+      ? requiredRoles.every(role => hasRole(role))
+      : requiredRoles.some(role => hasRole(role));
+    
+    if (!hasRequiredRoles) {
+      return <Navigate to="/" replace />;
+    }
+  }
+
+  // Check permission requirements
+  if (requiredPermissions.length > 0) {
+    const hasRequiredPermissions = requireAll
+      ? requiredPermissions.every(permission => hasPermission(permission))
+      : requiredPermissions.some(permission => hasPermission(permission));
+    
+    if (!hasRequiredPermissions) {
+      return <Navigate to="/" replace />;
+    }
+  }
+
+  return <>{children}</>;
 };
