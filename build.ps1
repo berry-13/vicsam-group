@@ -3,12 +3,20 @@
 Write-Host "Building Vicsam Group..." -ForegroundColor Green
 
 try {
+    # Generate build info
+    Write-Host "Generating build information..." -ForegroundColor Yellow
+    npm run build:info
+    
     # Build client
     Set-Location client
     npm run build:fast
     Set-Location ..
     
     Write-Host "Build completed!" -ForegroundColor Green
+    
+    # Show version info
+    Write-Host "Version info:" -ForegroundColor Cyan
+    npm run version:info
     
     # Show build size
     if (Test-Path "client/dist") {

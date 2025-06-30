@@ -2,6 +2,7 @@ const express = require('express');
 const authRoutes = require('./authRoutes');
 const dataRoutes = require('./dataRoutes');
 const downloadRoutes = require('./downloadRoutes');
+const versionRoutes = require('./versionRoutes');
 
 const router = express.Router();
 
@@ -13,5 +14,8 @@ router.use('/data', dataRoutes);
 
 // Rotte per il download dei file
 router.use('/download', downloadRoutes);
+
+// Rotte per informazioni sulla versione
+router.use('/version', versionRoutes);
 
 module.exports = router;

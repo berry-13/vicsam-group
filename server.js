@@ -6,20 +6,38 @@ const helmet = require('helmet');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 
-// Import middleware
+const { getVersion, getSimpleVersion, getFullVersion } = require('./api/utils/version');
+
 const { errorHandler, notFound, requestLogger } = require('./api/middleware/common');
 
-// Import routes
 const apiRoutes = require('./api/routes');
 const downloadRoutes = require('./api/routes/downloadRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Verifica configurazione all'avvio
+// Trust proxy settings - Essential for rate limiting behind reverse proxies
+// This allows Express to trust X-Forwarded-For headers for client IP detection
+const trustProxy = process.env.TRUST_PROXY === 'true';
+app.set('trust proxy', trustProxy);
+
+// Debug middleware to log proxy headers (only in development)
+if (process.env.NODE_ENV === 'development') {
+  app.use((req, res, next) => {
+    if (req.headers['x-forwarded-for']) {
+      console.log('🔍 [PROXY DEBUG] X-Forwarded-For:', req.headers['x-forwarded-for']);
+      console.log('🔍 [PROXY DEBUG] req.ip:', req.ip);
+      console.log('🔍 [PROXY DEBUG] Trust proxy setting:', app.get('trust proxy'));
+    }
+    next();
+  });
+}
+
 console.log('\n🔧 ===== CONFIGURAZIONE SERVER =====');
+console.log('🔧 [CONFIG] Versione:', getFullVersion());
 console.log('🔧 [CONFIG] NODE_ENV:', process.env.NODE_ENV);
 console.log('🔧 [CONFIG] PORT:', PORT);
+console.log('🔧 [CONFIG] TRUST_PROXY:', trustProxy ? 'ABILITATO' : 'DISABILITATO');
 console.log('🔧 [CONFIG] JWT_SECRET:', process.env.JWT_SECRET ? 'CONFIGURATO' : '❌ MANCANTE');
 console.log('🔧 [CONFIG] JWT_EXPIRES_IN:', process.env.JWT_EXPIRES_IN);
 console.log('🔧 [CONFIG] API_PASSWORD:', process.env.API_PASSWORD ? 'CONFIGURATO' : '❌ MANCANTE');
@@ -54,26 +72,9 @@ const limiter = rateLimit({
 
 app.use('/api', limiter);
 
-// Request logging
 if (process.env.NODE_ENV !== 'production') {
   app.use(requestLogger);
 }
-
-// Debug middleware per l'autenticazione
-app.use('/api/auth', (req, res, next) => {
-  console.log('\n🚀 ===== RICHIESTA AUTENTICAZIONE =====');
-  console.log('🚀 [AUTH REQUEST] Timestamp:', new Date().toISOString());
-  console.log('🚀 [AUTH REQUEST] Method:', req.method);
-  console.log('🚀 [AUTH REQUEST] URL:', req.url);
-  console.log('🚀 [AUTH REQUEST] Full URL:', req.originalUrl);
-  console.log('🚀 [AUTH REQUEST] Headers:', JSON.stringify(req.headers, null, 2));
-  console.log('🚀 [AUTH REQUEST] Body:', JSON.stringify(req.body, null, 2));
-  console.log('🚀 [AUTH REQUEST] Query:', JSON.stringify(req.query, null, 2));
-  console.log('🚀 [AUTH REQUEST] IP:', req.ip);
-  console.log('🚀 [AUTH REQUEST] User Agent:', req.get('User-Agent'));
-  console.log('🚀 =====================================\n');
-  next();
-});
 
 // Body parsing
 app.use(express.json({ limit: '10mb' }));
@@ -82,10 +83,8 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Download routes (no authentication required for public downloads)
 app.use('/', downloadRoutes);
 
-// API routes
 app.use('/api', apiRoutes);
 
-// API 404 handler (solo per rotte che iniziano con /api)
 app.use('/api/*', (req, res) => {
   res.status(404).json({
     success: false,
@@ -100,7 +99,6 @@ const clientIndexPath = path.join(clientDistPath, 'index.html');
 const hasClientBuild = fs.existsSync(clientIndexPath);
 
 if (hasClientBuild) {
-  // Serve static files from React build
   app.use(express.static(clientDistPath));
   console.log('✅ Client React build trovato e servito');
 } else {
@@ -115,32 +113,28 @@ app.get('/health', (req, res) => {
   const environment = process.env.NODE_ENV || 'development';
   const isProduction = environment === 'production';
   
-  // Calculate memory usage percentages (assuming 1GB as reference)
   const totalMemoryMB = memoryUsage.heapTotal / 1024 / 1024;
   const usedMemoryMB = memoryUsage.heapUsed / 1024 / 1024;
   const memoryUsagePercent = (usedMemoryMB / totalMemoryMB) * 100;
   
-  // Determine health status based on metrics
-  const isHealthy = memoryUsagePercent < 80 && uptime > 60; // At least 1 minute uptime
+  // Determine health status based on metrics (at least 1 minute uptime and memory usage below 80%)
+  const isHealthy = memoryUsagePercent < 80 && uptime > 60;
 
-  // Base response for all environments
   const baseResponse = {
     success: true,
     status: isHealthy ? 'healthy' : 'warning',
     message: isHealthy ? 'Server is running optimally' : 'Server performance issues detected',
     timestamp: new Date().toISOString(),
-    version: '2.0.0',
+    version: getSimpleVersion(),
     clientBuild: hasClientBuild,
     environment: environment
   };
 
-  // In production, return minimal information
   if (isProduction) {
     res.json({
       ...baseResponse,
       system: {
         uptime: Math.round(uptime),
-        // Only expose basic memory usage percentage, not detailed values
         memory: {
           status: memoryUsagePercent < 50 ? 'good' : memoryUsagePercent < 80 ? 'moderate' : 'high'
         }
@@ -179,6 +173,7 @@ app.get('*', (req, res) => {
     res.sendFile(clientIndexPath);
   } else {
     // Fallback HTML quando il client non è disponibile
+    const versionInfo = getSimpleVersion();
     res.status(200).send(`
       <!DOCTYPE html>
       <html lang="it">
@@ -206,12 +201,14 @@ app.get('*', (req, res) => {
           .endpoint { font-family: monospace; background: #e2e8f0; padding: 0.25rem 0.5rem; border-radius: 4px; margin: 0.25rem 0; }
           .status { color: #059669; font-weight: bold; }
           .warning { color: #d97706; background: #fef3c7; padding: 1rem; border-radius: 4px; margin: 1rem 0; }
+          .version { color: #6b7280; font-size: 0.875rem; margin-top: 1rem; }
         </style>
       </head>
       <body>
         <div class="container">
           <h1>🚀 Vicsam Group API</h1>
           <p class="status">✅ Server attivo e funzionante</p>
+          <p class="version">📦 Versione: ${versionInfo}</p>
           
           <div class="warning">
             ⚠️ <strong>Client React non disponibile</strong><br>
@@ -221,6 +218,7 @@ app.get('*', (req, res) => {
           <h2>📡 API Endpoints Disponibili</h2>
           <div class="api-list">
             <div class="endpoint">GET /health - Health check</div>
+            <div class="endpoint">GET /api/version - Informazioni versione</div>
             <div class="endpoint">POST /api/auth/login - Autenticazione</div>
             <div class="endpoint">GET /api/auth/info - Informazioni API</div>
             <div class="endpoint">POST /api/data - Salva dati (richiede auth)</div>
@@ -240,6 +238,7 @@ app.get('*', (req, res) => {
           <pre style="background: #1e293b; color: #e2e8f0; padding: 1rem; border-radius: 4px; overflow-x: auto;">cd client && npm run build</pre>
           
           <p>Documentazione completa: <a href="/api/auth/info" target="_blank">API Info</a></p>
+          <p>Informazioni versione: <a href="/api/version" target="_blank">Version Info</a></p>
         </div>
       </body>
       </html>
@@ -263,5 +262,7 @@ const server = app.listen(PORT, () => {
   console.log(`🚀 Server avviato su http://localhost:${PORT}`);
   console.log(`📁 API disponibili su http://localhost:${PORT}/api`);
   console.log(`🔍 Documentazione API: http://localhost:${PORT}/api/auth/info`);
+  console.log(`📋 Informazioni versione: http://localhost:${PORT}/api/version`);
   console.log(`⚡ Ambiente: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`📦 Versione: ${getSimpleVersion()}`);
 });
