@@ -2,6 +2,33 @@ const rateLimit = require('express-rate-limit');
 const { errorResponse } = require('../utils/helpers');
 
 /**
+ * Configurazione sicura per keyGenerator in base al trust proxy
+ */
+function createSecureKeyGenerator() {
+  // Verifica se il trust proxy è abilitato
+  const trustProxy = process.env.TRUST_PROXY === 'true';
+  
+  if (trustProxy) {
+    return (req) => {
+      // Usa l'IP più specifico disponibile, fallback a req.ip
+      const forwarded = req.get('X-Forwarded-For');
+      const realIp = req.get('X-Real-IP');
+      const clientIp = realIp || (forwarded && forwarded.split(',')[0].trim()) || req.ip;
+      
+      // In sviluppo, aggiungi logging per debug
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 [LOGIN RATE LIMIT] Using IP for rate limiting:', clientIp);
+      }
+      
+      return clientIp;
+    };
+  }
+  
+  // Se trust proxy è disabilitato, usa il comportamento di default
+  return undefined;
+}
+
+/**
  * Rate limiter specifico per il login
  * Più restrittivo del rate limiter generale
  */
@@ -12,6 +39,9 @@ const loginRateLimit = rateLimit({
   skipFailedRequests: false, // conta le richieste fallite
   standardHeaders: true, // aggiunge info nei headers `RateLimit-*`
   legacyHeaders: false, // disabilita headers `X-RateLimit-*`
+  
+  // Configurazione sicura per trust proxy
+  keyGenerator: createSecureKeyGenerator(),
   
   // Messaggio personalizzato per il ban
   message: (req) => {

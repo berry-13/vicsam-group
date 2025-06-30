@@ -21,7 +21,16 @@ function setupMiddleware(app) {
   const bodyParserOptions = getBodyParserOptions();
 
   // Configurazione proxy per rate limiting dietro reverse proxy
-  app.set('trust proxy', trustProxy);
+  // Solo in produzione o quando esplicitamente richiesto
+  if (trustProxy) {
+    app.set('trust proxy', 1); // Trust first proxy only (più sicuro di true)
+    
+    if (isDevelopment) {
+      console.log('⚠️  [PROXY] Trust proxy enabled - ensure this is intended for your environment');
+    }
+  } else {
+    app.set('trust proxy', false);
+  }
 
   // Configurazione ETag per cache ottimizzata
   app.set('etag', 'weak');
