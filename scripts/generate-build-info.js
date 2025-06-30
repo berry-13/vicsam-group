@@ -1,7 +1,16 @@
 #!/usr/bin/env node
 /**
  * Build information generator
- * Creates build-info.json with build metadata
+ * Creates build-info.json with build metadata including git information
+ * 
+ * PERFORMANCE OPTIMIZATION:
+ * This script should be run at BUILD TIME to cache git information
+ * and avoid runtime git command execution that blocks the event loop.
+ * 
+ * Usage:
+ * - During build: node scripts/generate-build-info.js
+ * - CI/CD: Run this before starting the server
+ * - Manual: npm run build-info (if script added to package.json)
  */
 
 const fs = require('fs');

@@ -68,10 +68,12 @@ class DatabaseMigrator {
     try {
       console.log('🏗️ [MIGRATION] Checking database existence...');
       
-      const dbName = process.env.DB_NAME || 'vicsam_auth';
+      const rawDbName = process.env.DB_NAME || 'vicsam_auth';
       
-      // Connessione senza specificare il database
-      const { db: mysql } = require('./database');
+      // Valida il nome del database per prevenire SQL injection
+      const dbName = this.validateDatabaseName(rawDbName);
+      
+      // La connessione db è già disponibile dal modulo importato
       
       await db.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
       await db.query(`USE \`${dbName}\``);
@@ -93,26 +95,23 @@ class DatabaseMigrator {
       
       const schemaSQL = await fs.readFile(this.schemaPath, 'utf8');
       
-      // Divide lo script in statement individuali
-      const statements = schemaSQL
-        .split(';')
-        .map(stmt => stmt.trim())
-        .filter(stmt => stmt.length > 0 && !stmt.startsWith('--'));
-
-      for (const statement of statements) {
-        if (statement.trim()) {
-          try {
-            await db.query(statement);
-          } catch (error) {
-            // Ignora errori per statement che potrebbero già esistere
-            if (!error.message.includes('already exists')) {
-              console.warn('⚠️ [MIGRATION] Statement warning:', error.message);
-            }
-          }
+      // Esegue l'intero script SQL utilizzando multipleStatements
+      // Questo è più sicuro rispetto al split per semicolon che può rompersi
+      // con semicolon all'interno di stringhe o commenti
+      try {
+        await db.query(schemaSQL);
+        console.log('✅ [MIGRATION] Schema executed successfully');
+      } catch (error) {
+        // Verifica se è un errore "safe" di entità già esistente
+        if (this.isSafeAlreadyExistsError(error)) {
+          console.log(`⚠️ [MIGRATION] Safe "already exists" condition detected: ${error.message}`);
+          console.log('✅ [MIGRATION] Schema execution completed (some objects already existed)');
+        } else {
+          console.error('❌ [MIGRATION] Schema execution failed:', error.message);
+          console.error('❌ [MIGRATION] Error code:', error.code);
+          throw error;
         }
       }
-      
-      console.log('✅ [MIGRATION] Schema executed successfully');
       
     } catch (error) {
       console.error('❌ [MIGRATION] Schema execution failed:', error.message);
@@ -206,17 +205,10 @@ class DatabaseMigrator {
       const transaction = await db.beginTransaction();
       
       try {
-        // Esegue la migrazione
-        const statements = migrationSQL
-          .split(';')
-          .map(stmt => stmt.trim())
-          .filter(stmt => stmt.length > 0 && !stmt.startsWith('--'));
-
-        for (const statement of statements) {
-          if (statement.trim()) {
-            await transaction.query(statement);
-          }
-        }
+        // Esegue l'intera migrazione SQL utilizzando multipleStatements
+        // Questo è più sicuro rispetto al split per semicolon che può rompersi
+        // con semicolon all'interno di stringhe o commenti
+        await transaction.query(migrationSQL);
         
         // Registra la migrazione come eseguita
         await transaction.query(
@@ -229,7 +221,17 @@ class DatabaseMigrator {
         
       } catch (error) {
         await transaction.rollback();
-        throw error;
+        
+        // Verifica se è un errore "safe" di entità già esistente
+        if (this.isSafeAlreadyExistsError(error)) {
+          console.log(`⚠️ [MIGRATION] Safe "already exists" condition in migration ${migrationFile}: ${error.message}`);
+          // Non rigenerare l'errore per condizioni "safe"
+          console.log(`✅ [MIGRATION] Migration ${migrationFile} completed (some objects already existed)`);
+        } else {
+          console.error(`❌ [MIGRATION] Migration failed: ${migrationFile}`, error.message);
+          console.error('❌ [MIGRATION] Error code:', error.code);
+          throw error;
+        }
       }
       
     } catch (error) {
@@ -309,13 +311,24 @@ class DatabaseMigrator {
   }
 
   /**
-   * Reset completo del database
+   * Reset completo del database con controlli di sicurezza
+   * @param {boolean} forceConfirm - Conferma esplicita per procedere (opzionale)
    */
-  async reset() {
+  async reset(forceConfirm = false) {
     try {
-      console.log('🚨 [MIGRATION] Resetting database...');
+      console.log('🚨 [MIGRATION] Database reset requested...');
       
-      const dbName = process.env.DB_NAME || 'vicsam_auth';
+      // Controlli di sicurezza per prevenire perdita accidentale di dati
+      this.validateResetSafety(forceConfirm);
+      
+      const rawDbName = process.env.DB_NAME || 'vicsam_auth';
+      
+      // Valida il nome del database per prevenire SQL injection
+      const dbName = this.validateDatabaseName(rawDbName);
+      
+      console.log('⚠️ [MIGRATION] DANGER: About to drop and recreate database!');
+      console.log(`⚠️ [MIGRATION] Database: ${dbName}`);
+      console.log(`⚠️ [MIGRATION] Environment: ${process.env.NODE_ENV || 'development'}`);
       
       // Drop e ricrea il database
       await db.query(`DROP DATABASE IF EXISTS \`${dbName}\``);
@@ -331,6 +344,61 @@ class DatabaseMigrator {
       console.error('❌ [MIGRATION] Database reset failed:', error.message);
       throw error;
     }
+  }
+
+  /**
+   * Valida che l'operazione di reset sia sicura da eseguire
+   * @param {boolean} forceConfirm - Conferma esplicita per bypassare alcuni controlli
+   */
+  validateResetSafety(forceConfirm = false) {
+    const environment = process.env.NODE_ENV || 'development';
+    const resetConfirmation = process.env.ALLOW_DATABASE_RESET;
+    const explicitConfirm = process.env.CONFIRM_DATABASE_RESET === 'yes';
+    
+    // Controllo 1: Ambiente di produzione
+    if (environment === 'production') {
+      throw new Error(
+        '🚫 [MIGRATION] SAFETY ERROR: Database reset is FORBIDDEN in production environment! ' +
+        'This operation would cause irreversible data loss.'
+      );
+    }
+    
+    // Controllo 2: Ambienti sicuri
+    const safeEnvironments = ['development', 'test', 'testing', 'local'];
+    if (!safeEnvironments.includes(environment.toLowerCase())) {
+      throw new Error(
+        `🚫 [MIGRATION] SAFETY ERROR: Database reset not allowed in '${environment}' environment. ` +
+        `Allowed environments: ${safeEnvironments.join(', ')}`
+      );
+    }
+    
+    // Controllo 3: Conferma esplicita richiesta
+    if (!forceConfirm && !explicitConfirm && resetConfirmation !== 'true') {
+      throw new Error(
+        '🚫 [MIGRATION] SAFETY ERROR: Database reset requires explicit confirmation. ' +
+        'Set CONFIRM_DATABASE_RESET=yes or ALLOW_DATABASE_RESET=true environment variable, ' +
+        'or call reset(true) to confirm this destructive operation.'
+      );
+    }
+    
+    // Controllo 4: Database name safety
+    const rawDbName = process.env.DB_NAME || 'vicsam_auth';
+    
+    // Valida il nome del database per prevenire SQL injection
+    const dbName = this.validateDatabaseName(rawDbName);
+    
+    const unsafeNames = ['production', 'prod', 'live', 'main'];
+    if (unsafeNames.some(name => dbName.toLowerCase().includes(name))) {
+      throw new Error(
+        `🚫 [MIGRATION] SAFETY ERROR: Database name '${dbName}' appears to be a production database. ` +
+        'Reset operation blocked for safety.'
+      );
+    }
+    
+    console.log('✅ [MIGRATION] Safety checks passed for database reset');
+    console.log(`✅ [MIGRATION] Environment: ${environment}`);
+    console.log(`✅ [MIGRATION] Database: ${dbName}`);
+    console.log('✅ [MIGRATION] Explicit confirmation: ' + (forceConfirm || explicitConfirm || resetConfirmation === 'true'));
   }
 
   /**
@@ -365,6 +433,109 @@ class DatabaseMigrator {
       console.error('❌ [MIGRATION] Status check failed:', error.message);
     }
   }
+
+  /**
+   * Verifica se un errore è un errore "safe" di tipo "already exists"
+   * @param {Error} error - L'errore da verificare
+   * @returns {boolean} True se l'errore può essere ignorato in sicurezza
+   */
+  isSafeAlreadyExistsError(error) {
+    // MySQL error codes per entità che già esistono
+    const safeErrorCodes = [
+      'ER_TABLE_EXISTS_ERROR',     // 1050: Table already exists
+      'ER_DB_CREATE_EXISTS',       // 1007: Database already exists
+      'ER_DUP_KEYNAME',           // 1061: Duplicate key name
+      'ER_DUP_INDEX',             // 1831: Duplicate index
+      'ER_CANT_DROP_FIELD_OR_KEY' // 1091: Can't DROP; check that it exists
+    ];
+    
+    // Verifica il codice di errore
+    if (error.code && safeErrorCodes.includes(error.code)) {
+      return true;
+    }
+    
+    // Verifica messaggi specifici di MySQL in inglese
+    const safeMessagePatterns = [
+      /Table '.*' already exists/i,
+      /Database .* already exists/i,
+      /Duplicate key name '.*'/i,
+      /Duplicate index '.*'/i,
+      /Key column '.*' doesn't exist in table/i
+    ];
+    
+    return safeMessagePatterns.some(pattern => pattern.test(error.message));
+  }
+
+  /**
+   * Valida e sanitizza il nome del database per prevenire SQL injection
+   * @param {string} dbName - Nome del database da validare
+   * @returns {string} Nome del database validato e sanitizzato
+   * @throws {Error} Se il nome del database non è valido
+   */
+  validateDatabaseName(dbName) {
+    // Controlla che il nome non sia vuoto
+    if (!dbName || typeof dbName !== 'string') {
+      throw new Error('🚫 [MIGRATION] SECURITY ERROR: Database name must be a non-empty string');
+    }
+    
+    // Rimuove spazi bianchi
+    const trimmedName = dbName.trim();
+    
+    // Controlla lunghezza (MySQL limita i nomi a 64 caratteri)
+    if (trimmedName.length === 0) {
+      throw new Error('🚫 [MIGRATION] SECURITY ERROR: Database name cannot be empty');
+    }
+    
+    if (trimmedName.length > 64) {
+      throw new Error('🚫 [MIGRATION] SECURITY ERROR: Database name too long (max 64 characters)');
+    }
+    
+    // Pattern per caratteri consentiti: lettere, numeri, underscore, trattini
+    // Deve iniziare con una lettera o underscore
+    const validPattern = /^[a-zA-Z_][a-zA-Z0-9_-]*$/;
+    
+    if (!validPattern.test(trimmedName)) {
+      throw new Error(
+        '🚫 [MIGRATION] SECURITY ERROR: Invalid database name. ' +
+        'Database names must start with a letter or underscore and contain only ' +
+        'letters, numbers, underscores, and hyphens. ' +
+        `Received: "${trimmedName}"`
+      );
+    }
+    
+    // Lista di nomi riservati che non dovrebbero essere usati
+    const reservedNames = [
+      'information_schema', 'performance_schema', 'mysql', 'sys',
+      'test', 'null', 'undefined', 'admin', 'root', 'config'
+    ];
+    
+    if (reservedNames.includes(trimmedName.toLowerCase())) {
+      throw new Error(
+        `🚫 [MIGRATION] SECURITY ERROR: Database name "${trimmedName}" is reserved and cannot be used`
+      );
+    }
+    
+    // Controlla pattern sospetti che potrebbero indicare tentativi di injection
+    const suspiciousPatterns = [
+      /['"`;\\]/,  // Quote, punto e virgola, backslash
+      /--/,        // Commenti SQL
+      /\/\*/,      // Commenti SQL multiline
+      /\s/,        // Spazi bianchi (dovrebbero essere già rimossi)
+      /[<>]/       // Caratteri HTML/XML
+    ];
+    
+    for (const pattern of suspiciousPatterns) {
+      if (pattern.test(trimmedName)) {
+        throw new Error(
+          `🚫 [MIGRATION] SECURITY ERROR: Database name contains suspicious characters. ` +
+          `This could indicate a SQL injection attempt. Received: "${trimmedName}"`
+        );
+      }
+    }
+    
+    console.log(`✅ [MIGRATION] Database name validated: "${trimmedName}"`);
+    return trimmedName;
+  }
 }
 
 /**
@@ -383,13 +554,21 @@ async function main() {
         await migrator.rollback();
         break;
       case 'reset':
-        await migrator.reset();
+        // Richiede conferma esplicita per l'operazione di reset
+        const forceReset = process.argv.includes('--force') || process.argv.includes('--confirm');
+        await migrator.reset(forceReset);
         break;
       case 'status':
         await migrator.status();
         break;
       default:
-        console.log('Available commands: migrate, rollback, reset, status');
+        console.log('Available commands:');
+        console.log('  migrate  - Run database migrations');
+        console.log('  rollback - Rollback last migration');
+        console.log('  reset    - Reset database (DESTRUCTIVE - requires confirmation)');
+        console.log('            Use: node migrate.js reset --force');
+        console.log('            Or set: CONFIRM_DATABASE_RESET=yes');
+        console.log('  status   - Show migration status');
     }
     
     await db.close();

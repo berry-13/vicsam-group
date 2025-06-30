@@ -252,9 +252,8 @@ const me = async (req, res) => {
       );
     }
 
-    // Ottiene i dati aggiornati dell'utente
-    const userResult = await authService.findUserByEmail(req.user.email);
-    const userData = await authService.getUserById(userResult.id);
+    // Ottiene i dati completi dell'utente in una singola query ottimizzata
+    const userData = await authService.getUserByEmailComplete(req.user.email);
 
     res.json(
       successResponse(
@@ -309,7 +308,7 @@ const changePassword = async (req, res) => {
     }
 
     // Implementazione cambio password
-    await authService.changeUserPassword(req.user.id, currentPassword, newPassword);
+    await authService.changeUserPassword(req.user.sub, currentPassword, newPassword);
 
     console.log('✅ [AUTH CONTROLLER] Password changed successfully');
     

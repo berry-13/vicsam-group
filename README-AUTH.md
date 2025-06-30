@@ -297,6 +297,37 @@ REFRESH_TOKEN_EXPIRY=7d            # Scadenza refresh token
 JWT_EXPIRATION=1h                  # Scadenza JWT
 ```
 
+## 🔐 Configurazione Sicurezza Master Key
+
+### Variabili di Ambiente per Chiavi Private
+
+Per la produzione, è essenziale configurare le seguenti variabili di ambiente per la gestione sicura delle chiavi private:
+
+```bash
+# Master Key per crittografia chiavi private (OBBLIGATORIO in produzione)
+MASTER_KEY_PASSPHRASE="VostroMasterKeySecureComplesso2025!"
+
+# Salt per derivazione master key (OBBLIGATORIO in produzione)  
+MASTER_KEY_SALT="vostro-salt-personalizzato-sicuro-2025"
+```
+
+### Sicurezza delle Chiavi Private
+
+- **Crittografia AES-256-CBC**: Tutte le chiavi private sono crittografate prima dello storage
+- **Derivazione PBKDF2**: Master key derivata con 100,000 iterazioni SHA-256
+- **Storage Sicuro**: Solo versioni crittografate sono salvate nel database
+- **Gestione Chiavi**: In produzione usare sistemi come AWS KMS, Azure Key Vault, HashiCorp Vault
+
+### Raccomandazioni Produzione
+
+1. **NON usare** i valori di default per `MASTER_KEY_PASSPHRASE` e `MASTER_KEY_SALT`
+2. **Generare** passphrase e salt unici per ogni ambiente
+3. **Conservare** le chiavi master in un sistema di gestione chiavi dedicato
+4. **Ruotare** periodicamente le chiavi master (ogni 90-180 giorni)
+5. **Monitorare** l'accesso alle chiavi attraverso audit logs
+
+---
+
 ## 📊 Monitoring e Analytics
 
 ### Audit Logs

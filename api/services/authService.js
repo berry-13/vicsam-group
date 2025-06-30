@@ -809,10 +809,22 @@ class AuthService {
 
       if (keyResult.rows.length > 0) {
         const keyData = keyResult.rows[0];
+        
+        // Decrittografa la chiave privata se presente
+        let privateKey = null;
+        if (keyData.private_key_encrypted) {
+          try {
+            privateKey = cryptoService.decryptPrivateKey(keyData.private_key_encrypted);
+          } catch (error) {
+            console.error('❌ [AUTH] Failed to decrypt private key:', error.message);
+            throw new Error('Failed to decrypt private key');
+          }
+        }
+        
         return {
           keyId: keyData.key_id,
           publicKey: keyData.public_key,
-          privateKey: keyData.private_key_encrypted, // In produzione, decrittografare
+          privateKey: privateKey,
           algorithm: keyData.algorithm
         };
       } else {
@@ -820,11 +832,14 @@ class AuthService {
         console.log('🔑 [AUTH] Generating new JWT keys');
         const keys = await cryptoService.generateJWTKeyPair();
         
+        // Crittografa la chiave privata prima del salvataggio
+        const encryptedPrivateKey = cryptoService.encryptPrivateKey(keys.privateKey);
+        
         // Salva le chiavi nel database
         await db.query(`
           INSERT INTO crypto_keys (key_id, key_type, algorithm, public_key, private_key_encrypted)
           VALUES (?, 'jwt_signing', ?, ?, ?)
-        `, [keys.keyId, keys.algorithm, keys.publicKey, keys.privateKey]);
+        `, [keys.keyId, keys.algorithm, keys.publicKey, encryptedPrivateKey]);
 
         return keys;
       }
@@ -864,6 +879,48 @@ class AuthService {
     } catch (error) {
       await transaction.rollback();
       console.error('❌ [AUTH] Logout failed:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Ottiene un utente completo (con ruoli) per email in una singola query ottimizzata
+   * @param {string} email - Email dell'utente
+   * @returns {Promise<Object|null>} Utente completo senza dati sensibili o null
+   */
+  async getUserByEmailComplete(email) {
+    try {
+      const result = await db.query(`
+        SELECT 
+          u.id, 
+          u.uuid, 
+          u.email, 
+          u.first_name, 
+          u.last_name, 
+          u.is_active, 
+          u.is_verified, 
+          u.last_login_at, 
+          u.created_at
+        FROM users u 
+        WHERE u.email = ? AND u.is_active = TRUE
+      `, [email.toLowerCase()]);
+      
+      if (result.rows.length === 0) {
+        return null;
+      }
+
+      const user = result.rows[0];
+      const roles = await this.getUserRoles(user.id);
+      
+      return {
+        ...user,
+        roles: roles.map(r => ({
+          name: r.name,
+          displayName: r.display_name
+        }))
+      };
+    } catch (error) {
+      console.error('❌ [AUTH] Get user by email complete failed:', error.message);
       throw error;
     }
   }

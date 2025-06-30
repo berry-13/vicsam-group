@@ -7,9 +7,9 @@ const router = express.Router();
  * GET /api/version
  * Returns detailed version information
  */
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const versionInfo = getVersion();
+    const versionInfo = await getVersion();
     
     // Filter sensitive information in production
     const isProduction = process.env.NODE_ENV === 'production';
@@ -18,7 +18,7 @@ router.get('/', (req, res) => {
       // In production, return minimal version info
       res.json({
         success: true,
-        version: getSimpleVersion(),
+        version: await getSimpleVersion(),
         environment: versionInfo.environment,
         timestamp: versionInfo.timestamp
       });
@@ -43,11 +43,11 @@ router.get('/', (req, res) => {
  * GET /api/version/simple
  * Returns simple version string
  */
-router.get('/simple', (req, res) => {
+router.get('/simple', async (req, res) => {
   try {
     res.json({
       success: true,
-      version: getSimpleVersion(),
+      version: await getSimpleVersion(),
       timestamp: new Date().toISOString()
     });
   } catch (error) {
@@ -64,7 +64,7 @@ router.get('/simple', (req, res) => {
  * GET /api/version/full
  * Returns full version string (development only)
  */
-router.get('/full', (req, res) => {
+router.get('/full', async (req, res) => {
   if (process.env.NODE_ENV === 'production') {
     return res.status(403).json({
       success: false,
@@ -76,7 +76,7 @@ router.get('/full', (req, res) => {
   try {
     res.json({
       success: true,
-      version: getFullVersion(),
+      version: await getFullVersion(),
       timestamp: new Date().toISOString()
     });
   } catch (error) {

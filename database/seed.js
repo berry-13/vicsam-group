@@ -256,6 +256,7 @@ class DatabaseSeeder {
 
   /**
    * Assegna un singolo permesso a un ruolo
+   * Utilizza gestione degli errori robusta basata sui codici di errore MySQL
    */
   async assignPermissionToRole(roleId, permissionId) {
     try {
@@ -272,10 +273,12 @@ class DatabaseSeeder {
         );
       }
     } catch (error) {
-      // Ignora errori di duplicazione
-      if (!error.message.includes('Duplicate entry')) {
+      // Ignora errori di duplicazione utilizzando il codice di errore MySQL
+      // ER_DUP_ENTRY (1062) è il codice specifico per duplicate entry in MySQL
+      if (error.code !== 'ER_DUP_ENTRY' && error.errno !== 1062) {
         throw error;
       }
+      // Se è un errore di duplicazione, continua silenziosamente
     }
   }
 
@@ -356,6 +359,9 @@ class DatabaseSeeder {
         // Genera nuove chiavi JWT
         const jwtKeys = await cryptoService.generateJWTKeyPair();
         
+        // Crittografa la chiave privata prima dello storage
+        const encryptedPrivateKey = cryptoService.encryptPrivateKey(jwtKeys.privateKey);
+        
         await db.query(`
           INSERT INTO crypto_keys (key_id, key_type, algorithm, public_key, private_key_encrypted, is_active)
           VALUES (?, ?, ?, ?, ?, TRUE)
@@ -364,10 +370,10 @@ class DatabaseSeeder {
           'jwt_signing',
           jwtKeys.algorithm,
           jwtKeys.publicKey,
-          jwtKeys.privateKey // In produzione, dovrebbe essere crittografata
+          encryptedPrivateKey
         ]);
         
-        console.log(`  ✅ Generated JWT keys: ${jwtKeys.keyId}`);
+        console.log(`  ✅ Generated and encrypted JWT keys: ${jwtKeys.keyId}`);
       } else {
         console.log('  ⏭️ JWT keys already exist');
       }
@@ -381,6 +387,9 @@ class DatabaseSeeder {
       if (hmacKeyResult.rows.length === 0) {
         const hmacKey = cryptoService.generateHMACKey();
         
+        // Crittografa la chiave HMAC prima dello storage
+        const encryptedHmacKey = cryptoService.encryptPrivateKey(hmacKey.key);
+        
         await db.query(`
           INSERT INTO crypto_keys (key_id, key_type, algorithm, private_key_encrypted, is_active)
           VALUES (?, ?, ?, ?, TRUE)
@@ -388,10 +397,10 @@ class DatabaseSeeder {
           hmacKey.keyId,
           'hmac',
           hmacKey.algorithm,
-          hmacKey.key
+          encryptedHmacKey
         ]);
         
-        console.log(`  ✅ Generated HMAC key: ${hmacKey.keyId}`);
+        console.log(`  ✅ Generated and encrypted HMAC key: ${hmacKey.keyId}`);
       } else {
         console.log('  ⏭️ HMAC key already exists');
       }
@@ -466,9 +475,10 @@ class DatabaseSeeder {
       console.log(`  User-Role mappings: ${stats.userRoles.rows[0].count}`);
       console.log(`  Active crypto keys: ${stats.cryptoKeys.rows[0].count}`);
       
-      // Lista utenti
+      // Lista utenti con ruoli (database-agnostic)
+      const roleAggregationSQL = db.getStringAggregationSQL('r.name', ', ');
       const users = await db.query(`
-        SELECT u.email, GROUP_CONCAT(r.name) as roles
+        SELECT u.email, ${roleAggregationSQL} as roles
         FROM users u
         LEFT JOIN user_roles ur ON u.id = ur.user_id
         LEFT JOIN roles r ON ur.role_id = r.id

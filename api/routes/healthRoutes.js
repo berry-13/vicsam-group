@@ -13,7 +13,7 @@ const router = express.Router();
 /**
  * Health check endpoint con metriche di sistema
  */
-router.get('/health', (req, res) => {
+router.get('/health', async (req, res) => {
   const metrics = getSystemMetrics();
   const NODE_ENV = process.env.NODE_ENV || 'development';
   const isProduction = NODE_ENV === 'production';
@@ -27,7 +27,7 @@ router.get('/health', (req, res) => {
     status: metrics.isHealthy ? 'healthy' : 'warning',
     message: metrics.isHealthy ? 'Server funziona in modo ottimale' : 'Rilevati problemi di performance del server',
     timestamp: new Date().toISOString(),
-    version: getSimpleVersion(),
+    version: await getSimpleVersion(),
     clientBuild: clientBuildStatus,
     environment: NODE_ENV
   };

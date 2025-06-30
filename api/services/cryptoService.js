@@ -231,28 +231,24 @@ class CryptoService {
   // ============================================================================
 
   /**
-   * Crittografa dati con AES-GCM
+   * Crittografa dati con AES-256-CBC
    * @param {string} data - Dati da crittografare
    * @param {string} key - Chiave di crittografia (base64)
-   * @returns {Object} Dati crittografati con IV e tag
+   * @returns {Object} Dati crittografati con IV
    */
   encryptAES(data, key) {
     try {
       const keyBuffer = Buffer.from(key, 'base64');
       const iv = crypto.randomBytes(16);
-      const cipher = crypto.createCipher('aes-256-gcm', keyBuffer);
+      const cipher = crypto.createCipheriv('aes-256-cbc', keyBuffer, iv);
       
-      cipher.setAAD(Buffer.from('vicsam-auth'));
       let encrypted = cipher.update(data, 'utf8', 'hex');
       encrypted += cipher.final('hex');
-      
-      const tag = cipher.getAuthTag();
       
       return {
         encrypted,
         iv: iv.toString('hex'),
-        tag: tag.toString('hex'),
-        algorithm: 'AES-256-GCM'
+        algorithm: 'AES-256-CBC'
       };
     } catch (error) {
       console.error('❌ [CRYPTO] AES encryption failed:', error.message);
@@ -261,7 +257,7 @@ class CryptoService {
   }
 
   /**
-   * Decrittografa dati AES-GCM
+   * Decrittografa dati AES-CBC
    * @param {Object} encryptedData - Dati crittografati
    * @param {string} key - Chiave di decrittografia (base64)
    * @returns {string} Dati decrittografati
@@ -270,11 +266,7 @@ class CryptoService {
     try {
       const keyBuffer = Buffer.from(key, 'base64');
       const iv = Buffer.from(encryptedData.iv, 'hex');
-      const tag = Buffer.from(encryptedData.tag, 'hex');
-      
-      const decipher = crypto.createDecipher('aes-256-gcm', keyBuffer);
-      decipher.setAAD(Buffer.from('vicsam-auth'));
-      decipher.setAuthTag(tag);
+      const decipher = crypto.createDecipheriv('aes-256-cbc', keyBuffer, iv);
       
       let decrypted = decipher.update(encryptedData.encrypted, 'hex', 'utf8');
       decrypted += decipher.final('utf8');
@@ -283,6 +275,66 @@ class CryptoService {
     } catch (error) {
       console.error('❌ [CRYPTO] AES decryption failed:', error.message);
       throw new CryptoError('AES decryption failed', error);
+    }
+  }
+
+  // ============================================================================
+  // MASTER KEY MANAGEMENT
+  // ============================================================================
+
+  /**
+   * Ottiene o genera la chiave master per la crittografia delle chiavi private
+   * La chiave viene derivata da una passphrase sicura tramite PBKDF2
+   * @returns {string} Chiave master in formato base64
+   */
+  getMasterKey() {
+    // In produzione, questa dovrebbe venire da un sistema di gestione delle chiavi sicuro
+    // come AWS KMS, Azure Key Vault, HashiCorp Vault, etc.
+    const masterPassphrase = process.env.MASTER_KEY_PASSPHRASE || 'VicsAm2025!SecureMasterKey';
+    const salt = process.env.MASTER_KEY_SALT || 'vicsam-auth-master-salt-2025';
+    
+    try {
+      // Deriva una chiave di 32 byte (256 bit) usando PBKDF2
+      const masterKey = crypto.pbkdf2Sync(masterPassphrase, salt, 100000, 32, 'sha256');
+      return masterKey.toString('base64');
+    } catch (error) {
+      console.error('❌ [CRYPTO] Master key derivation failed:', error.message);
+      throw new CryptoError('Master key derivation failed', error);
+    }
+  }
+
+  /**
+   * Crittografa una chiave privata usando la chiave master
+   * @param {string} privateKey - Chiave privata da crittografare
+   * @returns {string} Chiave privata crittografata (JSON serializzato)
+   */
+  encryptPrivateKey(privateKey) {
+    try {
+      const masterKey = this.getMasterKey();
+      const encryptedData = this.encryptAES(privateKey, masterKey);
+      
+      // Restituisce i dati crittografati come JSON string per lo storage nel database
+      return JSON.stringify(encryptedData);
+    } catch (error) {
+      console.error('❌ [CRYPTO] Private key encryption failed:', error.message);
+      throw new CryptoError('Private key encryption failed', error);
+    }
+  }
+
+  /**
+   * Decrittografa una chiave privata usando la chiave master
+   * @param {string} encryptedPrivateKey - Chiave privata crittografata (JSON string)
+   * @returns {string} Chiave privata decrittografata
+   */
+  decryptPrivateKey(encryptedPrivateKey) {
+    try {
+      const masterKey = this.getMasterKey();
+      const encryptedData = JSON.parse(encryptedPrivateKey);
+      
+      return this.decryptAES(encryptedData, masterKey);
+    } catch (error) {
+      console.error('❌ [CRYPTO] Private key decryption failed:', error.message);
+      throw new CryptoError('Private key decryption failed', error);
     }
   }
 

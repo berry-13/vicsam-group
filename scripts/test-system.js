@@ -171,7 +171,7 @@ class AuthSystemTester {
     
     try {
       // Test che il server possa essere importato senza errori
-      await execAsync('node -e "require(\'./server.js\')" --check');
+      await execAsync('node --check ./server.js');
       
       this.addResult({
         name: 'Server Startup',

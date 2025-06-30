@@ -57,6 +57,7 @@ const authenticateJWT = async (req, res, next) => {
     // Aggiunge i dati dell'utente alla richiesta
     req.user = {
       id: decoded.sub,
+      sub: decoded.sub,
       email: decoded.email,
       name: decoded.name,
       roles: decoded.roles,

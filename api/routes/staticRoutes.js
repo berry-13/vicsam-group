@@ -25,7 +25,7 @@ function setupStaticRoutes(app) {
   }
 
   // Fallback per SPA e pagina di informazioni se client non disponibile
-  app.get('*', (req, res) => {
+  app.get('*', async (req, res) => {
     if (checkClientBuild()) {
       res.set({
         'Cache-Control': isProduction ? 'public, max-age=3600' : 'no-cache',
@@ -37,7 +37,7 @@ function setupStaticRoutes(app) {
         'Content-Type': 'text/html; charset=utf-8',
         'Cache-Control': 'no-cache'
       });
-      res.status(200).send(generateFallbackHTML());
+      res.status(200).send(await generateFallbackHTML());
     }
   });
 }

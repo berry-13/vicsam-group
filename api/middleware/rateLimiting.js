@@ -93,19 +93,6 @@ const loginRateLimit = rateLimit({
         }
       )
     );
-  },
-  
-  // Funzione per identificare univocamente gli utenti
-  keyGenerator: (req) => {
-    // Usa una combinazione di IP e User-Agent per una migliore identificazione
-    const ip = req.ip || req.connection.remoteAddress;
-    const userAgent = req.get('User-Agent') || 'unknown';
-    const key = `${ip}:${userAgent.substring(0, 50)}`;
-    
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`🔑 [LOGIN RATE LIMIT] Key generata per rate limiting: ${key}`);
-    }
-    return key;
   }
 });
 

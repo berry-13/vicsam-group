@@ -155,6 +155,77 @@ class DatabaseService {
   async close() {
     await this.pool.end();
   }
+
+  /**
+   * Costruisce una query per aggregazione di stringhe compatibile con diversi database
+   * @param {string} field - Campo da aggregare 
+   * @param {string} separator - Separatore per la concatenazione (default: ',')
+   * @returns {string} SQL per aggregazione di stringhe
+   */
+  getStringAggregationSQL(field, separator = ',') {
+    // Rileva il tipo di database dalla configurazione
+    const dbType = this.detectDatabaseType();
+    
+    switch (dbType) {
+      case 'mysql':
+      case 'mariadb':
+        return `GROUP_CONCAT(${field} SEPARATOR '${separator}')`;
+        
+      case 'postgresql':
+      case 'postgres':
+        return `STRING_AGG(${field}::text, '${separator}')`;
+        
+      case 'sqlite':
+        return `GROUP_CONCAT(${field}, '${separator}')`;
+        
+      case 'sqlserver':
+      case 'mssql':
+        return `STRING_AGG(${field}, '${separator}')`;
+        
+      default:
+        // Fallback per database non supportati: usa CASE WHEN o subquery semplice
+        console.warn(`⚠️ [DB] Unknown database type '${dbType}', using MySQL-compatible fallback`);
+        return `GROUP_CONCAT(${field} SEPARATOR '${separator}')`;
+    }
+  }
+
+  /**
+   * Rileva il tipo di database dalla configurazione
+   * @returns {string} Tipo di database
+   */
+  detectDatabaseType() {
+    // Prima priorità: variabile di ambiente esplicita
+    const explicitDbType = process.env.DB_TYPE || process.env.DATABASE_TYPE;
+    if (explicitDbType) {
+      return explicitDbType.toLowerCase();
+    }
+    
+    // Seconda priorità: rileva dal driver utilizzato
+    try {
+      if (require.resolve('mysql2')) {
+        return 'mysql';
+      }
+    } catch (e) {
+      // mysql2 non disponibile
+    }
+    
+    try {
+      if (require.resolve('pg')) {
+        return 'postgresql';
+      }
+    } catch (e) {
+      // pg non disponibile
+    }
+    
+    // Terza priorità: rileva dalla porta di default
+    const port = parseInt(process.env.DB_PORT || dbConfig.port);
+    switch (port) {
+      case 3306: return 'mysql';
+      case 5432: return 'postgresql'; 
+      case 1433: return 'sqlserver';
+      default: return 'mysql'; // Default fallback sicuro
+    }
+  }
 }
 
 /**

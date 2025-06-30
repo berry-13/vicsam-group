@@ -7,8 +7,8 @@ const { getSimpleVersion } = require('../utils/version');
 /**
  * Genera HTML di fallback quando il client React non è disponibile
  */
-function generateFallbackHTML() {
-  const versionInfo = getSimpleVersion();
+async function generateFallbackHTML() {
+  const versionInfo = await getSimpleVersion();
   
   return `
     <!DOCTYPE html>

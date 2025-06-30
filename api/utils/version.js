@@ -1,10 +1,22 @@
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { exec } = require('child_process');
+const { promisify } = require('util');
+
+const execAsync = promisify(exec);
 
 /**
  * Version utility that provides comprehensive versioning information
  * Supports multiple sources: package.json, git, environment variables
+ * 
+ * PERFORMANCE OPTIMIZATION:
+ * - Prioritizes build-time cached git information from build-info.json
+ * - Falls back to runtime git commands only when cache unavailable
+ * - Uses async git operations to avoid blocking the event loop
+ * - Caches results in memory to prevent repeated operations
+ * 
+ * For optimal performance, run `npm run build:info` during build process
+ * to generate build-info.json with pre-computed git information.
  */
 class VersionManager {
   constructor() {
@@ -16,16 +28,16 @@ class VersionManager {
 
   /**
    * Get the complete version information
-   * @returns {Object} Version object with all available information
+   * @returns {Promise<Object>} Version object with all available information
    */
-  getVersion() {
+  async getVersion() {
     if (this._versionCache) {
       return this._versionCache;
     }
 
     const version = {
       app: this._getAppVersion(),
-      git: this._getGitInfo(),
+      git: await this._getGitInfo(),
       build: this._getBuildInfo(),
       environment: process.env.NODE_ENV || 'development',
       node: process.version,
@@ -42,19 +54,19 @@ class VersionManager {
 
   /**
    * Get a simple version string for API responses
-   * @returns {string} Simple version string
+   * @returns {Promise<string>} Simple version string
    */
-  getSimpleVersion() {
-    const version = this.getVersion();
+  async getSimpleVersion() {
+    const version = await this.getVersion();
     return version.display;
   }
 
   /**
    * Get the full version string for logging
-   * @returns {string} Detailed version string
+   * @returns {Promise<string>} Detailed version string
    */
-  getFullVersion() {
-    const version = this.getVersion();
+  async getFullVersion() {
+    const version = await this.getVersion();
     return `${version.display} (${version.git.commit ? version.git.commit.slice(0, 8) : 'no-git'}) [${version.environment}]`;
   }
 
@@ -91,10 +103,10 @@ class VersionManager {
   }
 
   /**
-   * Get git information
+   * Get git information - prefers build-time cached data over runtime git commands
    * @private
    */
-  _getGitInfo() {
+  async _getGitInfo() {
     const gitInfo = {
       commit: null,
       branch: null,
@@ -105,55 +117,87 @@ class VersionManager {
       source: 'git'
     };
 
+    // First, try to get cached git info from build-info.json (performance optimized)
+    try {
+      if (fs.existsSync(this.buildInfoPath)) {
+        const buildData = JSON.parse(fs.readFileSync(this.buildInfoPath, 'utf8'));
+        if (buildData.git) {
+          gitInfo.commit = buildData.git.commit;
+          gitInfo.branch = buildData.git.branch;
+          gitInfo.tag = buildData.git.tag;
+          gitInfo.commitDate = buildData.git.commitDate;
+          gitInfo.commitMessage = buildData.git.commitMessage;
+          gitInfo.source = 'build-cache';
+          
+          // Only check dirty status at runtime (can't be cached)
+          try {
+            const statusResult = await execAsync('git status --porcelain', { 
+              encoding: 'utf8'
+            });
+            gitInfo.dirty = statusResult.stdout.trim().length > 0;
+          } catch {
+            // If git status fails, assume not dirty
+            gitInfo.dirty = false;
+          }
+          
+          return gitInfo;
+        }
+      }
+    } catch (error) {
+      console.warn('⚠️ [VERSION] Could not read cached git info from build-info.json:', error.message);
+    }
+
+    // Fallback: Get git info at runtime (only if build cache unavailable)
+    console.warn('⚠️ [VERSION] No cached git info found, falling back to runtime git commands (performance impact)');
+    
     try {
       // Get commit hash
-      gitInfo.commit = execSync('git rev-parse HEAD', { 
-        encoding: 'utf8', 
-        stdio: ['ignore', 'pipe', 'ignore'] 
-      }).trim();
+      const commitResult = await execAsync('git rev-parse HEAD', { 
+        encoding: 'utf8'
+      });
+      gitInfo.commit = commitResult.stdout.trim();
 
       // Get branch name
-      gitInfo.branch = execSync('git rev-parse --abbrev-ref HEAD', { 
-        encoding: 'utf8', 
-        stdio: ['ignore', 'pipe', 'ignore'] 
-      }).trim();
+      const branchResult = await execAsync('git rev-parse --abbrev-ref HEAD', { 
+        encoding: 'utf8'
+      });
+      gitInfo.branch = branchResult.stdout.trim();
 
       // Get latest tag (if any)
       try {
-        gitInfo.tag = execSync('git describe --tags --exact-match HEAD', { 
-          encoding: 'utf8', 
-          stdio: ['ignore', 'pipe', 'ignore'] 
-        }).trim();
+        const tagResult = await execAsync('git describe --tags --exact-match HEAD', { 
+          encoding: 'utf8'
+        });
+        gitInfo.tag = tagResult.stdout.trim();
       } catch {
         // No exact tag on HEAD, try to get the latest tag
         try {
-          gitInfo.tag = execSync('git describe --tags --abbrev=0', { 
-            encoding: 'utf8', 
-            stdio: ['ignore', 'pipe', 'ignore'] 
-          }).trim();
+          const latestTagResult = await execAsync('git describe --tags --abbrev=0', { 
+            encoding: 'utf8'
+          });
+          gitInfo.tag = latestTagResult.stdout.trim();
         } catch {
           gitInfo.tag = null;
         }
       }
 
       // Check if working directory is dirty
-      const status = execSync('git status --porcelain', { 
-        encoding: 'utf8', 
-        stdio: ['ignore', 'pipe', 'ignore'] 
-      }).trim();
-      gitInfo.dirty = status.length > 0;
+      const statusResult = await execAsync('git status --porcelain', { 
+        encoding: 'utf8'
+      });
+      gitInfo.dirty = statusResult.stdout.trim().length > 0;
 
-      // Get commit date
-      gitInfo.commitDate = execSync('git log -1 --format=%ci', { 
-        encoding: 'utf8', 
-        stdio: ['ignore', 'pipe', 'ignore'] 
-      }).trim();
+      // Get commit date (performance impact)
+      const commitDateResult = await execAsync('git log -1 --format=%ci', { 
+        encoding: 'utf8'
+      });
+      gitInfo.commitDate = commitDateResult.stdout.trim();
 
-      // Get commit message
-      gitInfo.commitMessage = execSync('git log -1 --format=%s', { 
-        encoding: 'utf8', 
-        stdio: ['ignore', 'pipe', 'ignore'] 
-      }).trim();
+      // Get commit message (performance impact)
+      const commitMessageResult = await execAsync('git log -1 --format=%s', { 
+        encoding: 'utf8'
+      });
+      gitInfo.commitMessage = commitMessageResult.stdout.trim();
 
     } catch (error) {
       console.warn('⚠️ [VERSION] Could not get git information:', error.message);
