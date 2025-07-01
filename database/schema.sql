@@ -3,26 +3,9 @@
 -- Sistema di autenticazione con gestione ruoli
 -- ============================================================================
 
--- Associazione permessi ai ruoli
--- Admin - tutti i permessi
-INSERT IGNORE INTO role_permissions (role_id, permission_id)
-SELECT r.id, p.id 
-FROM roles r, permissions p 
-WHERE r.name = 'admin';
-
--- Manager - permessi limitati
-INSERT IGNORE INTO role_permissions (role_id, permission_id)
-SELECT r.id, p.id 
-FROM roles r, permissions p 
-WHERE r.name = 'manager' 
-AND p.name IN ('users.read', 'users.update', 'data.create', 'data.read', 'data.update', 'roles.read');
-
--- User - permessi base
-INSERT IGNORE INTO role_permissions (role_id, permission_id)
-SELECT r.id, p.id 
-FROM roles r, permissions p 
-WHERE r.name = 'user' 
-AND p.name IN ('data.read', 'data.create');eSQL (opzionali, commentate per compatibilità MySQL/SQLite)
+-- ============================================================================
+-- ESTENSIONI POSTGRESQL (opzionali, commentate per compatibilità MySQL/SQLite)
+-- ============================================================================
 -- CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
@@ -276,24 +259,24 @@ INSERT IGNORE INTO roles (name, display_name, description, permissions, is_syste
 
 -- Associazione permessi ai ruoli
 -- Admin - tutti i permessi
-INSERT INTO role_permissions (role_id, permission_id)
+INSERT IGNORE INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id 
 FROM roles r, permissions p 
 WHERE r.name = 'admin';
 
 -- Manager - permessi limitati
-INSERT INTO role_permissions (role_id, permission_id)
+INSERT IGNORE INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id 
 FROM roles r, permissions p 
 WHERE r.name = 'manager' 
 AND p.name IN ('users.read', 'users.update', 'data.create', 'data.read', 'data.update', 'roles.read');
 
 -- User - permessi base
-INSERT INTO role_permissions (role_id, permission_id)
+INSERT IGNORE INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id 
 FROM roles r, permissions p 
 WHERE r.name = 'user' 
-AND p.name IN ('data.create', 'data.read');
+AND p.name IN ('data.read', 'data.create');
 
 -- ============================================================================
 -- VIEWS PER SEMPLIFICARE LE QUERY
