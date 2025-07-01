@@ -215,8 +215,6 @@ class AuthService {
         roles: userRoles.map(r => r.name),
         permissions: userPermissions.map(p => p.name),
         jti,
-        iat: Math.floor(Date.now() / 1000),
-        iss: 'vicsam-auth',
         aud: 'vicsam-platform'
       };
 
@@ -328,8 +326,6 @@ class AuthService {
         roles: userRoles.map(r => r.name),
         permissions: userPermissions.map(p => p.name),
         jti,
-        iat: Math.floor(Date.now() / 1000),
-        iss: 'vicsam-auth',
         aud: 'vicsam-platform'
       };
 

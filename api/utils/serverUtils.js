@@ -6,26 +6,44 @@ const fs = require('fs');
 const path = require('path');
 
 /**
- * Calcola metriche di sistema ottimizzate
+ * Calcola metriche di sistema ottimizzate con gestione errori
  */
 function getSystemMetrics() {
-  const memoryUsage = process.memoryUsage();
-  const cpuUsage = process.cpuUsage();
-  const uptime = process.uptime();
-  
-  const totalMemoryMB = memoryUsage.heapTotal / 1024 / 1024;
-  const usedMemoryMB = memoryUsage.heapUsed / 1024 / 1024;
-  const memoryUsagePercent = (usedMemoryMB / totalMemoryMB) * 100;
-  
-  return {
-    memoryUsage,
-    cpuUsage,
-    uptime,
-    totalMemoryMB,
-    usedMemoryMB,
-    memoryUsagePercent,
-    isHealthy: memoryUsagePercent < 80 && uptime > 60
-  };
+  try {
+    const memoryUsage = process.memoryUsage();
+    const cpuUsage = process.cpuUsage();
+    const uptime = process.uptime();
+    
+    const totalMemoryMB = memoryUsage.heapTotal / 1024 / 1024;
+    const usedMemoryMB = memoryUsage.heapUsed / 1024 / 1024;
+    const memoryUsagePercent = (usedMemoryMB / totalMemoryMB) * 100;
+    
+    return {
+      memoryUsage,
+      cpuUsage,
+      uptime,
+      totalMemoryMB,
+      usedMemoryMB,
+      memoryUsagePercent,
+      isHealthy: memoryUsagePercent < 80 && uptime > 60
+    };
+  } catch (error) {
+    console.warn('⚠️  Impossibile ottenere metriche di sistema complete:', error.message);
+    
+    // Ritorna metriche ridotte quando process.memoryUsage() fallisce
+    const uptime = process.uptime();
+    
+    return {
+      memoryUsage: null,
+      cpuUsage: null,
+      uptime,
+      totalMemoryMB: null,
+      usedMemoryMB: null,
+      memoryUsagePercent: null,
+      isHealthy: uptime > 60, // Solo controllo uptime
+      error: error.message
+    };
+  }
 }
 
 /**
