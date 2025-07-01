@@ -1032,6 +1032,50 @@ class AuthService {
     }
   }
 
+  /**
+   * Ottiene tutti i permessi di un utente attraverso i suoi ruoli
+   * @param {number} userId - ID dell'utente
+   * @returns {Promise<Array>} Lista dei permessi dell'utente
+   */
+  async getUserPermissions(userId) {
+    try {
+      console.log(`🔑 [AUTH] Getting permissions for user ${userId}`);
+      
+      const result = await db.query(`
+        SELECT DISTINCT
+          p.id,
+          p.name,
+          p.display_name,
+          p.description,
+          p.resource,
+          p.action
+        FROM user_roles ur
+        JOIN roles r ON ur.role_id = r.id
+        JOIN role_permissions rp ON r.id = rp.role_id
+        JOIN permissions p ON rp.permission_id = p.id
+        WHERE ur.user_id = ? 
+        AND (ur.expires_at IS NULL OR ur.expires_at > NOW())
+        ORDER BY p.resource ASC, p.action ASC
+      `, [userId]);
+      
+      const permissions = result.rows.map(row => ({
+        id: row.id,
+        name: row.name,
+        displayName: row.display_name,
+        description: row.description,
+        resource: row.resource,
+        action: row.action
+      }));
+      
+      console.log(`✅ [AUTH] Found ${permissions.length} permissions for user ${userId}`);
+      return permissions;
+      
+    } catch (error) {
+      console.error(`❌ [AUTH] Get user permissions failed:`, error.message);
+      throw error;
+    }
+  }
+
   // ============================================================================
 }
 
