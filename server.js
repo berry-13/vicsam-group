@@ -1,267 +1,235 @@
 require('dotenv').config();
 const express = require('express');
-const path = require('path');
-const fs = require('fs');
-const helmet = require('helmet');
-const cors = require('cors');
-const rateLimit = require('express-rate-limit');
 
-// Import middleware
-const { errorHandler, notFound, requestLogger } = require('./api/middleware/common');
+const { getServerConfig } = require('./config/serverConfig');
+const { setupMiddleware } = require('./config/middleware');
+const { logServerConfiguration, setupGracefulShutdown, logServerStartup } = require('./api/utils/serverUtils');
+const { setupStaticRoutes } = require('./api/routes/staticRoutes');
+const { tokenRotationManager } = require('./api/middleware/authMiddleware');
 
-// Import routes
+const { errorHandler, notFound } = require('./api/middleware/common');
+
+// ============================================================================
+// ROUTES IMPORT
+// ============================================================================
+
 const apiRoutes = require('./api/routes');
 const downloadRoutes = require('./api/routes/downloadRoutes');
+const healthRoutes = require('./api/routes/healthRoutes');
 
-const app = express();
-const PORT = process.env.PORT || 3000;
+// Nuove routes per autenticazione avanzata
+const authRoutesV2 = require('./api/routes/authRoutesV2');
 
-// Verifica configurazione all'avvio
-console.log('\n🔧 ===== CONFIGURAZIONE SERVER =====');
-console.log('🔧 [CONFIG] NODE_ENV:', process.env.NODE_ENV);
-console.log('🔧 [CONFIG] PORT:', PORT);
-console.log('🔧 [CONFIG] JWT_SECRET:', process.env.JWT_SECRET ? 'CONFIGURATO' : '❌ MANCANTE');
-console.log('🔧 [CONFIG] JWT_EXPIRES_IN:', process.env.JWT_EXPIRES_IN);
-console.log('🔧 [CONFIG] API_PASSWORD:', process.env.API_PASSWORD ? 'CONFIGURATO' : '❌ MANCANTE');
-console.log('🔧 [CONFIG] BEARER_TOKEN:', process.env.BEARER_TOKEN ? `CONFIGURATO (${process.env.BEARER_TOKEN.length} caratteri)` : '❌ MANCANTE');
-console.log('🔧 [CONFIG] API_KEY:', process.env.API_KEY ? `CONFIGURATO (${process.env.API_KEY.length} caratteri)` : '❌ MANCANTE (opzionale)');
-console.log('🔧 [CONFIG] RATE_LIMIT_WINDOW_MS:', process.env.RATE_LIMIT_WINDOW_MS);
-console.log('🔧 [CONFIG] RATE_LIMIT_MAX_REQUESTS:', process.env.RATE_LIMIT_MAX_REQUESTS);
-console.log('🔧 [CONFIG] CORS_ORIGIN:', process.env.CORS_ORIGIN);
-console.log('🔧 ===================================\n');
+// ============================================================================
+// DATABASE INITIALIZATION
+// ============================================================================
 
-// Security middleware
-app.use(helmet({
-  contentSecurityPolicy: false, // Disabilita CSP per consentire il serving di file statici
-}));
+const { db } = require('./database/database');
 
-// CORS configuration
-app.use(cors({
-  origin: process.env.NODE_ENV === 'production' ? false : true,
-  credentials: true
-}));
-
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minuti
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100, // limite di 100 richieste per finestra
-  message: {
-    success: false,
-    error: 'Troppe richieste, riprova più tardi',
-    timestamp: new Date().toISOString()
+/**
+ * Inizializza la connessione al database
+ */
+async function initializeDatabase() {
+  try {
+    console.log('🔌 [SERVER] Initializing database connection...');
+    
+    const isConnected = await db.testConnection();
+    if (!isConnected) {
+      throw new Error('Database connection failed');
+    }
+    
+    console.log('✅ [SERVER] Database connection established');
+    
+    // Mostra informazioni sul database
+    if (process.env.NODE_ENV === 'development') {
+      const dbInfo = await db.getDatabaseInfo();
+      console.log('📊 [SERVER] Database info:', {
+        version: dbInfo.version,
+        database: dbInfo.database,
+        tables: dbInfo.tables.length
+      });
+    }
+    
+  } catch (error) {
+    console.error('❌ [SERVER] Database initialization failed:', error.message);
+    
+    if (process.env.NODE_ENV === 'production') {
+      process.exit(1);
+    } else {
+      console.warn('⚠️ [SERVER] Continuing without database in development mode');
+    }
   }
-});
-
-app.use('/api', limiter);
-
-// Request logging
-if (process.env.NODE_ENV !== 'production') {
-  app.use(requestLogger);
 }
 
-// Debug middleware per l'autenticazione
-app.use('/api/auth', (req, res, next) => {
-  console.log('\n🚀 ===== RICHIESTA AUTENTICAZIONE =====');
-  console.log('🚀 [AUTH REQUEST] Timestamp:', new Date().toISOString());
-  console.log('🚀 [AUTH REQUEST] Method:', req.method);
-  console.log('🚀 [AUTH REQUEST] URL:', req.url);
-  console.log('🚀 [AUTH REQUEST] Full URL:', req.originalUrl);
-  console.log('🚀 [AUTH REQUEST] Headers:', JSON.stringify(req.headers, null, 2));
-  console.log('🚀 [AUTH REQUEST] Body:', JSON.stringify(req.body, null, 2));
-  console.log('🚀 [AUTH REQUEST] Query:', JSON.stringify(req.query, null, 2));
-  console.log('🚀 [AUTH REQUEST] IP:', req.ip);
-  console.log('🚀 [AUTH REQUEST] User Agent:', req.get('User-Agent'));
-  console.log('🚀 =====================================\n');
-  next();
-});
+// ============================================================================
+// SERVER SETUP
+// ============================================================================
 
-// Body parsing
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+const app = express();
+const { PORT, NODE_ENV } = getServerConfig();
 
-// Download routes (no authentication required for public downloads)
+logServerConfiguration();
+
+const { corsOptions, rateLimitConfig } = setupMiddleware(app);
+
+// ============================================================================
+// ROUTES CONFIGURATION
+// ============================================================================
+
+// Health check (sempre disponibile)
+app.use('/', healthRoutes);
+
+// Download routes (legacy)
 app.use('/', downloadRoutes);
 
-// API routes
+// API v1 (legacy routes)
 app.use('/api', apiRoutes);
 
-// API 404 handler (solo per rotte che iniziano con /api)
+// API v2 (new authentication system)
+app.use('/api/v2/auth', authRoutesV2);
+
+// Catch-all per API non trovate
 app.use('/api/*', (req, res) => {
   res.status(404).json({
     success: false,
-    error: `Rotta API non trovata: ${req.method} ${req.path}`,
-    timestamp: new Date().toISOString()
+    error: `API route not found: ${req.method} ${req.path}`,
+    version: '2.0.0',
+    timestamp: new Date().toISOString(),
+    availableVersions: {
+      'v1': '/api/*',
+      'v2': '/api/v2/auth/*'
+    }
   });
 });
 
-// Check if client build exists
-const clientDistPath = path.join(__dirname, 'client/dist');
-const clientIndexPath = path.join(clientDistPath, 'index.html');
-const hasClientBuild = fs.existsSync(clientIndexPath);
+// Static routes (frontend)
+setupStaticRoutes(app);
 
-if (hasClientBuild) {
-  // Serve static files from React build
-  app.use(express.static(clientDistPath));
-  console.log('✅ Client React build trovato e servito');
-} else {
-  console.log('⚠️  Client React build non trovato. API-only mode.');
-}
-
-// Health check endpoint with comprehensive system information
-app.get('/health', (req, res) => {
-  const memoryUsage = process.memoryUsage();
-  const cpuUsage = process.cpuUsage();
-  const uptime = process.uptime();
-  const environment = process.env.NODE_ENV || 'development';
-  const isProduction = environment === 'production';
-  
-  // Calculate memory usage percentages (assuming 1GB as reference)
-  const totalMemoryMB = memoryUsage.heapTotal / 1024 / 1024;
-  const usedMemoryMB = memoryUsage.heapUsed / 1024 / 1024;
-  const memoryUsagePercent = (usedMemoryMB / totalMemoryMB) * 100;
-  
-  // Determine health status based on metrics
-  const isHealthy = memoryUsagePercent < 80 && uptime > 60; // At least 1 minute uptime
-
-  // Base response for all environments
-  const baseResponse = {
-    success: true,
-    status: isHealthy ? 'healthy' : 'warning',
-    message: isHealthy ? 'Server is running optimally' : 'Server performance issues detected',
-    timestamp: new Date().toISOString(),
-    version: '2.0.0',
-    clientBuild: hasClientBuild,
-    environment: environment
-  };
-
-  // In production, return minimal information
-  if (isProduction) {
-    res.json({
-      ...baseResponse,
-      system: {
-        uptime: Math.round(uptime),
-        // Only expose basic memory usage percentage, not detailed values
-        memory: {
-          status: memoryUsagePercent < 50 ? 'good' : memoryUsagePercent < 80 ? 'moderate' : 'high'
-        }
-      }
-    });
-  } else {
-    // In development/staging, return full system information
-    res.json({
-      ...baseResponse,
-      system: {
-        uptime: Math.round(uptime),
-        memory: {
-          used: Math.round(usedMemoryMB),
-          total: Math.round(totalMemoryMB),
-          percentage: Math.round(memoryUsagePercent),
-          external: Math.round(memoryUsage.external / 1024 / 1024),
-          rss: Math.round(memoryUsage.rss / 1024 / 1024)
-        },
-        cpu: {
-          user: cpuUsage.user,
-          system: cpuUsage.system
-        },
-        node: {
-          version: process.version,
-          platform: process.platform,
-          arch: process.arch
-        }
-      }
-    });
-  }
-});
-
-// SPA fallback: tutte le altre rotte servono index.html o messaggio di fallback
-app.get('*', (req, res) => {
-  if (hasClientBuild) {
-    res.sendFile(clientIndexPath);
-  } else {
-    // Fallback HTML quando il client non è disponibile
-    res.status(200).send(`
-      <!DOCTYPE html>
-      <html lang="it">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Vicsam Group API</title>
-        <style>
-          body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 2rem;
-            background: #f8fafc;
-            color: #334155;
-          }
-          .container {
-            background: white;
-            padding: 2rem;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-          }
-          h1 { color: #1e40af; margin-bottom: 1rem; }
-          .api-list { background: #f1f5f9; padding: 1rem; border-radius: 4px; margin: 1rem 0; }
-          .endpoint { font-family: monospace; background: #e2e8f0; padding: 0.25rem 0.5rem; border-radius: 4px; margin: 0.25rem 0; }
-          .status { color: #059669; font-weight: bold; }
-          .warning { color: #d97706; background: #fef3c7; padding: 1rem; border-radius: 4px; margin: 1rem 0; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <h1>🚀 Vicsam Group API</h1>
-          <p class="status">✅ Server attivo e funzionante</p>
-          
-          <div class="warning">
-            ⚠️ <strong>Client React non disponibile</strong><br>
-            L'interfaccia web non è stata buildada. Server in modalità API-only.
-          </div>
-          
-          <h2>📡 API Endpoints Disponibili</h2>
-          <div class="api-list">
-            <div class="endpoint">GET /health - Health check</div>
-            <div class="endpoint">POST /api/auth/login - Autenticazione</div>
-            <div class="endpoint">GET /api/auth/info - Informazioni API</div>
-            <div class="endpoint">POST /api/data - Salva dati (richiede auth)</div>
-            <div class="endpoint">GET /api/data - Ottieni dati (richiede auth)</div>
-          </div>
-
-          <h2>📥 Download Endpoints</h2>
-          <div class="api-list">
-            <div class="endpoint">GET /download - Scarica file dati principale</div>
-            <div class="endpoint">GET /app - Scarica informazioni applicazione</div>
-            <div class="endpoint">GET /downloads/info - Info sui download disponibili</div>
-            <div class="endpoint">GET /downloads/health - Health check servizio download</div>
-          </div>
-          
-          <h2>🔧 Per sviluppatori</h2>
-          <p>Per buildare il client React:</p>
-          <pre style="background: #1e293b; color: #e2e8f0; padding: 1rem; border-radius: 4px; overflow-x: auto;">cd client && npm run build</pre>
-          
-          <p>Documentazione completa: <a href="/api/auth/info" target="_blank">API Info</a></p>
-        </div>
-      </body>
-      </html>
-    `);
-  }
-});
-
-// Error handling middleware
+// Error handling
 app.use(notFound);
 app.use(errorHandler);
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('SIGTERM signal received: closing HTTP server');
-  server.close(() => {
-    console.log('HTTP server closed');
-  });
-});
+// ============================================================================
+// TOKEN ROTATION MANAGER SETUP
+// ============================================================================
 
-const server = app.listen(PORT, () => {
-  console.log(`🚀 Server avviato su http://localhost:${PORT}`);
-  console.log(`📁 API disponibili su http://localhost:${PORT}/api`);
-  console.log(`🔍 Documentazione API: http://localhost:${PORT}/api/auth/info`);
-  console.log(`⚡ Ambiente: ${process.env.NODE_ENV || 'development'}`);
-});
+let tokenCleanupInterval = null;
+
+/**
+ * Inizializza il token rotation manager
+ */
+async function initializeTokenRotation() {
+  try {
+    console.log('🔄 [SERVER] Initializing token rotation manager...');
+    
+    // Inizializza Redis connection
+    await tokenRotationManager.init();
+    
+    // Setup cleanup interval (ogni ora)
+    tokenCleanupInterval = setInterval(() => {
+      tokenRotationManager.cleanupExpiredTokens().catch(error => {
+        console.error('❌ [TOKEN] Error during token cleanup:', error.message);
+      });
+    }, 60 * 60 * 1000);
+    
+    console.log('✅ [SERVER] Token rotation manager initialized');
+    
+  } catch (error) {
+    console.error('❌ [SERVER] Token rotation manager initialization failed:', error.message);
+    console.warn('⚠️ [SERVER] Continuing without token rotation (fallback to in-memory)');
+  }
+}
+
+/**
+ * Pulisce le risorse del token rotation manager
+ */
+async function cleanupTokenRotation() {
+  try {
+    console.log('🧹 [SERVER] Cleaning up token rotation manager...');
+    
+    // Clear interval
+    if (tokenCleanupInterval) {
+      clearInterval(tokenCleanupInterval);
+      tokenCleanupInterval = null;
+      console.log('✅ [SERVER] Token cleanup interval cleared');
+    }
+    
+    // Close Redis connection if available
+    if (tokenRotationManager.redisClient && tokenRotationManager.redisClient.isOpen) {
+      await tokenRotationManager.redisClient.quit();
+      console.log('✅ [SERVER] Redis connection closed');
+    }
+    
+  } catch (error) {
+    console.error('❌ [SERVER] Error during token rotation cleanup:', error.message);
+  }
+}
+
+// ============================================================================
+// SERVER STARTUP
+// ============================================================================
+
+/**
+ * Avvia il server con inizializzazione completa
+ */
+async function startServer() {
+  try {
+    console.log('🚀 [SERVER] Starting Vicsam Group Platform...');
+    
+    // Inizializza il database
+    await initializeDatabase();
+    
+    // Inizializza il token rotation manager
+    await initializeTokenRotation();
+    
+    // Avvia il server HTTP
+    const server = app.listen(PORT, () => {
+      logServerStartup(PORT, corsOptions, rateLimitConfig);
+      
+      console.log('\n🎉 [SERVER] Vicsam Group Platform started successfully!');
+      console.log('📚 [SERVER] Available endpoints:');
+      console.log('   • Health Check: GET /health');
+      console.log('   • Legacy Auth: POST /api/auth/login');
+      console.log('   • New Auth: POST /api/v2/auth/login');
+      console.log('   • New Register: POST /api/v2/auth/register');
+      console.log('   • Auth Info: GET /api/v2/auth/info');
+      console.log('   • Data API: /api/data/*');
+      console.log('   • Downloads: /get, /app, /downloads/info, /downloads/health');
+      console.log('');
+      console.log('🔐 [SERVER] Authentication System:');
+      console.log('   • JWT-based authentication with RS256');
+      console.log('   • Role-based access control (RBAC)');
+      console.log('   • Session management with refresh tokens');
+      console.log('   • Audit logging enabled');
+      console.log('');
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('⚠️ [SERVER] Development mode - Debug features enabled');
+        console.log('🔑 [SERVER] Default admin credentials:');
+        console.log('   Email: admin@vicsam.com');
+        console.log('   Password: VicsAm2025!');
+        console.log('   ⚠️  Change these credentials in production!');
+        console.log('');
+      }
+    });
+
+    // Setup graceful shutdown
+    setupGracefulShutdown(server, async () => {
+      console.log('🔌 [SERVER] Closing database connections...');
+      await db.close();
+      
+      console.log('🔄 [SERVER] Cleaning up token rotation...');
+      await cleanupTokenRotation();
+    });
+    
+  } catch (error) {
+    console.error('💥 [SERVER] Server startup failed:', error.message);
+    process.exit(1);
+  }
+}
+
+// ============================================================================
+// START THE SERVER
+// ============================================================================
+
+startServer();

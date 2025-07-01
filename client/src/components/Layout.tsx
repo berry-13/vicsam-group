@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../contexts/AuthContext';
 import { DiffusedLight } from './DiffusedLight';
 import { 
   Home, 
@@ -9,7 +9,8 @@ import {
   BarChart3, 
   LogOut, 
   Menu,
-  Shield
+  Shield,
+  Users
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -28,17 +29,55 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
-const navigation = [
+interface NavigationItem {
+  name: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  requiredRoles?: string[];
+  requiredPermissions?: string[];
+}
+
+const navigation: NavigationItem[] = [
   { name: 'Dashboard', href: '/', icon: Home },
   { name: 'Gestione File', href: '/files', icon: FileText },
   { name: 'Salva Dati', href: '/save-data', icon: Database },
   { name: 'Statistiche', href: '/stats', icon: BarChart3 },
+  { 
+    name: 'Gestione Utenti', 
+    href: '/users', 
+    icon: Users,
+    requiredRoles: ['admin'],
+    requiredPermissions: ['user_management']
+  },
 ];
 
 const NavContent: React.FC = () => {
+  const { hasRole, hasPermission } = useAuth();
+  
+  const isNavItemVisible = (item: NavigationItem) => {
+    // If no role or permission requirements, show to all authenticated users
+    if (!item.requiredRoles && !item.requiredPermissions) {
+      return true;
+    }
+    
+    // Check role requirements
+    if (item.requiredRoles) {
+      const hasRequiredRole = item.requiredRoles.some((role: string) => hasRole(role));
+      if (!hasRequiredRole) return false;
+    }
+    
+    // Check permission requirements
+    if (item.requiredPermissions) {
+      const hasRequiredPermission = item.requiredPermissions.some((permission: string) => hasPermission(permission));
+      if (!hasRequiredPermission) return false;
+    }
+    
+    return true;
+  };
+
   return (
     <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
-      {navigation.map((item) => (
+      {navigation.filter(isNavItemVisible).map((item) => (
         <NavLink
           key={item.name}
           to={item.href}

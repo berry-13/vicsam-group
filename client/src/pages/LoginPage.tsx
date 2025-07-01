@@ -1,6 +1,6 @@
 import React from "react";
 import { Navigate } from "react-router-dom";
-import { useAuth } from "../hooks/useAuth";
+import { useAuth } from "../contexts/AuthContext";
 import { LoginForm } from "@/components/login-form";
 import Spinner from "@/components/ui/spinner";
 
@@ -11,7 +11,7 @@ export const LoginPage: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen login-bg-loading flex items-center justify-center">
-        <div className="text-center space-y-4">
+        <div className="flex items-center space-x-3">
           <Spinner className="h-8 w-8 text-primary" />
           <p className="text-sm text-muted-foreground">
             Verifica autenticazione...

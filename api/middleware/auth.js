@@ -2,58 +2,85 @@ const { verifyToken, extractBearerToken } = require('../utils/jwt');
 const { errorResponse } = require('../utils/helpers');
 
 /**
- * Middleware per autenticazione Bearer Token
+ * Middleware per autenticazione Bearer Token con JWT
+ * Aggiornato per utilizzare JWT invece del token statico
  */
-const authenticateBearer = (req, res, next) => {
+const authenticateBearer = async (req, res, next) => {
   try {
-    console.log('🔐 [AUTH DEBUG] Iniziando verifica Bearer Token...');
-    console.log('🔐 [AUTH DEBUG] Headers ricevuti:', JSON.stringify(req.headers, null, 2));
+    console.log('🔐 [AUTH JWT] Iniziando verifica JWT Bearer Token...');
+    console.log('🔐 [AUTH JWT] Headers ricevuti:', JSON.stringify(req.headers, null, 2));
     
     const authHeader = req.headers.authorization;
-    console.log('🔐 [AUTH DEBUG] Authorization header:', authHeader);
+    console.log('🔐 [AUTH JWT] Authorization header:', authHeader);
     
     const token = extractBearerToken(authHeader);
-    console.log('🔐 [AUTH DEBUG] Token estratto:', token ? `${token.substring(0, 10)}...` : 'NESSUN TOKEN');
+    console.log('🔐 [AUTH JWT] Token estratto:', token ? `${token.substring(0, 20)}...` : 'NESSUN TOKEN');
 
     if (!token) {
       console.log('❌ [AUTH ERROR] Token Bearer mancante!');
-      console.log('❌ [AUTH ERROR] Authorization header:', authHeader);
-      console.log('❌ [AUTH ERROR] Headers disponibili:', Object.keys(req.headers));
       return res.status(401).json(
-        errorResponse('🚨 TOKEN BEARER MANCANTE! Assicurati di includere "Authorization: Bearer <token>" negli headers', 401, {
+        errorResponse('🚨 TOKEN BEARER MANCANTE! Assicurati di includere "Authorization: Bearer <jwt-token>" negli headers', 401, {
           receivedHeaders: Object.keys(req.headers),
           authorizationHeader: authHeader,
-          expectedFormat: 'Authorization: Bearer <your-token-here>'
+          expectedFormat: 'Authorization: Bearer <your-jwt-token-here>'
         })
       );
     }
 
-    const expectedToken = process.env.BEARER_TOKEN;
-    console.log('🔐 [AUTH DEBUG] Token atteso:', expectedToken ? `${expectedToken.substring(0, 10)}...` : 'NON CONFIGURATO');
-    
-    // Verifica se il token corrisponde al bearer token configurato
-    if (token !== expectedToken) {
-      console.log('❌ [AUTH ERROR] Token Bearer non valido!');
-      console.log('❌ [AUTH ERROR] Token ricevuto:', token ? `${token.substring(0, 10)}...` : 'VUOTO');
-      console.log('❌ [AUTH ERROR] Token atteso:', expectedToken ? `${expectedToken.substring(0, 10)}...` : 'NON CONFIGURATO');
-      console.log('❌ [AUTH ERROR] Lunghezza token ricevuto:', token ? token.length : 0);
-      console.log('❌ [AUTH ERROR] Lunghezza token atteso:', expectedToken ? expectedToken.length : 0);
+    // Prova prima con JWT
+    try {
+      const decoded = verifyToken(token);
+      req.user = decoded;
+      req.tokenPayload = decoded;
+      req.authMethod = 'JWT';
+      
+      console.log('✅ [AUTH JWT] JWT Bearer token valido per utente:', decoded.email || decoded.userId || 'unknown');
+      return next();
+      
+    } catch (jwtError) {
+      console.log('🔄 [AUTH JWT] JWT fallito, provo con token legacy...', jwtError.message);
+      
+      // Fallback al token statico per compatibilità
+      const expectedToken = process.env.BEARER_TOKEN;
+      
+      if (expectedToken && token === expectedToken) {
+        req.authMethod = 'LEGACY';
+        console.log('✅ [AUTH JWT] Token legacy valido (compatibilità)');
+        return next();
+      }
+      
+      console.log('❌ [AUTH ERROR] Sia JWT che token legacy falliti!');
+      
+      let errorCode = 'INVALID_BEARER_TOKEN';
+      let errorMessage = '🚨 TOKEN BEARER NON VALIDO!';
+      
+      // Fornisci messaggi di errore più specifici per JWT
+      if (token.includes('.') && token.split('.').length === 3) {
+        if (jwtError.name === 'TokenExpiredError') {
+          errorCode = 'TOKEN_EXPIRED';
+          errorMessage = '🚨 TOKEN JWT SCADUTO!';
+        } else if (jwtError.name === 'JsonWebTokenError') {
+          errorCode = 'MALFORMED_JWT_TOKEN';
+          errorMessage = '🚨 TOKEN JWT MALFORMATO!';
+        } else if (jwtError.name === 'NotBeforeError') {
+          errorCode = 'TOKEN_NOT_ACTIVE';
+          errorMessage = '🚨 TOKEN JWT NON ANCORA ATTIVO!';
+        }
+      }
       
       return res.status(401).json(
-        errorResponse('🚨 TOKEN BEARER NON VALIDO! Il token fornito non corrisponde a quello configurato', 401, {
+        errorResponse(errorMessage, 401, {
+          error: errorCode,
           tokenLength: token ? token.length : 0,
-          expectedTokenLength: expectedToken ? expectedToken.length : 0,
-          tokenPrefix: token ? token.substring(0, 10) : 'N/A',
-          hint: 'Verifica che il token sia stato copiato correttamente e che non ci siano spazi extra'
+          tokenPrefix: token ? token.substring(0, 20) : 'N/A',
+          hint: 'Verifica che il token JWT sia valido e non scaduto',
+          details: process.env.NODE_ENV === 'development' ? jwtError.message : undefined
         })
       );
     }
-
-    console.log('✅ [AUTH SUCCESS] Token Bearer valido!');
-    next();
+    
   } catch (error) {
     console.log('💥 [AUTH ERROR] Errore durante l\'autenticazione Bearer:', error);
-    console.log('💥 [AUTH ERROR] Stack trace:', error.stack);
     return res.status(401).json(
       errorResponse('🚨 ERRORE INTERNO DURANTE L\'AUTENTICAZIONE BEARER', 401, {
         error: error.message,

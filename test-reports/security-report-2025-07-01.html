@@ -1,0 +1,78 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Report - &lt;script&gt;alert(&quot;XSS in timestamp!&quot;)&lt;&#x2F;script&gt;</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .header { background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .summary { display: flex; gap: 20px; margin-bottom: 20px; }
+        .stat-card { background: white; border: 1px solid #ddd; padding: 15px; border-radius: 8px; text-align: center; flex: 1; }
+        .pass { color: #28a745; }
+        .warn { color: #ffc107; }
+        .fail { color: #dc3545; }
+        .check { padding: 10px; border-bottom: 1px solid #eee; }
+        .check:last-child { border-bottom: none; }
+        .recommendations { background: #fff3cd; padding: 15px; border-radius: 8px; margin-top: 20px; }
+        .recommendation { margin-bottom: 10px; padding: 10px; background: white; border-left: 4px solid #ffc107; }
+        .high-priority { border-left-color: #dc3545; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Security Report</h1>
+        <p>Generated: &lt;script&gt;alert(&quot;XSS in timestamp!&quot;)&lt;&#x2F;script&gt;</p>
+        <p>Version: &lt;img src=&quot;x&quot; onerror=&quot;alert(&#x27;XSS in version!&#x27;)&quot;&gt;</p>
+    </div>
+
+    <div class="summary">
+        <div class="stat-card">
+            <h3>&lt;script&gt;document.body.innerHTML=&quot;HACKED&quot;&lt;&#x2F;script&gt;</h3>
+            <p>Total Checks</p>
+        </div>
+        <div class="stat-card pass">
+            <h3>&quot;onmouseover=&quot;alert(&#x27;XSS&#x27;)&quot;</h3>
+            <p>Passed</p>
+        </div>
+        <div class="stat-card warn">
+            <h3>&lt;&#x2F;div&gt;&lt;script&gt;alert(&quot;XSS&quot;)&lt;&#x2F;script&gt;&lt;div&gt;</h3>
+            <p>Warnings</p>
+        </div>
+        <div class="stat-card fail">
+            <h3>&#x27;; DROP TABLE users; --</h3>
+            <p>Failed</p>
+        </div>
+    </div>
+
+    <h2>Security Checks</h2>
+    <div>
+        
+            <div class="check">
+                <h4 class="&lt;img src=&quot;x&quot; onerror=&quot;alert(&#x27;xss in status!&#x27;)&quot;&gt;">&lt;script&gt;alert(&quot;XSS in check name!&quot;)&lt;&#x2F;script&gt; - &lt;img src=&quot;x&quot; onerror=&quot;alert(&#x27;XSS in status!&#x27;)&quot;&gt;</h4>
+                <p>&lt;iframe src=&quot;javascript:alert(&#x27;XSS in message!&#x27;)&quot;&gt;&lt;&#x2F;iframe&gt;</p>
+            </div>
+        
+            <div class="check">
+                <h4 class="pass">Safe check name - PASS</h4>
+                <p>This is a safe message with no XSS attempts.</p>
+            </div>
+        
+    </div>
+
+    
+    <div class="recommendations">
+        <h2>Recommendations</h2>
+        
+            <div class="recommendation ">
+                <h4>&lt;script&gt;alert(&quot;XSS in recommendation!&quot;)&lt;&#x2F;script&gt; (&lt;img src=&quot;x&quot; onerror=&quot;alert(&#x27;HIGH PRIORITY XSS!&#x27;)&quot;&gt;)</h4>
+                <p>&lt;div onclick=&quot;alert(&#x27;Click XSS!&#x27;)&quot;&gt;Click me&lt;&#x2F;div&gt;</p>
+                <p><strong>Action:</strong> &lt;form&gt;&lt;input type=&quot;text&quot; autofocus onfocus=&quot;alert(&#x27;Focus XSS!&#x27;)&quot;&gt;&lt;&#x2F;form&gt;</p>
+            </div>
+        
+    </div>
+    
+</body>
+</html>
+    
