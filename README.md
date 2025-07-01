@@ -1,28 +1,87 @@
-# Vicsam Group Platform
+# VicSam Group Platform
 
-Piattaforma completa per la gestione dei dati del gruppo Vicsam, con API REST backend e interfaccia web moderna
+Piattaforma moderna per file hosting e gestione autenticazione con sistema JWT avanzato.
 
 ## 📋 Panoramica
 
-La piattaforma Vicsam Group è una soluzione full-stack che include:
+La piattaforma VicSam Group è una soluzione ottimizzata che include:
 
 ### Backend API
-- ✅ **Autenticazione JWT** con doppio livello (Password + Bearer Token)
-- 📊 **Gestione file JSON** con auto-naming basato su CustomerVAT
-- 🔒 **Sicurezza avanzata** con Helmet, CORS, Rate Limiting
-- � **File Management** completo (upload, download, delete)
-- 📈 **Statistiche** in tempo reale sui dati
-- 🧪 **Suite di test** completa con Jest
-- 🐛 **Debug endpoints** per sviluppo
+- ✅ **Sistema di autenticazione moderno** con JWT e Bearer Token diretto
+- 📁 **File Hosting / URL Shortener** per file ZIP ed EXE
+- 🔒 **Sicurezza avanzata** con autenticazione a doppio livello
+- 🚀 **Performance ottimizzate** con caching e compressione
+- 📊 **Sistema completo di gestione utenti** con ruoli e permessi
+- 🧪 **API REST** ben documentate
+- 🔄 **Rate limiting** e protezione anti-abuse
 
-### Frontend React
-- 🎨 **UI moderna** con Tailwind CSS e shadcn/ui
-- � **Autenticazione** integrata con context management
-- 📊 **Dashboard** con statistiche e grafici
-- 📁 **File Explorer** per gestione file
-- ⚙️ **Pannello impostazioni** per configurazione
-- 📱 **Design responsive** ottimizzato per mobile
-- 🌙 **Dark/Light mode** con persistenza
+### File Hosting Features
+- 📦 **ZIP Downloads** via `/get` endpoint
+- 💻 **EXE Downloads** via `/app` endpoint  
+- ⚡ **URL Shortener** per facile accesso ai file
+- 🗜️ **Compressione automatica** per file di grandi dimensioni
+- 📊 **Statistiche download** con privacy-compliant logging
+- 🔐 **Controllo accessi** opzionale
+
+### Sistema di Autenticazione
+- 🎯 **JWT moderno** con algoritmo RS256
+- 🔑 **Bearer Token diretto** per accesso API semplificato
+- 👥 **Gestione utenti completa** con registrazione/login
+- 🛡️ **Ruoli e permessi** granulari
+- 📝 **Audit logging** completo
+- 🔄 **Token refresh** automatico
+
+## 🚀 Quick Start
+
+### Configurazione File Hosting
+
+1. **Crea la cartella files:**
+```bash
+mkdir files
+```
+
+2. **Aggiungi i tuoi file:**
+- `files/download.zip` - Accessibile via `/get`
+- `files/app.exe` - Accessibile via `/app`
+
+3. **Configura .env:**
+```bash
+BEARER_TOKEN=your-secure-bearer-token-here
+DOWNLOAD_GET_FILE=files/download.zip
+DOWNLOAD_APP_FILE=files/app.exe
+```
+
+4. **Avvia il server:**
+```bash
+npm install
+npm start
+```
+
+### URL Shortener Usage
+
+- `GET /get` - Download del file ZIP
+- `GET /app` - Download del file EXE
+- `GET /downloads/info` - Informazioni sui file disponibili
+
+### Autenticazione
+
+**JWT System (Raccomandato):**
+```bash
+# Login
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "user@example.com", "password": "password"}'
+
+# Uso del JWT token
+curl -H "Authorization: Bearer <jwt-token>" \
+  http://localhost:3000/api/auth/verify
+```
+
+**Bearer Token Diretto:**
+```bash
+curl -H "Authorization: Bearer your-bearer-token" \
+  http://localhost:3000/api/auth/verify
+```
 
 ## 🏗️ Architettura
 

@@ -27,19 +27,19 @@ class DownloadConfig {
       rateLimit: this.parseNumber(process.env.DOWNLOAD_RATE_LIMIT, 100),
       rateWindow: this.parseNumber(process.env.DOWNLOAD_RATE_WINDOW, 15 * 60 * 1000), // 15 minutes
 
-      // File mappings
+      // File mappings for URL shortener / file hosting
       files: {
         get: {
-          file: process.env.DOWNLOAD_DEFAULT_FILE,
-          filename: process.env.DOWNLOAD_DEFAULT_FILENAME || 'download.json',
-          mimetype: process.env.DOWNLOAD_DEFAULT_MIMETYPE || 'application/json',
-          description: process.env.DOWNLOAD_DEFAULT_DESCRIPTION || 'Download file'
+          file: process.env.DOWNLOAD_GET_FILE || 'files/download.zip',
+          filename: process.env.DOWNLOAD_GET_FILENAME || 'download.zip',
+          mimetype: process.env.DOWNLOAD_GET_MIMETYPE || 'application/zip',
+          description: process.env.DOWNLOAD_GET_DESCRIPTION || 'ZIP download file'
         },
         app: {
-          file: process.env.DOWNLOAD_APP_FILE,
-          filename: process.env.DOWNLOAD_APP_FILENAME || 'app.json',
-          mimetype: process.env.DOWNLOAD_APP_MIMETYPE || 'application/json',
-          description: process.env.DOWNLOAD_APP_DESCRIPTION || 'Application file'
+          file: process.env.DOWNLOAD_APP_FILE || 'files/app.exe',
+          filename: process.env.DOWNLOAD_APP_FILENAME || 'app.exe',
+          mimetype: process.env.DOWNLOAD_APP_MIMETYPE || 'application/octet-stream',
+          description: process.env.DOWNLOAD_APP_DESCRIPTION || 'Application executable file'
         }
       },
 

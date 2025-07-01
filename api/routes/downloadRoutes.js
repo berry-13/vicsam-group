@@ -4,19 +4,18 @@ const downloadRateLimit = require('../middleware/downloadRateLimit');
 
 const router = express.Router();
 
-// Apply rate limiting to all download routes
 router.use(downloadRateLimit);
 
 /**
  * @route GET /get
- * @desc Download the main data file
+ * @desc Download ZIP file (URL shortener endpoint)
  * @access Public
  */
 router.get('/get', downloadController.handleDownload.bind(downloadController));
 
 /**
  * @route GET /app
- * @desc Download the app info file
+ * @desc Download EXE file (URL shortener endpoint)
  * @access Public
  */
 router.get('/app', downloadController.handleDownload.bind(downloadController));

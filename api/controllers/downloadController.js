@@ -218,21 +218,30 @@ class DownloadController {
           size: stats.size,
           sizeFormatted: this.formatFileSize(stats.size),
           lastModified: stats.mtime.toISOString(),
-          downloadUrl: `${req.protocol}://${req.get('host')}${endpoint}`
+          downloadUrl: `${req.protocol}://${req.get('host')}/${endpoint}`,
+          shortUrl: `/${endpoint}`
         };
       } catch (error) {
         files[endpoint] = {
           fileName: config.fileName,
           description: config.description,
-          error: 'File not available'
+          error: 'File not available',
+          downloadUrl: `${req.protocol}://${req.get('host')}/${endpoint}`,
+          shortUrl: `/${endpoint}`
         };
       }
     }
 
     res.json({
       success: true,
-      message: 'Available downloads',
+      message: 'File hosting service - URL shortener for downloads',
+      service: 'VicSam File Hosting',
+      description: 'Simple URL shortener for file downloads',
       files,
+      endpoints: {
+        'GET /get': 'Download ZIP file',
+        'GET /app': 'Download EXE file'
+      },
       timestamp: new Date().toISOString()
     });
   }

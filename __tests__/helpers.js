@@ -80,10 +80,10 @@ const testData = {
     telefono: '123'
   },
   loginCredentials: {
-    password: process.env.API_PASSWORD
+    bearerToken: process.env.BEARER_TOKEN
   },
   invalidCredentials: {
-    password: 'wrong-password'
+    bearerToken: 'invalid-bearer-token'
   }
 };
 

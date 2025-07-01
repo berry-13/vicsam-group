@@ -2,49 +2,31 @@ const express = require('express');
 const {
   authenticate,
   verifyAuth,
-  getApiInfo,
-  debugAuth,
-  testAuthErrors
+  getApiInfo
 } = require('../controllers/authController');
-const { authenticatePassword, authenticateBearer } = require('../middleware/auth');
-const { loginRateLimit } = require('../middleware/rateLimiting');
-const { validate, authSchema } = require('../utils/validation');
+const { authenticateBearer } = require('../middleware/auth');
 
 const router = express.Router();
 
 /**
- * @route POST /api/auth/login
- * @desc Autenticazione con password e generazione token
- * @access Public (con rate limiting)
- */
-router.post('/login', loginRateLimit, validate(authSchema), authenticatePassword, authenticate);
-
-/**
  * @route GET /api/auth/verify
- * @desc Verifica la validità del token Bearer
+ * @desc Verify Bearer token validity
  * @access Private (Bearer Token required)
  */
 router.get('/verify', authenticateBearer, verifyAuth);
 
 /**
  * @route GET /api/auth/info
- * @desc Informazioni sull'API (pubbliche)
+ * @desc API information (public)
  * @access Public
  */
 router.get('/info', getApiInfo);
 
 /**
- * @route GET /api/auth/debug
- * @desc Debug informazioni autenticazione (pubbliche)
- * @access Public
+ * @route GET /api/auth/status
+ * @desc Authentication status check
+ * @access Private (Bearer Token required)
  */
-router.get('/debug', debugAuth);
-
-/**
- * @route GET /api/auth/test-errors
- * @desc Test scenari di errore per debug (pubbliche)
- * @access Public
- */
-router.get('/test-errors', testAuthErrors);
+router.get('/status', authenticateBearer, authenticate);
 
 module.exports = router;

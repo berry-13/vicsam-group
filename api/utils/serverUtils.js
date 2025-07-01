@@ -76,13 +76,9 @@ function logServerConfiguration() {
   console.log('🔧 [CONFIG] NODE_ENV:', NODE_ENV);
   console.log('🔧 [CONFIG] PORT:', PORT);
   console.log('🔧 [CONFIG] TRUST_PROXY:', trustProxy ? 'ABILITATO' : 'DISABILITATO');
-  console.log('🔧 [CONFIG] JWT_SECRET:', process.env.JWT_SECRET ? 'CONFIGURATO' : '❌ MANCANTE');
-  console.log('🔧 [CONFIG] JWT_EXPIRES_IN:', process.env.JWT_EXPIRES_IN);
-  console.log('🔧 [CONFIG] API_PASSWORD:', process.env.API_PASSWORD ? 'CONFIGURATO' : '❌ MANCANTE');
   console.log('🔧 [CONFIG] BEARER_TOKEN:', process.env.BEARER_TOKEN ? `CONFIGURATO (${process.env.BEARER_TOKEN.length} caratteri)` : '❌ MANCANTE');
-  console.log('🔧 [CONFIG] API_KEY:', process.env.API_KEY ? `CONFIGURATO (${process.env.API_KEY.length} caratteri)` : '❌ MANCANTE (opzionale)');
-  console.log('🔧 [CONFIG] RATE_LIMIT_WINDOW_MS:', process.env.RATE_LIMIT_WINDOW_MS);
-  console.log('🔧 [CONFIG] RATE_LIMIT_MAX_REQUESTS:', process.env.RATE_LIMIT_MAX_REQUESTS);
+  console.log('🔧 [CONFIG] JWT System:', 'ABILITATO (AuthService)');
+  console.log('🔧 [CONFIG] Download Service:', 'ABILITATO (File Hosting)');
   console.log('🔧 [CONFIG] CORS_ORIGIN:', process.env.CORS_ORIGIN);
   console.log('🔧 ===================================\n');
 }
