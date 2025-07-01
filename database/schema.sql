@@ -3,7 +3,26 @@
 -- Sistema di autenticazione con gestione ruoli
 -- ============================================================================
 
--- Estensioni PostgreSQL (opzionali, commentate per compatibilità MySQL/SQLite)
+-- Associazione permessi ai ruoli
+-- Admin - tutti i permessi
+INSERT IGNORE INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id 
+FROM roles r, permissions p 
+WHERE r.name = 'admin';
+
+-- Manager - permessi limitati
+INSERT IGNORE INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id 
+FROM roles r, permissions p 
+WHERE r.name = 'manager' 
+AND p.name IN ('users.read', 'users.update', 'data.create', 'data.read', 'data.update', 'roles.read');
+
+-- User - permessi base
+INSERT IGNORE INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id 
+FROM roles r, permissions p 
+WHERE r.name = 'user' 
+AND p.name IN ('data.read', 'data.create');eSQL (opzionali, commentate per compatibilità MySQL/SQLite)
 -- CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
@@ -234,7 +253,7 @@ CREATE TABLE crypto_keys (
 -- ============================================================================
 
 -- Inserimento permessi di base
-INSERT INTO permissions (name, display_name, description, resource, action) VALUES
+INSERT IGNORE INTO permissions (name, display_name, description, resource, action) VALUES
 ('users.create', 'Creare Utenti', 'Permesso di creare nuovi utenti', 'users', 'create'),
 ('users.read', 'Leggere Utenti', 'Permesso di visualizzare utenti', 'users', 'read'),
 ('users.update', 'Modificare Utenti', 'Permesso di modificare utenti', 'users', 'update'),
@@ -250,7 +269,7 @@ INSERT INTO permissions (name, display_name, description, resource, action) VALU
 ('system.admin', 'Amministrazione Sistema', 'Accesso completo al sistema', 'system', 'admin');
 
 -- Inserimento ruoli di base
-INSERT INTO roles (name, display_name, description, permissions, is_system_role) VALUES
+INSERT IGNORE INTO roles (name, display_name, description, permissions, is_system_role) VALUES
 ('admin', 'Amministratore', 'Accesso completo al sistema con tutti i permessi', '["*"]', TRUE),
 ('manager', 'Manager', 'Gestione utenti e dati con permessi limitati', '["users.read", "users.update", "data.*", "roles.read"]', TRUE),
 ('user', 'Utente Standard', 'Accesso base ai dati', '["data.read", "data.create"]', TRUE);

@@ -530,7 +530,8 @@ class DatabaseMigrator {
       'ER_DB_CREATE_EXISTS',       // 1007: Database already exists
       'ER_DUP_KEYNAME',           // 1061: Duplicate key name
       'ER_DUP_INDEX',             // 1831: Duplicate index
-      'ER_CANT_DROP_FIELD_OR_KEY' // 1091: Can't DROP; check that it exists
+      'ER_CANT_DROP_FIELD_OR_KEY', // 1091: Can't DROP; check that it exists
+      'ER_DUP_ENTRY'              // 1062: Duplicate entry for key
     ];
     
     // Verifica il codice di errore
@@ -544,7 +545,9 @@ class DatabaseMigrator {
       /Database .* already exists/i,
       /Duplicate key name '.*'/i,
       /Duplicate index '.*'/i,
-      /Key column '.*' doesn't exist in table/i
+      /Key column '.*' doesn't exist in table/i,
+      /Duplicate entry '.*' for key/i,
+      /Trigger '.*' already exists/i
     ];
     
     return safeMessagePatterns.some(pattern => pattern.test(error.message));
