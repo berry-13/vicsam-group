@@ -189,62 +189,6 @@ export const FilesPage: React.FC = () => {
     return { isValidSystemData: false };
   };
 
-  const getSQLServerVersionStatus = (version?: string) => {
-    if (!version)
-      return {
-        status: "unknown",
-        label: "Sconosciuta",
-        color: "bg-muted text-muted-foreground",
-      };
-
-    const majorVersion = parseInt(version.split(".")[0]);
-    if (majorVersion >= 16)
-      return {
-        status: "current",
-        label: "Aggiornata",
-        color: "bg-success/10 text-success-foreground border-success/20",
-      };
-    if (majorVersion >= 14)
-      return {
-        status: "supported",
-        label: "Supportata",
-        color: "bg-warning/10 text-warning-foreground border-warning/20",
-      };
-    return {
-      status: "old",
-      label: "Obsoleta",
-      color: "bg-error/10 text-error-foreground border-error/20",
-    };
-  };
-
-  const getVersionStatus = (version?: string) => {
-    if (!version)
-      return {
-        status: "unknown",
-        label: "Sconosciuta",
-        color: "bg-muted text-muted-foreground",
-      };
-
-    const [major, minor] = version.split(".").map(Number);
-    if (major >= 8 && minor >= 0)
-      return {
-        status: "current",
-        label: "Aggiornata",
-        color: "bg-success/10 text-success-foreground border-success/20",
-      };
-    if (major >= 7)
-      return {
-        status: "supported",
-        label: "Supportata",
-        color: "bg-warning/10 text-warning-foreground border-warning/20",
-      };
-    return {
-      status: "old",
-      label: "Obsoleta",
-      color: "bg-error/10 text-error-foreground border-error/20",
-    };
-  };
-
   const loadFiles = useCallback(async () => {
     try {
       const data = await apiService.getFiles();
@@ -412,12 +356,7 @@ export const FilesPage: React.FC = () => {
         if (filterType === "valid" && !file.isValidSystemData) return false;
         if (filterType === "invalid" && file.isValidSystemData) return false;
         if (filterType === "outdated") {
-          const versionStatus = getVersionStatus(file.systemData?.Version);
-          const sqlStatus = getSQLServerVersionStatus(
-            file.systemData?.SQLServerVersion
-          );
-          if (versionStatus.status !== "old" && sqlStatus.status !== "old")
-            return false;
+          return false;
         }
       }
 
@@ -483,16 +422,7 @@ export const FilesPage: React.FC = () => {
       }
 
       if (columnFilters.status.length > 0) {
-        const versionStatus = getVersionStatus(file.systemData?.Version);
-        const sqlStatus = getSQLServerVersionStatus(
-          file.systemData?.SQLServerVersion
-        );
-        const fileStatus =
-          versionStatus.status === "old" || sqlStatus.status === "old"
-            ? "obsoleto"
-            : file.isValidSystemData
-            ? "valido"
-            : "invalido";
+        const fileStatus = file.isValidSystemData ? "valido" : "invalido";
         if (!columnFilters.status.includes(fileStatus)) return false;
       }
 
@@ -805,11 +735,6 @@ export const FilesPage: React.FC = () => {
 
   // Component per card singolo file
   const FileCard: React.FC<{ file: ParsedFileData }> = ({ file }) => {
-    const versionStatus = getVersionStatus(file.systemData?.Version);
-    const sqlStatus = getSQLServerVersionStatus(
-      file.systemData?.SQLServerVersion
-    );
-
     return (
       <Card className="hover:shadow-md transition-shadow duration-200">
         <CardHeader className="pb-2">
@@ -821,7 +746,6 @@ export const FilesPage: React.FC = () => {
                 <AlertCircle className="h-5 w-5 text-warning flex-shrink-0" />
               )}
 
-              {/* Icona dell'applicazione */}
               <ApplicationIcon
                 version={file.systemData?.ApplicationVersion}
                 size={18}
@@ -838,14 +762,8 @@ export const FilesPage: React.FC = () => {
                     </span>
                   )}
                   {file.systemData?.Version && (
-                    <span className="flex items-center gap-1">
+                    <span className="font-mono">
                       v{file.systemData.Version}
-                      <Badge
-                        variant="outline"
-                        className={`h-4 px-1 text-[10px] ${versionStatus.color}`}
-                      >
-                        {versionStatus.label}
-                      </Badge>
                     </span>
                   )}
                   {file.systemData?.DatabaseName && (
@@ -897,15 +815,9 @@ export const FilesPage: React.FC = () => {
                 {file.systemData?.SQLServerVersion && (
                   <div className="flex items-center gap-1">
                     <Server className="h-3 w-3" />
-                    <span className="truncate">
+                    <span className="truncate font-mono">
                       {file.systemData.SQLServerVersion}
                     </span>
-                    <Badge
-                      variant="outline"
-                      className={`h-4 px-1 text-[10px] ${sqlStatus.color}`}
-                    >
-                      {sqlStatus.label}
-                    </Badge>
                   </div>
                 )}
               </div>
@@ -1140,13 +1052,6 @@ export const FilesPage: React.FC = () => {
         </TableHeader>
         <TableBody>
           {filteredAndSortedFiles.map((file) => {
-            const versionStatus = getVersionStatus(file.systemData?.Version);
-            const sqlStatus = getSQLServerVersionStatus(
-              file.systemData?.SQLServerVersion
-            );
-            const isObsolete =
-              versionStatus.status === "old" || sqlStatus.status === "old";
-
             return (
               <TableRow
                 key={file.name}
@@ -1183,37 +1088,17 @@ export const FilesPage: React.FC = () => {
                   </span>
                 </TableCell>
                 <TableCell>
-                  <div className="flex items-center gap-1">
-                    <span className="text-sm">
-                      {file.systemData?.Version || "-"}
-                    </span>
-                    {file.systemData?.Version && (
-                      <Badge
-                        variant="outline"
-                        className={`h-4 px-1 text-[10px] ${versionStatus.color}`}
-                      >
-                        {versionStatus.label}
-                      </Badge>
-                    )}
-                  </div>
+                  <span className="text-sm font-mono">
+                    {file.systemData?.Version || "-"}
+                  </span>
                 </TableCell>
                 <TableCell>
-                  <div className="flex items-center gap-1">
-                    <span
-                      className="text-sm truncate"
-                      title={file.systemData?.SQLServerVersion}
-                    >
-                      {file.systemData?.SQLServerVersion || "-"}
-                    </span>
-                    {file.systemData?.SQLServerVersion && (
-                      <Badge
-                        variant="outline"
-                        className={`h-4 px-1 text-[10px] ${sqlStatus.color}`}
-                      >
-                        {sqlStatus.label}
-                      </Badge>
-                    )}
-                  </div>
+                  <span
+                    className="text-sm font-mono truncate"
+                    title={file.systemData?.SQLServerVersion}
+                  >
+                    {file.systemData?.SQLServerVersion || "-"}
+                  </span>
                 </TableCell>
                 <TableCell>
                   <span
@@ -1225,12 +1110,14 @@ export const FilesPage: React.FC = () => {
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1">
-                    {isObsolete && (
-                      <AlertTriangle className="h-3 w-3 text-warning" />
-                    )}
                     {file.systemData?.ExistsCustomMenuItems && (
                       <Badge variant="outline" className="h-4 px-1 text-[10px]">
-                        {file.systemData.CustomMenuItems?.length || 0}
+                        {file.systemData.CustomMenuItems?.length || 0} custom
+                      </Badge>
+                    )}
+                    {file.systemData?.ExistsDocumentPlugins && (
+                      <Badge variant="outline" className="h-4 px-1 text-[10px]">
+                        {file.systemData.DocumentPlugins?.length || 0} plugins
                       </Badge>
                     )}
                   </div>
@@ -1382,27 +1269,17 @@ export const FilesPage: React.FC = () => {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-warning/10 rounded-lg">
-                <AlertTriangle className="h-5 w-5 text-warning" />
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <Package className="h-5 w-5 text-purple-600" />
               </div>
               <div>
                 <p className="text-2xl font-bold">
                   {
-                    files.filter((f) => {
-                      const versionStatus = getVersionStatus(
-                        f.systemData?.Version
-                      );
-                      const sqlStatus = getSQLServerVersionStatus(
-                        f.systemData?.SQLServerVersion
-                      );
-                      return (
-                        versionStatus.status === "old" ||
-                        sqlStatus.status === "old"
-                      );
-                    }).length
+                    files.filter((f) => f.systemData?.ExistsDocumentPlugins)
+                      .length
                   }
                 </p>
-                <p className="text-sm text-muted-foreground">Obsoleti</p>
+                <p className="text-sm text-muted-foreground">Con plugins</p>
               </div>
             </div>
           </CardContent>
@@ -1454,7 +1331,6 @@ export const FilesPage: React.FC = () => {
                 <SelectItem value="all">Tutti i file</SelectItem>
                 <SelectItem value="valid">Solo file validi</SelectItem>
                 <SelectItem value="invalid">File non validi</SelectItem>
-                <SelectItem value="outdated">Versioni obsolete</SelectItem>
               </SelectContent>
             </Select>
 
