@@ -179,6 +179,12 @@ async function startServer() {
     // Inizializza il database
     await initializeDatabase();
     
+    // Inizializza il servizio di autenticazione
+    console.log('🔐 [SERVER] Initializing authentication service...');
+    const { authService } = require('./api/services/authService');
+    await authService.ensureInitialized();
+    console.log('✅ [SERVER] Authentication service initialized');
+    
     // Inizializza il token rotation manager
     await initializeTokenRotation();
     

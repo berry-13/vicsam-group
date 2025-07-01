@@ -579,18 +579,19 @@ const authenticateBearerHybrid = async (req, res, next) => {
       );
     }
 
-    // Prima prova con JWT
-    try {
-      const decoded = verifyToken(token);
-      req.user = decoded;
-      req.tokenPayload = decoded;
-      req.authMethod = 'JWT';
-      
-      console.log('✅ [AUTH HYBRID] JWT authentication successful for user:', decoded.email || decoded.userId || 'unknown');
-      return next();
-      
-    } catch (jwtError) {
-      console.log('🔄 [AUTH HYBRID] JWT failed, trying legacy token...', jwtError.message);
+  // Prima prova con JWT usando authService
+  try {
+    const authService = require('../services/authService');
+    const decoded = await authService.verifyAccessToken(token);
+    req.user = decoded;
+    req.tokenPayload = decoded;
+    req.authMethod = 'JWT';
+    
+    console.log('✅ [AUTH HYBRID] JWT authentication successful for user:', decoded.email || decoded.userId || 'unknown');
+    return next();
+    
+  } catch (jwtError) {
+    console.log('🔄 [AUTH HYBRID] JWT failed, trying legacy token...', jwtError.message);
       
       // Fallback al token statico legacy
       const expectedToken = process.env.BEARER_TOKEN;

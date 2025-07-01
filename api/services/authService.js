@@ -13,7 +13,9 @@ class AuthService {
     this.accessTokenExpiry = '15m';
     this.maxFailedAttempts = 5;
     this.lockoutDuration = 30 * 60 * 1000; // 30 minuti
+    this.initialized = false;
     
+    // Initialize keys asynchronously
     this.initializeKeys();
   }
 
@@ -25,9 +27,23 @@ class AuthService {
       // Carica chiavi esistenti dal database o genera nuove
       const keys = await this.loadOrGenerateJWTKeys();
       this.jwtSecrets.set('current', keys);
+      this.initialized = true;
       console.log('🔑 [AUTH] JWT keys initialized');
     } catch (error) {
       console.error('❌ [AUTH] Failed to initialize JWT keys:', error.message);
+      this.initialized = false;
+    }
+  }
+
+  /**
+   * Ensures service is initialized before use
+   */
+  async ensureInitialized() {
+    if (!this.initialized) {
+      await this.initializeKeys();
+    }
+    if (!this.initialized) {
+      throw new Error('AuthService failed to initialize');
     }
   }
 
@@ -363,6 +379,10 @@ class AuthService {
    */
   generateAccessToken(payload) {
     try {
+      if (!this.initialized) {
+        throw new Error('AuthService not initialized');
+      }
+      
       const keys = this.jwtSecrets.get('current');
       if (!keys || !keys.privateKey) {
         throw new Error('JWT private key not available');
@@ -386,6 +406,8 @@ class AuthService {
    */
   async verifyAccessToken(token) {
     try {
+      await this.ensureInitialized();
+      
       const keys = this.jwtSecrets.get('current');
       if (!keys || !keys.publicKey) {
         throw new Error('JWT public key not available');

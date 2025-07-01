@@ -133,10 +133,16 @@ export const Dashboard: React.FC = () => {
     try {
       let storageData;
       try {
-        // Try to get storage data if authenticated
-        storageData = await apiService.getStats();
-      } catch {
-        // If not authenticated, use default values
+        // Only try to get storage data if we're authenticated to avoid continuous 401s
+        if (apiService.isAuthenticated()) {
+          storageData = await apiService.getStats();
+        } else {
+          // Not authenticated, use defaults
+          storageData = { totalSize: 0, totalFiles: 0 };
+        }
+      } catch (authError) {
+        console.warn("Storage check failed (likely auth issue):", authError);
+        // Not authenticated or permission denied, use default values
         storageData = { totalSize: 0, totalFiles: 0 };
       }
       
@@ -392,8 +398,9 @@ export const Dashboard: React.FC = () => {
       setError(null);
       const [statsData, systemStatusData] = await Promise.all([
         apiService.getStats().catch(err => {
-          console.error("Errore nel caricamento statistiche:", err);
-          throw new Error(`Statistiche non disponibili: ${err.message}`);
+          console.warn("Errore nel caricamento statistiche (probabilmente non autenticato):", err);
+          // Return default stats if not authenticated
+          return { totalFiles: 0, totalSize: 0, generalDataCount: 0, lastUpdate: null };
         }),
         checkSystemStatus().catch(err => {
           console.error("Errore nel controllo sistema:", err);
@@ -410,7 +417,7 @@ export const Dashboard: React.FC = () => {
           };
         }),
         fetchRecentActivity().catch(err => {
-          console.error("Errore nel caricamento attività:", err);
+          console.warn("Errore nel caricamento attività:", err);
           // Don't fail the whole dashboard if activities fail
         })
       ]);

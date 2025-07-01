@@ -27,9 +27,12 @@ const authenticateBearer = async (req, res, next) => {
       );
     }
 
-    // Prova prima con JWT
+    // Prova prima con JWT usando authService
     try {
-      const decoded = verifyToken(token);
+      const authService = require('../services/authService');
+      console.log('🔍 [AUTH] Checking authService initialization state:', authService.initialized);
+      
+      const decoded = await authService.verifyAccessToken(token);
       req.user = decoded;
       req.tokenPayload = decoded;
       req.authMethod = 'JWT';
@@ -38,7 +41,12 @@ const authenticateBearer = async (req, res, next) => {
       return next();
       
     } catch (jwtError) {
-      console.log('🔄 [AUTH JWT] JWT fallito, provo con token legacy...', jwtError.message);
+      console.log('🔄 [AUTH JWT] JWT fallito, dettagli errore:', {
+        message: jwtError.message,
+        name: jwtError.name,
+        stack: process.env.NODE_ENV === 'development' ? jwtError.stack : undefined
+      });
+      console.log('🔄 [AUTH JWT] Fallback al token legacy...');
       
       // Fallback al token statico per compatibilità
       const expectedToken = process.env.BEARER_TOKEN;
