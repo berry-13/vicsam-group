@@ -60,24 +60,42 @@ const isValidResourcePattern = (resource) => {
   
   for (const pattern of maliciousPatterns) {
     if (pattern.test(resource)) {
-      console.warn(`🚨 [SECURITY] Malicious pattern detected in resource: ${resource}`);
+      // Log security events but avoid exposing sensitive details in production
+      if (process.env.NODE_ENV === 'development') {
+        console.warn(`🚨 [SECURITY] Malicious pattern detected in resource: ${resource}`);
+      } else {
+        console.warn('🚨 [SECURITY] Malicious resource pattern detected');
+      }
       return false;
     }
   }
   
   // Check resource length (prevent extremely long inputs)
   if (normalizedResource.length > 50) {
-    console.warn(`🚨 [SECURITY] Resource name too long: ${normalizedResource.length} characters`);
+    if (process.env.NODE_ENV === 'development') {
+      console.warn(`🚨 [SECURITY] Resource name too long: ${normalizedResource.length} characters`);
+    } else {
+      console.warn('🚨 [SECURITY] Resource name length exceeded');
+    }
     return false;
   }
   
   // Check for valid format (alphanumeric with optional hyphens/underscores)
   if (!/^[a-z0-9][a-z0-9_-]*$/.test(normalizedResource)) {
-    console.warn(`🚨 [SECURITY] Invalid resource format: ${normalizedResource}`);
+    if (process.env.NODE_ENV === 'development') {
+      console.warn(`🚨 [SECURITY] Invalid resource format: ${normalizedResource}`);
+    } else {
+      console.warn('🚨 [SECURITY] Invalid resource format detected');
+    }
     return false;
   }
   
-  console.warn(`🔒 [AUTH] Resource pattern not in whitelist: ${normalizedResource}`);
+  // Resource not in whitelist - log appropriately based on environment
+  if (process.env.NODE_ENV === 'development') {
+    console.warn(`🔒 [AUTH] Resource pattern not in whitelist: ${normalizedResource}`);
+  } else {
+    console.warn('🔒 [AUTH] Unauthorized resource pattern blocked');
+  }
   return false;
 };
 
@@ -89,17 +107,22 @@ const isValidResourcePattern = (resource) => {
  */
 const authenticateJWT = async (req, res, next) => {
   try {
-    console.log('🔐 [AUTH] Starting JWT authentication...');
+    // Only log in development environment to prevent information leakage
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔐 [AUTH] Starting JWT authentication...');
+    }
     
     const authHeader = req.headers.authorization;
     const token = extractBearerToken(authHeader);
     
     if (!token) {
-      console.log('❌ [AUTH] No JWT token provided');
+      // Minimal logging in production
+      if (process.env.NODE_ENV === 'development') {
+        console.log('❌ [AUTH] No JWT token provided');
+      }
       return res.status(401).json(
-        errorResponse('Access token required', 401, {
-          error: 'MISSING_TOKEN',
-          message: 'Please provide a valid Bearer token in the Authorization header'
+        errorResponse('Authentication required', 401, {
+          error: 'MISSING_TOKEN'
         })
       );
     }
@@ -110,10 +133,13 @@ const authenticateJWT = async (req, res, next) => {
     // Carica i dati completi dell'utente
     const userResult = await authService.findUserByEmail(decoded.email);
     if (!userResult) {
-      console.log('❌ [AUTH] User not found for token');
+      // Log security event but avoid exposing user details in production
+      if (process.env.NODE_ENV === 'development') {
+        console.log('❌ [AUTH] User not found for token');
+      }
       return res.status(401).json(
-        errorResponse('User not found', 401, {
-          error: 'USER_NOT_FOUND'
+        errorResponse('Authentication failed', 401, {
+          error: 'AUTHENTICATION_FAILED'
         })
       );
     }
@@ -129,22 +155,31 @@ const authenticateJWT = async (req, res, next) => {
       jti: decoded.jti
     };
 
-    // Log di debug
-    console.log('✅ [AUTH] JWT authentication successful:', {
-      user: decoded.email,
-      roles: decoded.roles,
-      permissions: decoded.permissions.length
-    });
+    // Detailed logging only in development to prevent sensitive data exposure
+    if (process.env.NODE_ENV === 'development') {
+      console.log('✅ [AUTH] JWT authentication successful:', {
+        user: decoded.email,
+        roles: decoded.roles,
+        permissions: decoded.permissions.length
+      });
+    }
 
     next();
     
   } catch (error) {
-    console.error('❌ [AUTH] JWT authentication failed:', error.message);
+    // Log error details only in development environment
+    if (process.env.NODE_ENV === 'development') {
+      console.error('❌ [AUTH] JWT authentication failed:', error.message);
+    } else {
+      // In production, log minimal information for security monitoring
+      console.error('❌ [AUTH] Authentication attempt failed');
+    }
     
-    let errorCode = 'INVALID_TOKEN';
-    let message = 'Invalid or expired token';
+    let errorCode = 'AUTHENTICATION_FAILED';
+    let message = 'Authentication failed';
     
-    if (error instanceof AuthError) {
+    // Only provide specific error details in development
+    if (error instanceof AuthError && process.env.NODE_ENV === 'development') {
       errorCode = error.code;
       message = error.message;
     }
@@ -166,7 +201,10 @@ const authenticateJWT = async (req, res, next) => {
 const requirePermissions = (requiredPermissions) => {
   return (req, res, next) => {
     try {
-      console.log('🔒 [AUTH] Checking permissions:', requiredPermissions);
+      // Only log detailed permission checks in development
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔒 [AUTH] Checking permissions:', requiredPermissions);
+      }
       
       if (!req.user) {
         return res.status(401).json(
@@ -181,7 +219,9 @@ const requirePermissions = (requiredPermissions) => {
       
       // Verifica se l'utente ha il permesso di admin (accesso totale)
       if (userPermissions.includes('*') || userPermissions.includes('system.admin')) {
-        console.log('✅ [AUTH] Admin permissions granted');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ [AUTH] Admin permissions granted');
+        }
         return next();
       }
       
@@ -193,7 +233,10 @@ const requirePermissions = (requiredPermissions) => {
           
           // Validate resource pattern against whitelist of legitimate resources
           if (!isValidResourcePattern(resource)) {
-            console.log('❌ [AUTH] Invalid wildcard resource pattern blocked:', resource);
+            // Avoid logging sensitive resource details in production
+            if (process.env.NODE_ENV === 'development') {
+              console.log('❌ [AUTH] Invalid wildcard resource pattern blocked:', resource);
+            }
             return false;
           }
           
@@ -203,28 +246,44 @@ const requirePermissions = (requiredPermissions) => {
       });
       
       if (!hasAllPermissions) {
-        console.log('❌ [AUTH] Insufficient permissions:', {
-          required: permissions,
-          userHas: userPermissions
-        });
+        // Log permission failures with sensitive data only in development
+        if (process.env.NODE_ENV === 'development') {
+          console.log('❌ [AUTH] Insufficient permissions:', {
+            required: permissions,
+            userHas: userPermissions
+          });
+        } else {
+          console.log('❌ [AUTH] Access denied - insufficient permissions');
+        }
         
         return res.status(403).json(
           errorResponse('Insufficient permissions', 403, {
             error: 'INSUFFICIENT_PERMISSIONS',
-            required: permissions,
-            message: 'You do not have the required permissions to access this resource'
+            // Only include detailed information in development
+            ...(process.env.NODE_ENV === 'development' && {
+              required: permissions,
+              message: 'You do not have the required permissions to access this resource'
+            })
           })
         );
       }
       
-      console.log('✅ [AUTH] Permission check passed');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ [AUTH] Permission check passed');
+      }
       next();
       
     } catch (error) {
-      console.error('❌ [AUTH] Permission check failed:', error.message);
+      // Log error details only in development
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ [AUTH] Permission check failed:', error.message);
+      } else {
+        console.error('❌ [AUTH] Permission check error occurred');
+      }
       return res.status(500).json(
-        errorResponse('Permission check error', 500, {
-          error: 'PERMISSION_CHECK_ERROR'
+        errorResponse('Internal server error', 500, {
+          error: 'PERMISSION_CHECK_ERROR',
+          details: process.env.NODE_ENV === 'development' ? error.message : undefined
         })
       );
     }
