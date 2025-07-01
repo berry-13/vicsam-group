@@ -8,13 +8,9 @@ const { errorResponse } = require('../utils/helpers');
 const authenticateBearer = async (req, res, next) => {
   try {
     console.log('🔐 [AUTH JWT] Iniziando verifica JWT Bearer Token...');
-    console.log('🔐 [AUTH JWT] Headers ricevuti:', JSON.stringify(req.headers, null, 2));
     
     const authHeader = req.headers.authorization;
-    console.log('🔐 [AUTH JWT] Authorization header:', authHeader);
-    
     const token = extractBearerToken(authHeader);
-    console.log('🔐 [AUTH JWT] Token estratto:', token ? `${token.substring(0, 20)}...` : 'NESSUN TOKEN');
 
     if (!token) {
       console.log('❌ [AUTH ERROR] Token Bearer mancante!');
@@ -27,11 +23,8 @@ const authenticateBearer = async (req, res, next) => {
       );
     }
 
-    // Prova prima con JWT usando authService
     try {
-      const authService = require('../services/authService');
-      console.log('🔍 [AUTH] Checking authService initialization state:', authService.initialized);
-      
+      const { authService } = require('../services/authService');
       const decoded = await authService.verifyAccessToken(token);
       req.user = decoded;
       req.tokenPayload = decoded;
@@ -41,12 +34,7 @@ const authenticateBearer = async (req, res, next) => {
       return next();
       
     } catch (jwtError) {
-      console.log('🔄 [AUTH JWT] JWT fallito, dettagli errore:', {
-        message: jwtError.message,
-        name: jwtError.name,
-        stack: process.env.NODE_ENV === 'development' ? jwtError.stack : undefined
-      });
-      console.log('🔄 [AUTH JWT] Fallback al token legacy...');
+      console.log('🔄 [AUTH JWT] JWT fallito, provo con token legacy...', jwtError.message);
       
       // Fallback al token statico per compatibilità
       const expectedToken = process.env.BEARER_TOKEN;
