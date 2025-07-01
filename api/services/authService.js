@@ -984,6 +984,54 @@ class AuthService {
     }
   }
 
+  /**
+   * Ottiene i ruoli di un utente
+   * @param {number} userId - ID dell'utente
+   * @returns {Promise<Array>} Lista dei ruoli dell'utente
+   */
+  async getUserRoles(userId) {
+    try {
+      console.log(`👑 [AUTH] Getting roles for user ${userId}`);
+      
+      const result = await db.query(`
+        SELECT 
+          r.id,
+          r.name,
+          r.display_name,
+          r.description,
+          r.permissions,
+          r.is_system_role,
+          ur.assigned_at,
+          ur.expires_at,
+          ur.assigned_by
+        FROM user_roles ur
+        JOIN roles r ON ur.role_id = r.id
+        WHERE ur.user_id = ? 
+        AND (ur.expires_at IS NULL OR ur.expires_at > NOW())
+        ORDER BY r.is_system_role DESC, r.name ASC
+      `, [userId]);
+      
+      const roles = result.rows.map(row => ({
+        id: row.id,
+        name: row.name,
+        displayName: row.display_name,
+        description: row.description,
+        permissions: JSON.parse(row.permissions || '[]'),
+        isSystemRole: row.is_system_role,
+        assignedAt: row.assigned_at,
+        expiresAt: row.expires_at,
+        assignedBy: row.assigned_by
+      }));
+      
+      console.log(`✅ [AUTH] Found ${roles.length} roles for user ${userId}`);
+      return roles;
+      
+    } catch (error) {
+      console.error(`❌ [AUTH] Get user roles failed:`, error.message);
+      throw error;
+    }
+  }
+
   // ============================================================================
 }
 
