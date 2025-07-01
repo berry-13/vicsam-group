@@ -55,7 +55,8 @@ const isValidResourcePattern = (resource) => {
     /javascript:/i,     // Protocol injection
     /data:/i,           // Data URL injection
     /\x00/,             // Null byte injection
-    /[\u0000-\u001f]/   // Control characters
+-   /[\u0000-\u001f]/   // Control characters
++   /[\x00-\x1f]/       // Control characters (properly escaped)
   ];
   
   for (const pattern of maliciousPatterns) {
