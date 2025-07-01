@@ -139,6 +139,7 @@ class DatabaseMigrator {
     let currentStatement = '';
     let inBlock = false;
     let blockType = '';
+    let beginCount = 0; // Conta i BEGIN per gestire blocchi annidati
     
     for (const line of lines) {
       const trimmedLine = line.trim();
@@ -156,25 +157,38 @@ class DatabaseMigrator {
         inBlock = true;
         blockType = blockMatch[1].toUpperCase();
         currentStatement = line;
+        beginCount = 0;
         continue;
       }
       
       if (inBlock) {
         currentStatement += '\n' + line;
         
-        // Rileva fine del blocco con END; (ma non END IF; o simili)
-        if (trimmedLine.match(/^END\s*;?\s*$/i)) {
-          inBlock = false;
-          blockType = '';
-          statements.push(currentStatement);
-          currentStatement = '';
-          continue;
+        // Conta i BEGIN per gestire blocchi annidati
+        if (trimmedLine.match(/\bBEGIN\b/i)) {
+          beginCount++;
+        }
+        
+        // Rileva fine del blocco con END; ma solo quando tutti i BEGIN sono chiusi
+        if (trimmedLine.match(/\bEND\b/i)) {
+          if (beginCount > 0) {
+            beginCount--;
+          }
+          
+          // Se non ci sono più BEGIN aperti e la riga finisce con ; è la fine del blocco
+          if (beginCount === 0 && trimmedLine.match(/END\s*;?\s*$/i)) {
+            inBlock = false;
+            blockType = '';
+            statements.push(currentStatement);
+            currentStatement = '';
+            continue;
+          }
         }
       } else {
         currentStatement += (currentStatement ? '\n' : '') + line;
         
         // Statement normale che termina con ;
-        if (trimmedLine.endsWith(';')) {
+        if (trimmedLine.endsWith(';') && !trimmedLine.match(/^\s*--/)) {
           statements.push(currentStatement);
           currentStatement = '';
         }

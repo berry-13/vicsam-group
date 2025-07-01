@@ -318,6 +318,10 @@ WHERE u.is_active = TRUE;
 -- STORED PROCEDURES E FUNZIONI
 -- ============================================================================
 
+-- Note: Functions and procedures are temporarily commented out for initial migration
+-- They can be added later once basic tables are created
+
+/*
 -- Funzione per verificare permessi utente
 CREATE FUNCTION user_has_permission(user_email VARCHAR(255), required_permission VARCHAR(100))
 RETURNS BOOLEAN
@@ -355,7 +359,9 @@ BEGIN
     
     RETURN permission_count > 0;
 END;
+*/
 
+/*
 -- Procedura per assegnare ruolo a utente
 CREATE PROCEDURE assign_role_to_user(
     IN p_user_email VARCHAR(255),
@@ -389,11 +395,13 @@ BEGIN
         VALUES (v_user_id, v_role_id, v_assigned_by_id, p_expires_at);
     END IF;
 END;
+*/
 
 -- ============================================================================
 -- TRIGGERS PER AUDIT E SICUREZZA
 -- ============================================================================
 
+/*
 -- Trigger per log delle modifiche utenti
 CREATE TRIGGER audit_users_changes
 AFTER UPDATE ON users
@@ -414,7 +422,9 @@ BEGIN
         TRUE
     );
 END;
+*/
 
+/*
 -- Trigger per cleanup sessioni scadute
 CREATE EVENT cleanup_expired_sessions
 ON SCHEDULE EVERY 1 HOUR
@@ -434,9 +444,10 @@ BEGIN
     DELETE FROM audit_logs 
     WHERE created_at < DATE_SUB(NOW(), INTERVAL 1 YEAR);
 END;
+*/
 
--- Abilita l'event scheduler
-SET GLOBAL event_scheduler = ON;
+-- Abilita l'event scheduler (richiede privilegi speciali)
+-- SET GLOBAL event_scheduler = ON;
 
 -- ============================================================================
 -- INDICI AGGIUNTIVI PER PERFORMANCE
