@@ -12,7 +12,7 @@
 -- ============================================================================
 CREATE TABLE users (
     id INTEGER PRIMARY KEY AUTO_INCREMENT,
-    uuid VARCHAR(36) UNIQUE NOT NULL DEFAULT (UUID()),
+    uuid VARCHAR(36) UNIQUE NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     password_salt VARCHAR(255) NOT NULL,
@@ -32,6 +32,18 @@ CREATE TABLE users (
     INDEX idx_users_active (is_active),
     INDEX idx_users_last_login (last_login_at)
 );
+
+-- Trigger to auto-generate UUID for users (compatible with MySQL < 8.0.13)
+DELIMITER //
+CREATE TRIGGER users_before_insert 
+BEFORE INSERT ON users
+FOR EACH ROW
+BEGIN
+    IF NEW.uuid IS NULL OR NEW.uuid = '' THEN
+        SET NEW.uuid = UUID();
+    END IF;
+END //
+DELIMITER ;
 
 -- ============================================================================
 -- TABELLA RUOLI
@@ -316,11 +328,33 @@ READS SQL DATA
 DETERMINISTIC
 BEGIN
     DECLARE permission_count INT DEFAULT 0;
+    DECLARE sql_error TINYINT DEFAULT FALSE;
     
+    -- Declare exception handler for SQL errors
+    DECLARE CONTINUE HANDLER FOR SQLEXCEPTION
+    BEGIN
+        SET sql_error = TRUE;
+    END;
+    
+    -- Input validation: check for null or empty parameters
+    IF user_email IS NULL OR TRIM(user_email) = '' THEN
+        RETURN FALSE;
+    END IF;
+    
+    IF required_permission IS NULL OR TRIM(required_permission) = '' THEN
+        RETURN FALSE;
+    END IF;
+    
+    -- Execute the permission check query with error handling
     SELECT COUNT(*) INTO permission_count
     FROM user_permissions
     WHERE email = user_email 
     AND (permission = required_permission OR permission = '*');
+    
+    -- If an SQL error occurred during the query, return FALSE
+    IF sql_error = TRUE THEN
+        RETURN FALSE;
+    END IF;
     
     RETURN permission_count > 0;
 END //

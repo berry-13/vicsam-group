@@ -180,9 +180,73 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       console.log('✅ Token refreshed successfully');
       
-    } catch (error) {
-      console.error('Token refresh failed:', error);
-      throw error;
+    } catch (error: unknown) {
+      // Enhanced error handling with specific categorization
+      interface AxiosError {
+        response?: {
+          status?: number;
+          data?: {
+            message?: string;
+            error?: string;
+          };
+        };
+        request?: unknown;
+        message?: string;
+      }
+      
+      const isAxiosError = (err: unknown): err is AxiosError => {
+        return err !== null && typeof err === 'object' && ('response' in err || 'request' in err);
+      };
+      
+      const axiosError = isAxiosError(error) ? error : null;
+      const errorMessage = axiosError?.message || (error as Error)?.message || 'Token refresh failed';
+      
+      // Check if it's a network error (no response received)
+      if (!axiosError?.response && axiosError?.request) {
+        console.error('🌐 [AUTH] Network error during token refresh:', errorMessage);
+        setError('Errore di connessione. Verifica la tua connessione internet e riprova.');
+        
+        // For network errors, we might want to retry or show a different UI
+        // Don't automatically logout on network issues
+        throw new Error('NETWORK_ERROR');
+        
+      } else if (axiosError?.response?.status === 401 || axiosError?.response?.status === 403) {
+        // Invalid/expired refresh token - authentication failure
+        console.error('🔐 [AUTH] Authentication failed during token refresh:', errorMessage);
+        console.log('🚪 [AUTH] Refresh token invalid or expired, logging out user');
+        
+        // Clear all auth data and force re-login
+        localStorage.removeItem('vicsam_auth_v2');
+        localStorage.removeItem('vicsam_token');
+        localStorage.removeItem('vicsam_refresh_token');
+        authService.clearToken();
+        setUser(null);
+        setIsAuthenticated(false);
+        setError('Sessione scaduta. Effettua nuovamente l\'accesso.');
+        
+        throw new Error('AUTH_EXPIRED');
+        
+      } else if (axiosError?.response?.status && axiosError.response.status >= 500) {
+        // Server error - temporary issue
+        console.error('🔧 [AUTH] Server error during token refresh:', errorMessage);
+        setError('Errore temporaneo del server. Riprova tra qualche momento.');
+        
+        throw new Error('SERVER_ERROR');
+        
+      } else if (axiosError?.response?.status === 429) {
+        // Rate limiting
+        console.error('⏱️ [AUTH] Rate limit exceeded during token refresh:', errorMessage);
+        setError('Troppi tentativi di aggiornamento. Riprova tra qualche minuto.');
+        
+        throw new Error('RATE_LIMIT');
+        
+      } else {
+        // Other errors - generic handling
+        console.error('❌ [AUTH] Unknown error during token refresh:', errorMessage, error);
+        setError('Errore durante l\'aggiornamento della sessione.');
+        
+        throw new Error('UNKNOWN_ERROR');
+      }
     }
   };
 

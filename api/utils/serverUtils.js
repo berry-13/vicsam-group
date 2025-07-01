@@ -72,9 +72,20 @@ function logServerConfiguration() {
 /**
  * Gestione graceful shutdown
  */
-function setupGracefulShutdown(server) {
-  function gracefulShutdown(signal) {
-    console.log(`\n📴 Ricevuto segnale ${signal}: chiusura del server HTTP in corso...`);
+function setupGracefulShutdown(server, cleanupCallback = null) {
+  async function gracefulShutdown(signal) {
+    console.log(`\n📴 Ricevuto segnale ${signal}: chiusura del server in corso...`);
+    
+    try {
+      // Esegui cleanup personalizzato se fornito
+      if (cleanupCallback && typeof cleanupCallback === 'function') {
+        console.log('🧹 Eseguendo cleanup personalizzato...');
+        await cleanupCallback();
+        console.log('✅ Cleanup personalizzato completato');
+      }
+    } catch (error) {
+      console.error('❌ Errore durante il cleanup personalizzato:', error.message);
+    }
     
     server.close((err) => {
       if (err) {

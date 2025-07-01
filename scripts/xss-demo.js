@@ -69,13 +69,13 @@ async function demonstrateXssFix() {
       { pattern: /<iframe[^>]*src\s*=\s*[^&"']/i, description: 'Unescaped iframe with src' }
     ];
     
+    let foundDangerous = false;
+    
     // Special check for javascript: protocol that's not properly escaped
     if (htmlContent.includes('javascript:') && !htmlContent.includes('&quot;javascript:')) {
       console.log('❌ [XSS DEMO] Found unescaped JavaScript protocol');
       foundDangerous = true;
     }
-    
-    let foundDangerous = false;
     reallyDangerousPatterns.forEach(({ pattern, description }) => {
       if (pattern.test(htmlContent)) {
         console.log(`❌ [XSS DEMO] Found ${description}`);

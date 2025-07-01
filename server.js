@@ -5,6 +5,7 @@ const { getServerConfig } = require('./config/serverConfig');
 const { setupMiddleware } = require('./config/middleware');
 const { logServerConfiguration, setupGracefulShutdown, logServerStartup } = require('./api/utils/serverUtils');
 const { setupStaticRoutes } = require('./api/routes/staticRoutes');
+const { tokenRotationManager } = require('./api/middleware/authMiddleware');
 
 const { errorHandler, notFound } = require('./api/middleware/common');
 
@@ -109,6 +110,62 @@ app.use(notFound);
 app.use(errorHandler);
 
 // ============================================================================
+// TOKEN ROTATION MANAGER SETUP
+// ============================================================================
+
+let tokenCleanupInterval = null;
+
+/**
+ * Inizializza il token rotation manager
+ */
+async function initializeTokenRotation() {
+  try {
+    console.log('🔄 [SERVER] Initializing token rotation manager...');
+    
+    // Inizializza Redis connection
+    await tokenRotationManager.init();
+    
+    // Setup cleanup interval (ogni ora)
+    tokenCleanupInterval = setInterval(() => {
+      tokenRotationManager.cleanupExpiredTokens().catch(error => {
+        console.error('❌ [TOKEN] Error during token cleanup:', error.message);
+      });
+    }, 60 * 60 * 1000);
+    
+    console.log('✅ [SERVER] Token rotation manager initialized');
+    
+  } catch (error) {
+    console.error('❌ [SERVER] Token rotation manager initialization failed:', error.message);
+    console.warn('⚠️ [SERVER] Continuing without token rotation (fallback to in-memory)');
+  }
+}
+
+/**
+ * Pulisce le risorse del token rotation manager
+ */
+async function cleanupTokenRotation() {
+  try {
+    console.log('🧹 [SERVER] Cleaning up token rotation manager...');
+    
+    // Clear interval
+    if (tokenCleanupInterval) {
+      clearInterval(tokenCleanupInterval);
+      tokenCleanupInterval = null;
+      console.log('✅ [SERVER] Token cleanup interval cleared');
+    }
+    
+    // Close Redis connection if available
+    if (tokenRotationManager.redisClient && tokenRotationManager.redisClient.isOpen) {
+      await tokenRotationManager.redisClient.quit();
+      console.log('✅ [SERVER] Redis connection closed');
+    }
+    
+  } catch (error) {
+    console.error('❌ [SERVER] Error during token rotation cleanup:', error.message);
+  }
+}
+
+// ============================================================================
 // SERVER STARTUP
 // ============================================================================
 
@@ -121,6 +178,9 @@ async function startServer() {
     
     // Inizializza il database
     await initializeDatabase();
+    
+    // Inizializza il token rotation manager
+    await initializeTokenRotation();
     
     // Avvia il server HTTP
     const server = app.listen(PORT, () => {
@@ -157,6 +217,9 @@ async function startServer() {
     setupGracefulShutdown(server, async () => {
       console.log('🔌 [SERVER] Closing database connections...');
       await db.close();
+      
+      console.log('🔄 [SERVER] Cleaning up token rotation...');
+      await cleanupTokenRotation();
     });
     
   } catch (error) {

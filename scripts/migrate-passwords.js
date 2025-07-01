@@ -99,22 +99,40 @@ class PasswordMigrator {
    * Trova gli utenti legacy da migrare
    */
   async findLegacyUsers() {
-    // Cerca utenti che potrebbero avere password nel formato legacy
-    // Questo dipende da come sono strutturati i dati esistenti
-    
-    // Per ora, assumiamo che non ci siano utenti legacy
-    // In un caso reale, questa query cercherebbe nella tabella esistente
-    
     console.log('🔍 [MIGRATION] Searching for legacy users...');
     
-    // Esempio di query per trovare utenti legacy:
-    // return await db.query(`
-    //   SELECT id, email, password, created_at 
-    //   FROM legacy_users 
-    //   WHERE migrated = FALSE OR migrated IS NULL
-    // `);
-    
-    return [];
+    try {
+      // Query per trovare utenti con password in formato legacy che non sono ancora stati migrati
+      const query = `
+        SELECT u.id, u.email, u.password_hash, u.password_salt, u.created_at
+        FROM users u
+        LEFT JOIN password_migration_log pml ON u.id = pml.user_id AND pml.migration_status = 'success'
+        WHERE pml.user_id IS NULL
+        AND (
+          -- Rileva hash bcrypt (iniziano con $2a$, $2b$, $2y$)
+          u.password_hash REGEXP '^\\$2[aby]\\$[0-9]{2}\\$'
+          -- Rileva hash MD5 semplici (32 caratteri esadecimali)
+          OR (CHAR_LENGTH(u.password_hash) = 32 AND u.password_hash REGEXP '^[a-fA-F0-9]{32}$')
+          -- Rileva hash SHA1 (40 caratteri esadecimali)
+          OR (CHAR_LENGTH(u.password_hash) = 40 AND u.password_hash REGEXP '^[a-fA-F0-9]{40}$')
+          -- Rileva hash SHA256 semplici (64 caratteri esadecimali)
+          OR (CHAR_LENGTH(u.password_hash) = 64 AND u.password_hash REGEXP '^[a-fA-F0-9]{64}$')
+          -- Escludi hash Argon2 (iniziano con $argon2)
+          AND u.password_hash NOT REGEXP '^\\$argon2'
+        )
+        ORDER BY u.created_at ASC
+      `;
+      
+      const result = await db.query(query);
+      
+      console.log(`📊 [MIGRATION] Found ${result.length} legacy users to migrate`);
+      
+      return result;
+      
+    } catch (error) {
+      console.error('❌ [MIGRATION] Error finding legacy users:', error.message);
+      throw new Error(`Failed to find legacy users: ${error.message}`);
+    }
   }
 
   /**

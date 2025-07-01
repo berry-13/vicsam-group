@@ -83,14 +83,24 @@ graph TB
 ### Database
 | Categoria | Supporto |
 |-----------|----------|
-| **Primario** | MySQL 8.0+ / MariaDB 10.x |
+| **Primario** | MySQL 5.7+ / MariaDB 10.x |
 | **PostgreSQL** | ✅ Supportato (STRING_AGG) |
 | **SQLite** | ✅ Supportato (GROUP_CONCAT) |
 | **SQL Server** | ✅ Supportato (STRING_AGG) |
 | **Compatibilità** | Query database-agnostic con rilevamento automatico |
 | **Pool Connessioni** | mysql2/promise con connection pooling |
 
+### Cache & Storage
+| Categoria | Supporto |
+|-----------|----------|
+| **Redis** | Token rotation storage (raccomandato) |
+| **Fallback** | In-memory storage se Redis non disponibile |
+| **Configurazione** | REDIS_URL environment variable |
+| **Pool Connessioni** | mysql2/promise con connection pooling |
+
 > **Nota**: Il sistema usa aggregazione di stringhe database-agnostica che si adatta automaticamente al tipo di database rilevato tramite driver o configurazione ambiente.
+> 
+> **Requisiti MySQL**: Il sistema supporta MySQL 5.7+ utilizzando trigger BEFORE INSERT per la generazione automatica di UUID. Per MySQL 8.0.13+ è disponibile il supporto nativo per DEFAULT (UUID()).
 
 ## 🚦 API Endpoints
 

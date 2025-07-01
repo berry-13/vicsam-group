@@ -1,6 +1,7 @@
 const { authService, AuthError } = require('../services/authService');
 const { errorResponse } = require('../utils/helpers');
 const { verifyToken, extractBearerToken } = require('../utils/jwt');
+const { createClient } = require('redis');
 
 /**
  * Middleware di autenticazione avanzato per l'API
@@ -499,7 +500,7 @@ const authenticateBearerHybrid = async (req, res, next) => {
  * Middleware per autenticazione Bearer con supporto token rotation
  * Versione migliorata della autenticazione legacy con scadenza
  */
-const authenticateBearerWithRotation = (req, res, next) => {
+const authenticateBearerWithRotation = async (req, res, next) => {
   try {
     console.log('🔐 [AUTH ROTATION] Bearer token with rotation authentication...');
     
@@ -515,8 +516,8 @@ const authenticateBearerWithRotation = (req, res, next) => {
       );
     }
 
-    // Valida il token usando il sistema di rotazione
-    const validation = tokenRotationManager.validateRotatedToken(token);
+    // Valida il token usando il sistema di rotazione (async con Redis)
+    const validation = await tokenRotationManager.validateRotatedToken(token);
     
     if (!validation.valid) {
       console.error('❌ [AUTH ROTATION] Token validation failed:', validation.reason);
@@ -605,11 +606,41 @@ const auditLogger = (action) => {
 };
 
 /**
- * Utility per la gestione del token rotation per token statici
+ * Utility per la gestione del token rotation per token statici con Redis
  */
 const tokenRotationManager = {
-  // Cache per i token ruotati con timestamp
-  tokenCache: new Map(),
+  // Redis client per la persistenza dei token
+  redisClient: null,
+  
+  /**
+   * Inizializza la connessione Redis
+   */
+  async init() {
+    if (!this.redisClient) {
+      try {
+        this.redisClient = createClient({
+          url: process.env.REDIS_URL || 'redis://localhost:6379',
+          socket: {
+            reconnectStrategy: (retries) => Math.min(retries * 50, 1000)
+          }
+        });
+        
+        this.redisClient.on('error', (err) => {
+          console.error('Redis Client Error:', err);
+        });
+        
+        this.redisClient.on('connect', () => {
+          console.log('🔗 Redis connected for token rotation');
+        });
+        
+        await this.redisClient.connect();
+      } catch (error) {
+        console.error('Failed to initialize Redis for token rotation:', error);
+        // Fallback to in-memory storage if Redis is not available
+        this.tokenCache = new Map();
+      }
+    }
+  },
   
   /**
    * Genera un nuovo token statico con timestamp
@@ -625,69 +656,151 @@ const tokenRotationManager = {
    * @param {string} token - Token da validare
    * @param {number} maxAge - Età massima del token in millisecondi (default: 24 ore)
    */
-  validateRotatedToken(token, maxAge = 24 * 60 * 60 * 1000) {
+  async validateRotatedToken(token, maxAge = 24 * 60 * 60 * 1000) {
     // Controlla il token corrente dal env
     const currentToken = process.env.BEARER_TOKEN;
     if (token === currentToken) {
       return { valid: true, method: 'current' };
     }
     
-    // Controlla token ruotati recenti nella cache
-    const tokenInfo = this.tokenCache.get(token);
-    if (tokenInfo) {
-      const age = Date.now() - tokenInfo.timestamp;
-      if (age <= maxAge) {
-        return { valid: true, method: 'rotated', age };
-      } else {
-        // Token scaduto, rimuovi dalla cache
-        this.tokenCache.delete(token);
-        return { valid: false, reason: 'expired', age };
+    // Controlla token ruotati recenti in Redis o fallback cache
+    try {
+      if (this.redisClient && this.redisClient.isOpen) {
+        const tokenData = await this.redisClient.get(`token:${token}`);
+        if (tokenData) {
+          const tokenInfo = JSON.parse(tokenData);
+          const age = Date.now() - tokenInfo.timestamp;
+          if (age <= maxAge) {
+            return { valid: true, method: 'rotated', age };
+          } else {
+            // Token scaduto, rimuovi da Redis
+            await this.redisClient.del(`token:${token}`);
+            return { valid: false, reason: 'expired', age };
+          }
+        }
+      } else if (this.tokenCache) {
+        // Fallback alla cache in memoria
+        const tokenInfo = this.tokenCache.get(token);
+        if (tokenInfo) {
+          const age = Date.now() - tokenInfo.timestamp;
+          if (age <= maxAge) {
+            return { valid: true, method: 'rotated', age };
+          } else {
+            this.tokenCache.delete(token);
+            return { valid: false, reason: 'expired', age };
+          }
+        }
       }
+    } catch (error) {
+      console.error('Error validating token from Redis:', error);
+      // Fallback to current token validation only
     }
     
     return { valid: false, reason: 'unknown' };
   },
   
   /**
-   * Aggiungi un token alla cache di rotazione
+   * Aggiungi un token alla cache di rotazione Redis
    * @param {string} token - Token da aggiungere
    */
-  addToRotationCache(token) {
-    this.tokenCache.set(token, {
+  async addToRotationCache(token) {
+    const tokenInfo = {
       timestamp: Date.now(),
       used: false
-    });
+    };
     
-    // Cleanup automatico dei token vecchi (mantieni solo gli ultimi 10)
-    if (this.tokenCache.size > 10) {
-      const tokens = Array.from(this.tokenCache.entries())
-        .sort((a, b) => a[1].timestamp - b[1].timestamp);
-      
-      // Rimuovi i più vecchi
-      tokens.slice(0, tokens.length - 10).forEach(([token]) => {
-        this.tokenCache.delete(token);
-      });
+    try {
+      if (this.redisClient && this.redisClient.isOpen) {
+        // Salva in Redis con TTL di 25 ore (1 ora più del maxAge)
+        await this.redisClient.setEx(`token:${token}`, 25 * 60 * 60, JSON.stringify(tokenInfo));
+        
+        // Mantieni solo gli ultimi 10 token (cleanup automatico)
+        await this._cleanupOldTokens();
+      } else if (this.tokenCache) {
+        // Fallback alla cache in memoria
+        this.tokenCache.set(token, tokenInfo);
+        
+        if (this.tokenCache.size > 10) {
+          const tokens = Array.from(this.tokenCache.entries())
+            .sort((a, b) => a[1].timestamp - b[1].timestamp);
+          
+          tokens.slice(0, tokens.length - 10).forEach(([token]) => {
+            this.tokenCache.delete(token);
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error adding token to rotation cache:', error);
     }
   },
   
   /**
-   * Pulisci i token scaduti dalla cache
+   * Pulisce i token più vecchi mantenendo solo gli ultimi 10
+   */
+  async _cleanupOldTokens() {
+    try {
+      if (!this.redisClient || !this.redisClient.isOpen) return;
+      
+      // Ottieni tutti i token keys
+      const tokenKeys = await this.redisClient.keys('token:*');
+      
+      if (tokenKeys.length <= 10) return;
+      
+      // Ottieni i timestamp di tutti i token
+      const tokenData = [];
+      for (const key of tokenKeys) {
+        const data = await this.redisClient.get(key);
+        if (data) {
+          const parsed = JSON.parse(data);
+          tokenData.push({ key, timestamp: parsed.timestamp });
+        }
+      }
+      
+      // Ordina per timestamp e rimuovi i più vecchi
+      tokenData.sort((a, b) => a.timestamp - b.timestamp);
+      const tokensToRemove = tokenData.slice(0, tokenData.length - 10);
+      
+      if (tokensToRemove.length > 0) {
+        await this.redisClient.del(tokensToRemove.map(t => t.key));
+      }
+    } catch (error) {
+      console.error('Error cleaning up old tokens:', error);
+    }
+  },
+  
+  /**
+   * Pulisci i token scaduti dalla cache Redis
    * @param {number} maxAge - Età massima in millisecondi
    */
-  cleanupExpiredTokens(maxAge = 24 * 60 * 60 * 1000) {
-    const now = Date.now();
-    for (const [token, info] of this.tokenCache.entries()) {
-      if (now - info.timestamp > maxAge) {
-        this.tokenCache.delete(token);
+  async cleanupExpiredTokens(maxAge = 24 * 60 * 60 * 1000) {
+    try {
+      if (this.redisClient && this.redisClient.isOpen) {
+        const tokenKeys = await this.redisClient.keys('token:*');
+        const now = Date.now();
+        
+        for (const key of tokenKeys) {
+          const data = await this.redisClient.get(key);
+          if (data) {
+            const tokenInfo = JSON.parse(data);
+            if (now - tokenInfo.timestamp > maxAge) {
+              await this.redisClient.del(key);
+            }
+          }
+        }
+      } else if (this.tokenCache) {
+        // Fallback cleanup per cache in memoria
+        const now = Date.now();
+        for (const [token, info] of this.tokenCache.entries()) {
+          if (now - info.timestamp > maxAge) {
+            this.tokenCache.delete(token);
+          }
+        }
       }
+    } catch (error) {
+      console.error('Error cleaning up expired tokens:', error);
     }
   }
 };
-
-// Cleanup automatico ogni ora
-setInterval(() => {
-  tokenRotationManager.cleanupExpiredTokens();
-}, 60 * 60 * 1000);
 
 /*
 USAGE EXAMPLES:
@@ -717,8 +830,8 @@ USAGE EXAMPLES:
    // Generate a new rotated token
    const newToken = tokenRotationManager.generateRotatedToken();
    
-   // Add old token to rotation cache before updating
-   tokenRotationManager.addToRotationCache(process.env.BEARER_TOKEN);
+   // Add old token to rotation cache before updating (async with Redis)
+   await tokenRotationManager.addToRotationCache(process.env.BEARER_TOKEN);
    
    // Update environment variable (in production, update your deployment config)
    process.env.BEARER_TOKEN = newToken;
