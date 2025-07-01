@@ -15,6 +15,141 @@ export interface AuthResponse {
   expiresIn: string;
 }
 
+// ============================================================================
+// V2 AUTHENTICATION API INTERFACES
+// ============================================================================
+
+export interface UserV2 {
+  id: string;
+  email: string;
+  name: string;
+  roles: string[];
+  permissions?: string[];
+  isVerified: boolean;
+}
+
+export interface UserRegistrationResponse {
+  user: UserV2;
+}
+
+export interface LoginResponseV2 {
+  accessToken: string;
+  refreshToken: string;
+  sessionId: string;
+  expiresIn: number;
+  tokenType: string;
+  user: UserV2;
+}
+
+export interface RefreshTokenResponse {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+  tokenType: string;
+}
+
+export interface UserMeResponse {
+  user: UserV2 & {
+    firstName?: string;
+    lastName?: string;
+    lastLoginAt?: string;
+    createdAt?: string;
+  };
+  session: {
+    jti: string;
+    roles: string[];
+    permissions: string[];
+  };
+}
+
+export interface ChangePasswordResponse {
+  passwordChanged: boolean;
+}
+
+export interface LogoutResponse {
+  success: boolean;
+  message: string;
+}
+
+export interface UserListItem {
+  id: string;
+  email: string;
+  name: string;
+  roles: string[];
+  isActive: boolean;
+  isVerified: boolean;
+  lastLoginAt?: string;
+  createdAt: string;
+}
+
+export interface UsersListResponse {
+  users: UserListItem[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export interface RoleAssignmentResponse {
+  success: boolean;
+  message: string;
+  assignment: {
+    userId: string;
+    role: string;
+    expiresAt?: string;
+  };
+}
+
+export interface Role {
+  name: string;
+  description: string;
+  permissions: string[];
+  isDefault: boolean;
+  createdAt: string;
+}
+
+export interface RolesListResponse {
+  roles: Role[];
+}
+
+export interface RoleDetailsResponse {
+  role: Role & {
+    usersCount: number;
+    permissions: Array<{
+      name: string;
+      description: string;
+      category: string;
+    }>;
+  };
+}
+
+export interface AuthInfoV2Response {
+  version: string;
+  features: {
+    registration: boolean;
+    passwordReset: boolean;
+    roleManagement: boolean;
+    sessionManagement: boolean;
+  };
+  security: {
+    passwordPolicy: {
+      minLength: number;
+      requireUppercase: boolean;
+      requireLowercase: boolean;
+      requireNumbers: boolean;
+      requireSpecialChars: boolean;
+    };
+    sessionTimeout: number;
+    maxFailedAttempts: number;
+  };
+}
+
+// ============================================================================
+// EXISTING INTERFACES
+// ============================================================================
+
 export interface FileData {
   name: string;
   size: number;
@@ -283,13 +418,13 @@ class ApiService {
     firstName: string;
     lastName: string;
     role?: string;
-  }): Promise<any> {
-    const response: AxiosResponse<ApiResponse<any>> = await this.api.post('/v2/auth/register', data);
+  }): Promise<ApiResponse<UserRegistrationResponse>> {
+    const response: AxiosResponse<ApiResponse<UserRegistrationResponse>> = await this.api.post('/v2/auth/register', data);
     return response.data;
   }
 
-  async loginUser(email: string, password: string): Promise<any> {
-    const response: AxiosResponse<ApiResponse<any>> = await this.api.post('/v2/auth/login', {
+  async loginUser(email: string, password: string): Promise<ApiResponse<LoginResponseV2>> {
+    const response: AxiosResponse<ApiResponse<LoginResponseV2>> = await this.api.post('/v2/auth/login', {
       email,
       password
     });
@@ -302,28 +437,28 @@ class ApiService {
     throw new Error(response.data.message || 'Login failed');
   }
 
-  async refreshToken(refreshToken: string): Promise<any> {
-    const response: AxiosResponse<ApiResponse<any>> = await this.api.post('/v2/auth/refresh', {
+  async refreshToken(refreshToken: string): Promise<ApiResponse<RefreshTokenResponse>> {
+    const response: AxiosResponse<ApiResponse<RefreshTokenResponse>> = await this.api.post('/v2/auth/refresh', {
       refreshToken
     });
     return response.data;
   }
 
-  async logoutUser(): Promise<any> {
-    const response: AxiosResponse<ApiResponse<any>> = await this.api.post('/v2/auth/logout');
+  async logoutUser(): Promise<ApiResponse<LogoutResponse>> {
+    const response: AxiosResponse<ApiResponse<LogoutResponse>> = await this.api.post('/v2/auth/logout');
     return response.data;
   }
 
-  async getUserMe(): Promise<any> {
-    const response: AxiosResponse<ApiResponse<any>> = await this.api.get('/v2/auth/me');
+  async getUserMe(): Promise<ApiResponse<UserMeResponse>> {
+    const response: AxiosResponse<ApiResponse<UserMeResponse>> = await this.api.get('/v2/auth/me');
     return response.data;
   }
 
   async changeUserPassword(data: {
     currentPassword: string;
     newPassword: string;
-  }): Promise<any> {
-    const response: AxiosResponse<ApiResponse<any>> = await this.api.post('/v2/auth/change-password', data);
+  }): Promise<ApiResponse<ChangePasswordResponse>> {
+    const response: AxiosResponse<ApiResponse<ChangePasswordResponse>> = await this.api.post('/v2/auth/change-password', data);
     return response.data;
   }
 
@@ -333,7 +468,7 @@ class ApiService {
     limit?: number;
     search?: string;
     role?: string;
-  } = {}): Promise<any> {
+  } = {}): Promise<ApiResponse<UsersListResponse>> {
     const searchParams = new URLSearchParams();
     
     if (params.page) searchParams.append('page', params.page.toString());
@@ -341,7 +476,7 @@ class ApiService {
     if (params.search) searchParams.append('search', params.search);
     if (params.role) searchParams.append('role', params.role);
 
-    const response: AxiosResponse<ApiResponse<any>> = await this.api.get(`/v2/auth/users?${searchParams.toString()}`);
+    const response: AxiosResponse<ApiResponse<UsersListResponse>> = await this.api.get(`/v2/auth/users?${searchParams.toString()}`);
     return response.data;
   }
 
@@ -349,23 +484,23 @@ class ApiService {
     userId: string;
     role: string;
     expiresAt?: string;
-  }): Promise<any> {
-    const response: AxiosResponse<ApiResponse<any>> = await this.api.post('/v2/auth/assign-role', data);
+  }): Promise<ApiResponse<RoleAssignmentResponse>> {
+    const response: AxiosResponse<ApiResponse<RoleAssignmentResponse>> = await this.api.post('/v2/auth/assign-role', data);
     return response.data;
   }
 
-  async listRoles(): Promise<any> {
-    const response: AxiosResponse<ApiResponse<any>> = await this.api.get('/v2/auth/roles');
+  async listRoles(): Promise<ApiResponse<RolesListResponse>> {
+    const response: AxiosResponse<ApiResponse<RolesListResponse>> = await this.api.get('/v2/auth/roles');
     return response.data;
   }
 
-  async getRoleDetails(roleName: string): Promise<any> {
-    const response: AxiosResponse<ApiResponse<any>> = await this.api.get(`/v2/auth/roles/${roleName}`);
+  async getRoleDetails(roleName: string): Promise<ApiResponse<RoleDetailsResponse>> {
+    const response: AxiosResponse<ApiResponse<RoleDetailsResponse>> = await this.api.get(`/v2/auth/roles/${roleName}`);
     return response.data;
   }
 
-  async getAuthInfoV2(): Promise<any> {
-    const response: AxiosResponse<ApiResponse<any>> = await this.api.get('/v2/auth/info');
+  async getAuthInfoV2(): Promise<ApiResponse<AuthInfoV2Response>> {
+    const response: AxiosResponse<ApiResponse<AuthInfoV2Response>> = await this.api.get('/v2/auth/info');
     return response.data;
   }
 
