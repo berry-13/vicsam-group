@@ -3,14 +3,39 @@ const { performance } = require('perf_hooks');
 
 /**
  * Test di performance per il sistema di autenticazione
+ * 
+ * Configuration:
+ * - Environment variables: TEST_EMAIL, TEST_PASSWORD
+ * - Constructor config object: { email: 'user@example.com', password: 'password' }
+ * - Defaults: admin@vicsam.com / VicsAm2025!
+ * 
+ * Usage examples:
+ * - Default: node performance-test.js
+ * - With env vars: TEST_EMAIL=test@example.com TEST_PASSWORD=mypass node performance-test.js
+ * - With custom URL: node performance-test.js http://production-server:3000
  */
 class AuthPerformanceTester {
-  constructor(baseUrl = 'http://localhost:3000') {
+  constructor(baseUrl = 'http://localhost:3000', config = {}) {
     this.baseUrl = baseUrl;
+    this.config = {
+      email: process.env.TEST_EMAIL || config.email || 'admin@vicsam.com',
+      password: process.env.TEST_PASSWORD || config.password || 'VicsAm2025!',
+      ...config
+    };
     this.results = {
       timestamp: new Date().toISOString(),
       baseUrl,
       tests: []
+    };
+  }
+
+  /**
+   * Get test credentials from configuration
+   */
+  getTestCredentials() {
+    return {
+      email: this.config.email,
+      password: this.config.password
     };
   }
 
@@ -41,10 +66,7 @@ class AuthPerformanceTester {
   async testAuthenticationLatency() {
     console.log('🔐 [PERFORMANCE] Testing authentication latency...');
     
-    const testData = {
-      email: 'admin@vicsam.com',
-      password: 'VicsAm2025!'
-    };
+    const testData = this.getTestCredentials();
     
     const iterations = 10;
     const latencies = [];
@@ -113,10 +135,7 @@ class AuthPerformanceTester {
   async testLoginThroughput() {
     console.log('🚀 [PERFORMANCE] Testing login throughput...');
     
-    const testData = {
-      email: 'admin@vicsam.com',
-      password: 'VicsAm2025!'
-    };
+    const testData = this.getTestCredentials();
     
     const duration = 10000; // 10 seconds
     const startTime = performance.now();
@@ -173,10 +192,7 @@ class AuthPerformanceTester {
     // First, get a token
     let token;
     try {
-      const loginResponse = await axios.post(`${this.baseUrl}/api/v2/auth/login`, {
-        email: 'admin@vicsam.com',
-        password: 'VicsAm2025!'
-      });
+      const loginResponse = await axios.post(`${this.baseUrl}/api/v2/auth/login`, this.getTestCredentials());
       
       if (!loginResponse.data.success) {
         throw new Error('Failed to get token for JWT validation test');
@@ -250,10 +266,7 @@ class AuthPerformanceTester {
     
     for (let i = 0; i < sessionCount; i++) {
       try {
-        const response = await axios.post(`${this.baseUrl}/api/v2/auth/login`, {
-          email: 'admin@vicsam.com',
-          password: 'VicsAm2025!'
-        });
+        const response = await axios.post(`${this.baseUrl}/api/v2/auth/login`, this.getTestCredentials());
         
         if (response.data.success) {
           sessions.push(response.data.data.token);
@@ -317,10 +330,7 @@ class AuthPerformanceTester {
     console.log('⚡ [PERFORMANCE] Testing concurrent logins...');
     
     const concurrentUsers = 10;
-    const testData = {
-      email: 'admin@vicsam.com',
-      password: 'VicsAm2025!'
-    };
+    const testData = this.getTestCredentials();
     
     const start = performance.now();
     
@@ -511,7 +521,20 @@ class AuthPerformanceTester {
 // CLI Interface
 async function main() {
   const baseUrl = process.argv[2] || 'http://localhost:3000';
-  const tester = new AuthPerformanceTester(baseUrl);
+  
+  // Configuration can be passed via environment variables or constructor config
+  // Environment variables: TEST_EMAIL, TEST_PASSWORD
+  // Example: TEST_EMAIL=test@example.com TEST_PASSWORD=mypassword node performance-test.js
+  const config = {
+    // Additional config options can be added here if needed
+  };
+  
+  const tester = new AuthPerformanceTester(baseUrl, config);
+  
+  console.log('🔧 [CONFIG] Using test credentials:');
+  console.log(`   Email: ${tester.config.email}`);
+  console.log(`   Password: ${'*'.repeat(tester.config.password.length)}`);
+  console.log('');
   
   try {
     await tester.runAllTests();

@@ -2,6 +2,9 @@
 // SERVER UTILITIES
 // ============================================================================
 
+const fs = require('fs');
+const path = require('path');
+
 /**
  * Calcola metriche di sistema ottimizzate
  */
@@ -29,8 +32,6 @@ function getSystemMetrics() {
  * Verifica se il client build esiste
  */
 function checkClientBuild() {
-  const fs = require('fs');
-  const path = require('path');
   const clientIndexPath = path.join(__dirname, '../../client/dist/index.html');
   
   const hasClientBuild = fs.existsSync(clientIndexPath);

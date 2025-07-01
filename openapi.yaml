@@ -34,6 +34,10 @@ servers:
   - url: https://api.vicsamgroup.com/auth
     description: Production server
 
+# Global security requirement - all endpoints require JWT authentication by default
+security:
+  - BearerAuth: []
+
 paths:
   /register:
     post:
@@ -41,6 +45,7 @@ paths:
       description: Create a new user account with email and password
       tags:
         - Authentication
+      security: []  # Public endpoint - no authentication required
       requestBody:
         required: true
         content:
@@ -117,6 +122,7 @@ paths:
       description: Authenticate user with email and password
       tags:
         - Authentication
+      security: []  # Public endpoint - no authentication required
       requestBody:
         required: true
         content:
@@ -166,6 +172,7 @@ paths:
       description: Get a new access token using a refresh token
       tags:
         - Authentication
+      security: []  # Public endpoint - uses refresh token instead of Bearer auth
       requestBody:
         required: true
         content:
@@ -429,6 +436,7 @@ paths:
       description: Get information about the authentication API
       tags:
         - System
+      security: []  # Public endpoint - no authentication required
       responses:
         '200':
           description: API information retrieved successfully
@@ -574,10 +582,12 @@ components:
           type: array
           items:
             type: string
+          maxItems: 50
         permissions:
           type: array
           items:
             type: string
+          maxItems: 100
         createdAt:
           type: string
           format: date-time
@@ -600,6 +610,7 @@ components:
           type: array
           items:
             type: string
+          maxItems: 100
         isSystemRole:
           type: boolean
         userCount:
@@ -695,10 +706,12 @@ components:
                   type: array
                   items:
                     type: string
+                  maxItems: 50
                 permissions:
                   type: array
                   items:
                     type: string
+                  maxItems: 100
 
     UsersListResponse:
       type: object
@@ -716,6 +729,7 @@ components:
               type: array
               items:
                 $ref: '#/components/schemas/User'
+              maxItems: 1000
             pagination:
               type: object
               properties:
@@ -744,6 +758,7 @@ components:
               type: array
               items:
                 $ref: '#/components/schemas/Role'
+              maxItems: 200
 
     ApiInfoResponse:
       type: object
@@ -767,6 +782,7 @@ components:
               type: array
               items:
                 type: string
+              maxItems: 50
             endpoints:
               type: object
             security:

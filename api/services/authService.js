@@ -75,7 +75,7 @@ class AuthService {
 
       // Log dell'audit
       await this.logAuditEvent(userId, 'user.register', 'users', userId, {
-        email,
+        email: email.toLowerCase(), // Log email in consistent lowercase format
         role,
         method: 'email_password'
       }, true, transaction);
@@ -113,7 +113,7 @@ class AuthService {
       const user = await this.findUserByEmail(email);
       if (!user) {
         await this.logAuditEvent(null, 'user.login_failed', 'users', null, {
-          email,
+          email: email.toLowerCase(), // Log email in consistent lowercase format
           reason: 'user_not_found',
           ip: metadata.ip
         }, false, transaction);
@@ -124,7 +124,7 @@ class AuthService {
       // Verifica se l'account è bloccato
       if (user.locked_until && new Date() < new Date(user.locked_until)) {
         await this.logAuditEvent(user.id, 'user.login_blocked', 'users', user.id, {
-          email,
+          email: email.toLowerCase(), // Ensure email is consistently lowercase
           locked_until: user.locked_until,
           ip: metadata.ip
         }, false, transaction);
@@ -145,7 +145,7 @@ class AuthService {
         await this.incrementFailedAttempts(user.id, transaction);
         
         await this.logAuditEvent(user.id, 'user.login_failed', 'users', user.id, {
-          email,
+          email: email.toLowerCase(), // Ensure email is consistently lowercase
           reason: 'invalid_password',
           failed_attempts: user.failed_login_attempts + 1,
           ip: metadata.ip
@@ -166,7 +166,7 @@ class AuthService {
 
       // Log dell'audit
       await this.logAuditEvent(user.id, 'user.login_success', 'users', user.id, {
-        email,
+        email: email.toLowerCase(), // Ensure email is consistently lowercase
         session_id: authData.sessionId,
         ip: metadata.ip,
         user_agent: metadata.userAgent
@@ -464,6 +464,7 @@ class AuthService {
       
       return {
         ...user,
+        email: user.email.toLowerCase(), // Ensure email is consistently lowercase
         roles: roles.map(r => ({
           name: r.name,
           displayName: r.display_name
@@ -498,7 +499,7 @@ class AuthService {
       const isCurrentPasswordValid = await cryptoService.verifyPassword(
         currentPassword, 
         user.password_hash, 
-        user.password_salt
+        'argon2id'
       );
       
       if (!isCurrentPasswordValid) {
@@ -571,7 +572,7 @@ class AuthService {
       // Filtro per ricerca
       if (search) {
         whereConditions.push('(u.email LIKE ? OR u.first_name LIKE ? OR u.last_name LIKE ?)');
-        const searchPattern = `%${search}%`;
+        const searchPattern = `%${search.toLowerCase()}%`;
         queryParams.push(searchPattern, searchPattern, searchPattern);
       }
       
@@ -623,7 +624,7 @@ class AuthService {
       // Formatta i risultati
       const users = usersResult.rows.map(user => ({
         id: user.uuid,
-        email: user.email,
+        email: user.email.toLowerCase(), // Ensure email is consistently lowercase
         name: `${user.first_name} ${user.last_name}`.trim(),
         firstName: user.first_name,
         lastName: user.last_name,
@@ -914,6 +915,7 @@ class AuthService {
       
       return {
         ...user,
+        email: user.email.toLowerCase(), // Ensure email is consistently lowercase
         roles: roles.map(r => ({
           name: r.name,
           displayName: r.display_name

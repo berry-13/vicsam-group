@@ -1,6 +1,8 @@
 const { db } = require('../database/database');
 const cryptoService = require('../api/services/cryptoService');
 const { AuthError } = require('../api/services/authService');
+const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 
 /**
  * Script per la migrazione delle password dal sistema legacy al nuovo sistema
@@ -125,7 +127,6 @@ class PasswordMigrator {
       console.log(`🔄 [MIGRATION] Migrating user: ${legacyUser.email}`);
       
       // Genera un UUID per l'utente
-      const { v4: uuidv4 } = require('uuid');
       const userUuid = uuidv4();
       
       // Se l'utente ha una password in chiaro nel sistema legacy (sconsigliato)
@@ -218,25 +219,36 @@ class PasswordMigrator {
   }
 
   /**
-   * Genera una password temporanea sicura
+   * Genera una password temporanea sicura usando crypto random
    */
   generateTemporaryPassword() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+    const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+    const digits = '0123456789';
+    const special = '!@#$%^&*';
+    const allChars = uppercase + lowercase + digits + special;
+    
     let result = '';
     
-    // Assicura che abbia almeno un carattere di ogni tipo
-    result += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)]; // Maiuscola
-    result += 'abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 26)]; // Minuscola
-    result += '0123456789'[Math.floor(Math.random() * 10)]; // Numero
-    result += '!@#$%^&*'[Math.floor(Math.random() * 8)]; // Speciale
+    // Assicura che abbia almeno un carattere di ogni tipo usando crypto.randomInt
+    result += uppercase[crypto.randomInt(0, uppercase.length)]; // Maiuscola
+    result += lowercase[crypto.randomInt(0, lowercase.length)]; // Minuscola
+    result += digits[crypto.randomInt(0, digits.length)]; // Numero
+    result += special[crypto.randomInt(0, special.length)]; // Speciale
     
-    // Riempie il resto
+    // Riempie il resto con caratteri casuali sicuri
     for (let i = result.length; i < 12; i++) {
-      result += chars[Math.floor(Math.random() * chars.length)];
+      result += allChars[crypto.randomInt(0, allChars.length)];
     }
     
-    // Mescola i caratteri
-    return result.split('').sort(() => Math.random() - 0.5).join('');
+    // Mescola i caratteri usando Fisher-Yates shuffle con crypto.randomInt
+    const resultArray = result.split('');
+    for (let i = resultArray.length - 1; i > 0; i--) {
+      const j = crypto.randomInt(0, i + 1);
+      [resultArray[i], resultArray[j]] = [resultArray[j], resultArray[i]];
+    }
+    
+    return resultArray.join('');
   }
 
   /**

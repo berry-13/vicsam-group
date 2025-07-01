@@ -429,9 +429,12 @@ class SecurityReportGenerator {
     const checks = [];
     
     try {
+      // Find the project root directory containing package.json
+      const projectRoot = await this.findProjectRoot();
+      
       // Esegui npm audit
       const { stdout, stderr } = await execAsync('npm audit --json', { 
-        cwd: process.cwd(),
+        cwd: projectRoot,
         timeout: 30000 
       });
       
@@ -577,8 +580,8 @@ class SecurityReportGenerator {
   }
 
   async hasSecureAuthentication() {
-    return process.env.PASSWORD_MIN_LENGTH >= 8 && 
-           process.env.MAX_FAILED_LOGIN_ATTEMPTS <= 5;
+    return parseInt(process.env.PASSWORD_MIN_LENGTH, 10) >= 8 && 
+           parseInt(process.env.MAX_FAILED_LOGIN_ATTEMPTS, 10) <= 5;
   }
 
   async hasSecurityLogging() {
@@ -589,6 +592,22 @@ class SecurityReportGenerator {
   /**
    * Utility methods
    */
+  async findProjectRoot(startDir = process.cwd()) {
+    let currentDir = startDir;
+    
+    while (currentDir !== path.parse(currentDir).root) {
+      try {
+        await fs.access(path.join(currentDir, 'package.json'));
+        return currentDir;
+      } catch {
+        currentDir = path.dirname(currentDir);
+      }
+    }
+    
+    // Fallback to current working directory if package.json not found
+    return process.cwd();
+  }
+
   async checkFileExists(filePath) {
     try {
       await fs.access(path.join(process.cwd(), filePath));
@@ -610,6 +629,66 @@ class SecurityReportGenerator {
       }
     }
     return { found: false };
+  }
+
+  /**
+   * Escapes HTML characters to prevent XSS vulnerabilities
+   * @param {string} text - Text to escape
+   * @returns {string} - Escaped text safe for HTML insertion
+   */
+  escapeHtml(text) {
+    if (typeof text !== 'string') {
+      return String(text || '');
+    }
+    
+    const htmlEscapeMap = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#x27;',
+      '/': '&#x2F;'
+    };
+    
+    return text.replace(/[&<>"'\/]/g, (match) => htmlEscapeMap[match]);
+  }
+
+  /**
+   * Test method to verify HTML escaping functionality
+   * @private
+   */
+  _testHtmlEscaping() {
+    const testCases = [
+      { input: '<script>alert("XSS")</script>', expected: '&lt;script&gt;alert(&quot;XSS&quot;)&lt;&#x2F;script&gt;' },
+      { input: 'Safe text', expected: 'Safe text' },
+      { input: '<img src="x" onerror="alert(1)">', expected: '&lt;img src=&quot;x&quot; onerror=&quot;alert(1)&quot;&gt;' },
+      { input: "It's a test & example", expected: 'It&#x27;s a test &amp; example' },
+      { input: '', expected: '' },
+      { input: null, expected: '' },
+      { input: undefined, expected: '' },
+      { input: 123, expected: '123' }
+    ];
+
+    console.log('\n🧪 [SECURITY] Testing HTML escaping function...');
+    let passedTests = 0;
+    
+    testCases.forEach((testCase, index) => {
+      const result = this.escapeHtml(testCase.input);
+      const passed = result === testCase.expected;
+      
+      if (passed) {
+        passedTests++;
+        console.log(`✅ Test ${index + 1}: PASSED`);
+      } else {
+        console.log(`❌ Test ${index + 1}: FAILED`);
+        console.log(`   Input: ${JSON.stringify(testCase.input)}`);
+        console.log(`   Expected: ${testCase.expected}`);
+        console.log(`   Got: ${result}`);
+      }
+    });
+    
+    console.log(`\n🎯 [SECURITY] HTML Escaping Tests: ${passedTests}/${testCases.length} passed`);
+    return passedTests === testCases.length;
   }
 
   /**
@@ -674,7 +753,7 @@ class SecurityReportGenerator {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Security Report - ${this.report.timestamp}</title>
+    <title>Security Report - ${this.escapeHtml(this.report.timestamp)}</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; }
         .header { background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
@@ -693,25 +772,25 @@ class SecurityReportGenerator {
 <body>
     <div class="header">
         <h1>Security Report</h1>
-        <p>Generated: ${this.report.timestamp}</p>
-        <p>Version: ${this.report.version}</p>
+        <p>Generated: ${this.escapeHtml(this.report.timestamp)}</p>
+        <p>Version: ${this.escapeHtml(this.report.version)}</p>
     </div>
 
     <div class="summary">
         <div class="stat-card">
-            <h3>${this.report.summary.total}</h3>
+            <h3>${this.escapeHtml(this.report.summary.total)}</h3>
             <p>Total Checks</p>
         </div>
         <div class="stat-card pass">
-            <h3>${this.report.summary.passed}</h3>
+            <h3>${this.escapeHtml(this.report.summary.passed)}</h3>
             <p>Passed</p>
         </div>
         <div class="stat-card warn">
-            <h3>${this.report.summary.warnings}</h3>
+            <h3>${this.escapeHtml(this.report.summary.warnings)}</h3>
             <p>Warnings</p>
         </div>
         <div class="stat-card fail">
-            <h3>${this.report.summary.failed}</h3>
+            <h3>${this.escapeHtml(this.report.summary.failed)}</h3>
             <p>Failed</p>
         </div>
     </div>
@@ -720,8 +799,8 @@ class SecurityReportGenerator {
     <div>
         ${this.report.checks.map(check => `
             <div class="check">
-                <h4 class="${check.status.toLowerCase()}">${check.name} - ${check.status}</h4>
-                <p>${check.message}</p>
+                <h4 class="${this.escapeHtml(check.status.toLowerCase())}">${this.escapeHtml(check.name)} - ${this.escapeHtml(check.status)}</h4>
+                <p>${this.escapeHtml(check.message)}</p>
             </div>
         `).join('')}
     </div>
@@ -731,9 +810,9 @@ class SecurityReportGenerator {
         <h2>Recommendations</h2>
         ${this.report.recommendations.map(rec => `
             <div class="recommendation ${rec.priority === 'HIGH' ? 'high-priority' : ''}">
-                <h4>${rec.check} (${rec.priority})</h4>
-                <p>${rec.message}</p>
-                <p><strong>Action:</strong> ${rec.action}</p>
+                <h4>${this.escapeHtml(rec.check)} (${this.escapeHtml(rec.priority)})</h4>
+                <p>${this.escapeHtml(rec.message)}</p>
+                <p><strong>Action:</strong> ${this.escapeHtml(rec.action)}</p>
             </div>
         `).join('')}
     </div>
@@ -773,6 +852,13 @@ class SecurityReportGenerator {
 // CLI Interface
 async function main() {
   const generator = new SecurityReportGenerator();
+  
+  // Check for test command line argument
+  if (process.argv.includes('--test-escaping')) {
+    console.log('🧪 [SECURITY] Running HTML escaping tests...');
+    const testsPassed = generator._testHtmlEscaping();
+    process.exit(testsPassed ? 0 : 1);
+  }
   
   try {
     await generator.generateReport();

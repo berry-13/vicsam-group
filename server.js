@@ -134,7 +134,7 @@ async function startServer() {
       console.log('   • New Register: POST /api/v2/auth/register');
       console.log('   • Auth Info: GET /api/v2/auth/info');
       console.log('   • Data API: /api/data/*');
-      console.log('   • Downloads: /downloads/*');
+      console.log('   • Downloads: /get, /app, /downloads/info, /downloads/health');
       console.log('');
       console.log('🔐 [SERVER] Authentication System:');
       console.log('   • JWT-based authentication with RS256');

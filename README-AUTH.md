@@ -101,8 +101,10 @@ DB_PASSWORD=your_password
 DB_NAME=vicsam_auth
 
 # JWT Keys (genera con OpenSSL)
-JWT_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
-JWT_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----"
+JWT_PRIVATE_KEY="[PLACEHOLDER_FOR_PRIVATE_KEY]"
+JWT_PUBLIC_KEY="[PLACEHOLDER_FOR_PUBLIC_KEY]"
+
+⚠️ **IMPORTANT**: Never commit actual private keys to version control. Generate your own keys using the commands in the 'Generazione Chiavi JWT' section below.
 
 # Security
 SESSION_SECRET=your-session-secret-here

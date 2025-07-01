@@ -419,8 +419,9 @@ SET GLOBAL event_scheduler = ON;
 -- ============================================================================
 
 -- Indici compositi per query comuni
-CREATE INDEX idx_user_roles_active ON user_roles (user_id, role_id) 
-WHERE expires_at IS NULL OR expires_at > NOW();
+-- Note: MySQL non supporta partial indexes, quindi creiamo indici completi
+-- Le query dovranno filtrare attivamente per expires_at nei WHERE clause
+CREATE INDEX idx_user_roles_composite ON user_roles (user_id, role_id, expires_at);
 
 CREATE INDEX idx_sessions_user_active ON user_sessions (user_id, is_active, expires_at);
 

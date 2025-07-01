@@ -24,7 +24,7 @@ const registerSchema = Joi.object({
   password: Joi.string()
     .min(8)
     .max(128)
-    .pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/)
+    .pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]$/)
     .required()
     .messages({
       'string.min': 'Password must be at least 8 characters long',
@@ -121,7 +121,7 @@ const changePasswordSchema = Joi.object({
   newPassword: Joi.string()
     .min(8)
     .max(128)
-    .pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/)
+    .pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]$/)
     .required()
     .messages({
       'string.min': 'New password must be at least 8 characters long',
@@ -229,7 +229,7 @@ const validateRegister = [
   body('password')
     .isLength({ min: 8, max: 128 })
     .withMessage('Password must be between 8 and 128 characters')
-    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/)
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]$/)
     .withMessage('Password must contain at least one uppercase letter, one lowercase letter, one number and one special character'),
   
   body('confirmPassword')
@@ -294,7 +294,7 @@ const validateChangePassword = [
   body('newPassword')
     .isLength({ min: 8, max: 128 })
     .withMessage('New password must be between 8 and 128 characters')
-    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/)
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]$/)
     .withMessage('New password must contain at least one uppercase letter, one lowercase letter, one number and one special character'),
   
   body('confirmNewPassword')
@@ -418,14 +418,40 @@ const sanitizeInput = (req, res, next) => {
   const sanitizeObject = (obj) => {
     for (const key in obj) {
       if (typeof obj[key] === 'string') {
-        // Rimuove caratteri potenzialmente pericolosi
-        obj[key] = obj[key]
-          .trim()
-          .replace(/[<>]/g, '') // Rimuove < e >
-          .replace(/javascript:/gi, '') // Rimuove javascript:
-          .replace(/on\w+=/gi, ''); // Rimuove event handlers
-      } else if (typeof obj[key] === 'object' && obj[key] !== null) {
+        // Trim whitespace
+        obj[key] = obj[key].trim();
+        
+        // Basic validation: prevent extremely long inputs
+        if (obj[key].length > 10000) {
+          obj[key] = obj[key].substring(0, 10000);
+        }
+        
+        // Only remove truly dangerous script injection attempts
+        // Remove script tags and their content
+        obj[key] = obj[key].replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+        
+        // Remove only standalone javascript: protocols (not part of legitimate URLs)
+        obj[key] = obj[key].replace(/^\s*javascript:/gi, '');
+        
+        // Note: Preserving < > characters as they may be legitimate user input
+        // Note: XSS prevention should be handled at output encoding level
+      } else if (typeof obj[key] === 'object' && obj[key] !== null && Array.isArray(obj[key]) === false) {
+        // Recursively sanitize nested objects (but not arrays to preserve data structure)
         sanitizeObject(obj[key]);
+      } else if (Array.isArray(obj[key])) {
+        // Handle arrays by sanitizing each element
+        obj[key].forEach((item, index) => {
+          if (typeof item === 'string') {
+            obj[key][index] = item.trim();
+            if (obj[key][index].length > 10000) {
+              obj[key][index] = obj[key][index].substring(0, 10000);
+            }
+            obj[key][index] = obj[key][index].replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+            obj[key][index] = obj[key][index].replace(/^\s*javascript:/gi, '');
+          } else if (typeof item === 'object' && item !== null) {
+            sanitizeObject(item);
+          }
+        });
       }
     }
   };

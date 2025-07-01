@@ -231,34 +231,38 @@ class CryptoService {
   // ============================================================================
 
   /**
-   * Crittografa dati con AES-256-CBC
+   * Crittografa dati con AES-256-GCM (authenticated encryption)
    * @param {string} data - Dati da crittografare
    * @param {string} key - Chiave di crittografia (base64)
-   * @returns {Object} Dati crittografati con IV
+   * @returns {Object} Dati crittografati con IV e authentication tag
    */
   encryptAES(data, key) {
     try {
       const keyBuffer = Buffer.from(key, 'base64');
-      const iv = crypto.randomBytes(16);
-      const cipher = crypto.createCipheriv('aes-256-cbc', keyBuffer, iv);
+      const iv = crypto.randomBytes(12); // 12 bytes IV for GCM mode
+      const cipher = crypto.createCipheriv('aes-256-gcm', keyBuffer, iv);
       
       let encrypted = cipher.update(data, 'utf8', 'hex');
       encrypted += cipher.final('hex');
       
+      // Get the authentication tag for GCM mode
+      const authTag = cipher.getAuthTag();
+      
       return {
         encrypted,
         iv: iv.toString('hex'),
-        algorithm: 'AES-256-CBC'
+        authTag: authTag.toString('hex'),
+        algorithm: 'AES-256-GCM'
       };
     } catch (error) {
-      console.error('❌ [CRYPTO] AES encryption failed:', error.message);
-      throw new CryptoError('AES encryption failed', error);
+      console.error('❌ [CRYPTO] AES-GCM encryption failed:', error.message);
+      throw new CryptoError('AES-GCM encryption failed', error);
     }
   }
 
   /**
-   * Decrittografa dati AES-CBC
-   * @param {Object} encryptedData - Dati crittografati
+   * Decrittografa dati AES-256-GCM (authenticated encryption)
+   * @param {Object} encryptedData - Dati crittografati con IV e auth tag
    * @param {string} key - Chiave di decrittografia (base64)
    * @returns {string} Dati decrittografati
    */
@@ -266,15 +270,19 @@ class CryptoService {
     try {
       const keyBuffer = Buffer.from(key, 'base64');
       const iv = Buffer.from(encryptedData.iv, 'hex');
-      const decipher = crypto.createDecipheriv('aes-256-cbc', keyBuffer, iv);
+      const authTag = Buffer.from(encryptedData.authTag, 'hex');
+      const decipher = crypto.createDecipheriv('aes-256-gcm', keyBuffer, iv);
+      
+      // Set the authentication tag for GCM mode
+      decipher.setAuthTag(authTag);
       
       let decrypted = decipher.update(encryptedData.encrypted, 'hex', 'utf8');
       decrypted += decipher.final('utf8');
       
       return decrypted;
     } catch (error) {
-      console.error('❌ [CRYPTO] AES decryption failed:', error.message);
-      throw new CryptoError('AES decryption failed', error);
+      console.error('❌ [CRYPTO] AES-GCM decryption failed:', error.message);
+      throw new CryptoError('AES-GCM decryption failed', error);
     }
   }
 
