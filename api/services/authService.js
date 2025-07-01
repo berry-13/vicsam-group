@@ -926,11 +926,70 @@ class AuthService {
       throw error;
     }
   }
+
+  /**
+   * Assegna un ruolo a un utente
+   * @param {number} userId - ID dell'utente
+   * @param {string} roleName - Nome del ruolo da assegnare
+   * @param {number|null} assignedBy - ID dell'utente che assegna il ruolo
+   * @param {Object|null} transaction - Transazione del database
+   * @param {Date|null} expiresAt - Data di scadenza del ruolo (opzionale)
+   * @returns {Promise<void>}
+   */
+  async assignRoleToUser(userId, roleName, assignedBy = null, transaction = null, expiresAt = null) {
+    try {
+      console.log(`👑 [AUTH] Assigning role '${roleName}' to user ${userId}`);
+      
+      // Trova l'ID del ruolo
+      const roleResult = await (transaction || db).query(`
+        SELECT id FROM roles WHERE name = ?
+      `, [roleName]);
+      
+      if (roleResult.rows.length === 0) {
+        throw new Error(`Role '${roleName}' not found`);
+      }
+      
+      const roleId = roleResult.rows[0].id;
+      
+      // Verifica se l'utente ha già questo ruolo
+      const existingResult = await (transaction || db).query(`
+        SELECT id FROM user_roles 
+        WHERE user_id = ? AND role_id = ? AND (expires_at IS NULL OR expires_at > NOW())
+      `, [userId, roleId]);
+      
+      if (existingResult.rows.length > 0) {
+        console.log(`⚠️ [AUTH] User ${userId} already has role '${roleName}'`);
+        return;
+      }
+      
+      // Assegna il ruolo
+      await (transaction || db).query(`
+        INSERT INTO user_roles (user_id, role_id, assigned_by, expires_at)
+        VALUES (?, ?, ?, ?)
+      `, [userId, roleId, assignedBy, expiresAt]);
+      
+      console.log(`✅ [AUTH] Role '${roleName}' assigned to user ${userId}`);
+      
+      // Log dell'audit
+      await this.logAuditEvent(assignedBy || userId, 'role.assign', 'user_roles', `${userId}:${roleId}`, {
+        userId,
+        roleName,
+        assignedBy,
+        expiresAt
+      }, true, transaction);
+      
+    } catch (error) {
+      console.error(`❌ [AUTH] Assign role failed:`, error.message);
+      throw error;
+    }
+  }
+
+  // ============================================================================
 }
 
-/**
- * Classe di errore personalizzata per l'autenticazione
- */
+// /**
+//  * Classe di errore personalizzata per l'autenticazione
+//  */
 class AuthError extends Error {
   constructor(message, code = 'AUTH_ERROR') {
     super(message);
