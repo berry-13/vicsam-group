@@ -375,8 +375,7 @@ class AuthService {
       return jwt.sign(payload, keys.privateKey, {
         algorithm: 'RS256',
         expiresIn: this.accessTokenExpiry,
-        issuer: 'vicsam-auth',
-        audience: 'vicsam-platform'
+        issuer: 'vicsam-auth'
       });
     } catch (error) {
       console.error('❌ [AUTH] Access token generation failed:', error.message);
@@ -398,8 +397,7 @@ class AuthService {
 
       const decoded = jwt.verify(token, keys.publicKey, {
         algorithm: 'RS256',
-        issuer: 'vicsam-auth',
-        audience: 'vicsam-platform'
+        issuer: 'vicsam-auth'
       });
 
       // Verifica se il JTI è ancora valido (sessione attiva)
