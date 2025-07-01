@@ -72,6 +72,8 @@ async function testRedisConnection() {
     
     console.log('\n🎉 All Redis operations completed successfully!');
     console.log('✅ Redis is ready for token rotation storage');
+    console.log('🔄 Token rotation manager will be managed by server lifecycle');
+    console.log('📋 Cleanup interval will be set in main server startup');
     
   } catch (error) {
     console.error('\n❌ Redis connection test failed:', error.message);

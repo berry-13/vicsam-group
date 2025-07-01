@@ -8,6 +8,80 @@ const { createClient } = require('redis');
  */
 
 /**
+ * Whitelist of legitimate resource patterns for wildcard permissions
+ * This prevents malicious wildcard permission exploitation
+ */
+const VALID_RESOURCE_PATTERNS = [
+  'data',        // data.read, data.write, data.delete
+  'user',        // user.create, user.update, user.delete
+  'admin',       // admin.users, admin.system, admin.config
+  'system',      // system.maintenance, system.logs, system.backup
+  'report',      // report.generate, report.view, report.export
+  'file',        // file.upload, file.download, file.delete
+  'auth',        // auth.manage, auth.sessions, auth.tokens
+  'api',         // api.access, api.manage, api.configure
+  'download',    // download.get, download.app, download.custom
+  'audit',       // audit.view, audit.export, audit.manage
+  'role',        // role.assign, role.remove, role.manage
+  'session',     // session.create, session.revoke, session.manage
+  'permission'   // permission.grant, permission.revoke, permission.manage
+];
+
+/**
+ * Validates that a resource pattern is legitimate and authorized
+ * @param {string} resource - The resource part before '.*' in wildcard permissions
+ * @returns {boolean} True if the resource pattern is valid
+ */
+const isValidResourcePattern = (resource) => {
+  if (!resource || typeof resource !== 'string') {
+    return false;
+  }
+  
+  // Normalize resource name (trim, lowercase)
+  const normalizedResource = resource.trim().toLowerCase();
+  
+  // Check against whitelist
+  if (VALID_RESOURCE_PATTERNS.includes(normalizedResource)) {
+    return true;
+  }
+  
+  // Additional security checks
+  // Prevent injection patterns and malicious inputs
+  const maliciousPatterns = [
+    /[<>\"\'`]/,        // HTML/JS injection characters
+    /\$\{/,             // Template literal injection
+    /\.\./,             // Path traversal
+    /[;|&]/,            // Command injection
+    /javascript:/i,     // Protocol injection
+    /data:/i,           // Data URL injection
+    /\x00/,             // Null byte injection
+    /[\u0000-\u001f]/   // Control characters
+  ];
+  
+  for (const pattern of maliciousPatterns) {
+    if (pattern.test(resource)) {
+      console.warn(`🚨 [SECURITY] Malicious pattern detected in resource: ${resource}`);
+      return false;
+    }
+  }
+  
+  // Check resource length (prevent extremely long inputs)
+  if (normalizedResource.length > 50) {
+    console.warn(`🚨 [SECURITY] Resource name too long: ${normalizedResource.length} characters`);
+    return false;
+  }
+  
+  // Check for valid format (alphanumeric with optional hyphens/underscores)
+  if (!/^[a-z0-9][a-z0-9_-]*$/.test(normalizedResource)) {
+    console.warn(`🚨 [SECURITY] Invalid resource format: ${normalizedResource}`);
+    return false;
+  }
+  
+  console.warn(`🔒 [AUTH] Resource pattern not in whitelist: ${normalizedResource}`);
+  return false;
+};
+
+/**
  * Middleware per autenticazione JWT con verifica di sessione
  * @param {Object} req - Request object
  * @param {Object} res - Response object
@@ -116,6 +190,13 @@ const requirePermissions = (requiredPermissions) => {
         // Supporta wildcard per risorsa (es. "data.*")
         if (permission.endsWith('.*')) {
           const resource = permission.slice(0, -2);
+          
+          // Validate resource pattern against whitelist of legitimate resources
+          if (!isValidResourcePattern(resource)) {
+            console.log('❌ [AUTH] Invalid wildcard resource pattern blocked:', resource);
+            return false;
+          }
+          
           return userPermissions.some(userPerm => userPerm.startsWith(resource + '.'));
         }
         return userPermissions.includes(permission);
