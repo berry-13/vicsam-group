@@ -1,10 +1,6 @@
 const { verifyToken, extractBearerToken } = require('../utils/jwt');
 const { errorResponse } = require('../utils/helpers');
 
-/**
- * Middleware per autenticazione Bearer Token ottimizzato
- * Supporta JWT moderno e fallback al bearer token diretto
- */
 const authenticateBearer = async (req, res, next) => {
   try {
     console.log('🔐 [AUTH] Starting Bearer Token authentication...');

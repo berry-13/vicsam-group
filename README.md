@@ -57,31 +57,41 @@ npm install
 npm start
 ```
 
-### URL Shortener Usage
+### Autenticazione Rapida
 
-- `GET /get` - Download del file ZIP
-- `GET /app` - Download del file EXE
-- `GET /downloads/info` - Informazioni sui file disponibili
+**Per API semplici (Bearer Token):**
+```bash
+# .env
+BEARER_TOKEN=your-secure-token
 
-### Autenticazione
+# Uso
+curl -H "Authorization: Bearer your-secure-token" \
+  http://localhost:3000/api/auth/verify
+```
 
-**JWT System (Raccomandato):**
+**Per sistema completo (JWT):**
 ```bash
 # Login
 curl -X POST http://localhost:3000/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email": "user@example.com", "password": "password"}'
 
-# Uso del JWT token
+# Uso JWT
 curl -H "Authorization: Bearer <jwt-token>" \
   http://localhost:3000/api/auth/verify
 ```
 
-**Bearer Token Diretto:**
+### File Hosting Quick Start
+
+1. **Setup:**
 ```bash
-curl -H "Authorization: Bearer your-bearer-token" \
-  http://localhost:3000/api/auth/verify
+mkdir files
+# Aggiungi files/download.zip e files/app.exe
 ```
+
+2. **Accesso:**
+- `http://localhost:3000/get` → Download ZIP
+- `http://localhost:3000/app` → Download EXE
 
 ## 🏗️ Architettura
 

@@ -1,9 +1,5 @@
 const { successResponse, errorResponse } = require('../utils/helpers');
 
-/**
- * Controller per autenticazione ottimizzato
- * Supporta solo JWT moderno e bearer token diretto
- */
 const authenticate = async (req, res) => {
   console.log('🔐 [AUTH CONTROLLER] Authentication request');
   
@@ -29,9 +25,6 @@ const authenticate = async (req, res) => {
   }
 };
 
-/**
- * Verifica lo stato del token Bearer
- */
 const verifyAuth = async (req, res) => {
   console.log('🔍 [AUTH CONTROLLER] Token verification');
   
@@ -48,9 +41,6 @@ const verifyAuth = async (req, res) => {
   );
 };
 
-/**
- * Informazioni sull'API di autenticazione
- */
 const getApiInfo = async (req, res) => {
   console.log('ℹ️ [AUTH CONTROLLER] API info request');
   
