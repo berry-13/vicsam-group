@@ -95,28 +95,98 @@ class DatabaseMigrator {
       
       const schemaSQL = await fs.readFile(this.schemaPath, 'utf8');
       
-      // Esegue l'intero script SQL utilizzando multipleStatements
-      // Questo è più sicuro rispetto al split per semicolon che può rompersi
-      // con semicolon all'interno di stringhe o commenti
-      try {
-        await db.query(schemaSQL);
-        console.log('✅ [MIGRATION] Schema executed successfully');
-      } catch (error) {
-        // Verifica se è un errore "safe" di entità già esistente
-        if (this.isSafeAlreadyExistsError(error)) {
-          console.log(`⚠️ [MIGRATION] Safe "already exists" condition detected: ${error.message}`);
-          console.log('✅ [MIGRATION] Schema execution completed (some objects already existed)');
-        } else {
-          console.error('❌ [MIGRATION] Schema execution failed:', error.message);
-          console.error('❌ [MIGRATION] Error code:', error.code);
-          throw error;
+      // Dividi il file SQL in statement individuali, gestendo procedure e trigger
+      const statements = this.parseSchemaStatements(schemaSQL);
+      
+      for (let i = 0; i < statements.length; i++) {
+        const statement = statements[i].trim();
+        if (statement && !statement.startsWith('--') && statement !== '') {
+          try {
+            console.log(`🔍 [MIGRATION] Executing statement ${i + 1}/${statements.length}`);
+            await db.query(statement);
+          } catch (error) {
+            // Verifica se è un errore "safe" di entità già esistente
+            if (this.isSafeAlreadyExistsError(error)) {
+              console.log(`⚠️ [MIGRATION] Safe "already exists" condition detected: ${error.message}`);
+            } else {
+              console.error(`❌ [MIGRATION] Statement ${i + 1} failed:`, statement.substring(0, 100) + '...');
+              console.error('❌ [MIGRATION] Error:', error.message);
+              console.error('❌ [MIGRATION] Error code:', error.code);
+              throw error;
+            }
+          }
         }
       }
+      
+      console.log('✅ [MIGRATION] Schema executed successfully');
       
     } catch (error) {
       console.error('❌ [MIGRATION] Schema execution failed:', error.message);
       throw error;
     }
+  }
+
+  /**
+   * Analizza il file schema SQL in statement individuali
+   * Gestisce correttamente procedure, funzioni e trigger
+   */
+  parseSchemaStatements(sql) {
+    // Rimuovi commenti a blocco /* ... */
+    sql = sql.replace(/\/\*[\s\S]*?\*\//g, '');
+    
+    const statements = [];
+    const lines = sql.split('\n');
+    let currentStatement = '';
+    let inBlock = false;
+    let blockType = '';
+    
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      
+      // Ignora righe vuote e commenti
+      if (!trimmedLine || trimmedLine.startsWith('--')) {
+        continue;
+      }
+      
+      // Rileva inizio di blocchi (PROCEDURE, FUNCTION, TRIGGER, EVENT)
+      const blockStartPattern = /^\s*CREATE\s+(PROCEDURE|FUNCTION|TRIGGER|EVENT)\s+/i;
+      const blockMatch = trimmedLine.match(blockStartPattern);
+      
+      if (blockMatch && !inBlock) {
+        inBlock = true;
+        blockType = blockMatch[1].toUpperCase();
+        currentStatement = line;
+        continue;
+      }
+      
+      if (inBlock) {
+        currentStatement += '\n' + line;
+        
+        // Rileva fine del blocco con END; (ma non END IF; o simili)
+        if (trimmedLine.match(/^END\s*;?\s*$/i)) {
+          inBlock = false;
+          blockType = '';
+          statements.push(currentStatement);
+          currentStatement = '';
+          continue;
+        }
+      } else {
+        currentStatement += (currentStatement ? '\n' : '') + line;
+        
+        // Statement normale che termina con ;
+        if (trimmedLine.endsWith(';')) {
+          statements.push(currentStatement);
+          currentStatement = '';
+        }
+      }
+    }
+    
+    // Aggiungi l'ultimo statement se presente
+    if (currentStatement.trim()) {
+      statements.push(currentStatement);
+    }
+    
+    return statements.filter(stmt => stmt.trim() !== '');
   }
 
   /**

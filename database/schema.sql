@@ -34,7 +34,6 @@ CREATE TABLE users (
 );
 
 -- Trigger to auto-generate UUID for users (compatible with MySQL < 8.0.13)
-DELIMITER //
 CREATE TRIGGER users_before_insert 
 BEFORE INSERT ON users
 FOR EACH ROW
@@ -42,8 +41,7 @@ BEGIN
     IF NEW.uuid IS NULL OR NEW.uuid = '' THEN
         SET NEW.uuid = UUID();
     END IF;
-END //
-DELIMITER ;
+END;
 
 -- ============================================================================
 -- TABELLA RUOLI
@@ -321,7 +319,6 @@ WHERE u.is_active = TRUE;
 -- ============================================================================
 
 -- Funzione per verificare permessi utente
-DELIMITER //
 CREATE FUNCTION user_has_permission(user_email VARCHAR(255), required_permission VARCHAR(100))
 RETURNS BOOLEAN
 READS SQL DATA
@@ -357,11 +354,9 @@ BEGIN
     END IF;
     
     RETURN permission_count > 0;
-END //
-DELIMITER ;
+END;
 
 -- Procedura per assegnare ruolo a utente
-DELIMITER //
 CREATE PROCEDURE assign_role_to_user(
     IN p_user_email VARCHAR(255),
     IN p_role_name VARCHAR(50),
@@ -393,15 +388,13 @@ BEGIN
         INSERT INTO user_roles (user_id, role_id, assigned_by, expires_at)
         VALUES (v_user_id, v_role_id, v_assigned_by_id, p_expires_at);
     END IF;
-END //
-DELIMITER ;
+END;
 
 -- ============================================================================
 -- TRIGGERS PER AUDIT E SICUREZZA
 -- ============================================================================
 
 -- Trigger per log delle modifiche utenti
-DELIMITER //
 CREATE TRIGGER audit_users_changes
 AFTER UPDATE ON users
 FOR EACH ROW
@@ -420,11 +413,9 @@ BEGIN
         ),
         TRUE
     );
-END //
-DELIMITER ;
+END;
 
 -- Trigger per cleanup sessioni scadute
-DELIMITER //
 CREATE EVENT cleanup_expired_sessions
 ON SCHEDULE EVERY 1 HOUR
 DO
@@ -442,8 +433,7 @@ BEGIN
     -- Elimina audit log vecchi (oltre 1 anno)
     DELETE FROM audit_logs 
     WHERE created_at < DATE_SUB(NOW(), INTERVAL 1 YEAR);
-END //
-DELIMITER ;
+END;
 
 -- Abilita l'event scheduler
 SET GLOBAL event_scheduler = ON;
