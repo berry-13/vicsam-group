@@ -104,14 +104,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setError(null);
       
       const authResponse = await authService.login(email, password);
+      const authData = authResponse.data;
       
       // Store auth data
-      localStorage.setItem('vicsam_auth_v2', JSON.stringify(authResponse));
-      localStorage.setItem('vicsam_token', authResponse.token);
-      localStorage.setItem('vicsam_refresh_token', authResponse.refreshToken);
+      localStorage.setItem('vicsam_auth_v2', JSON.stringify(authData));
+      localStorage.setItem('vicsam_token', authData.accessToken);
+      localStorage.setItem('vicsam_refresh_token', authData.refreshToken);
       
       // Set token for API service
-      authService.setToken(authResponse.token);
+      authService.setToken(authData.accessToken);
       
       // Get full user info
       const userInfo = await authService.getMe();
@@ -161,16 +162,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
       
       const authResponse = await authService.refresh(refreshToken);
+      const authData = authResponse.data;
       
       // Update stored auth data
-      localStorage.setItem('vicsam_auth_v2', JSON.stringify(authResponse));
-      localStorage.setItem('vicsam_token', authResponse.token);
-      if (authResponse.refreshToken) {
-        localStorage.setItem('vicsam_refresh_token', authResponse.refreshToken);
+      localStorage.setItem('vicsam_auth_v2', JSON.stringify(authData));
+      localStorage.setItem('vicsam_token', authData.accessToken);
+      if (authData.refreshToken) {
+        localStorage.setItem('vicsam_refresh_token', authData.refreshToken);
       }
       
       // Set token for API service
-      authService.setToken(authResponse.token);
+      authService.setToken(authData.accessToken);
       
       // Get updated user info
       const userInfo = await authService.getMe();
@@ -234,15 +236,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const hasPermission = (permission: string): boolean => {
-    // For now, we'll implement a basic role-to-permission mapping
-    // This could be enhanced to use actual permission data from the API
-    if (!user?.roles) return false;
+    // Check if user and permissions array are available
+    if (!user?.permissions) {
+      return false;
+    }
     
-    if (user.roles.includes('admin')) return true;
-    if (user.roles.includes('manager') && ['read_users', 'manage_users'].includes(permission)) return true;
-    if (user.roles.includes('user') && permission === 'read_own_data') return true;
-    
-    return false;
+    // Check if the permission exists in the user's permissions array
+    return user.permissions.includes(permission);
   };
 
   const value = {

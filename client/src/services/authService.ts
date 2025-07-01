@@ -12,6 +12,7 @@ export interface User {
   createdAt: string;
   roles: string[];
   roleNames: string[];
+  permissions?: string[];
 }
 
 export interface Role {
@@ -85,8 +86,20 @@ class AuthService {
     return apiService.logoutUser();
   }
 
-  async getMe() {
-    return apiService.getUserMe();
+  async getMe(): Promise<User> {
+    const response = await apiService.getUserMe();
+    const { user, session } = response.data;
+    
+    // Merge user data with permissions from session
+    return {
+      ...user,
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      lastLoginAt: user.lastLoginAt || null,
+      createdAt: user.createdAt || '',
+      roleNames: user.roles, // Copy roles to roleNames for compatibility
+      permissions: session.permissions || user.permissions || []
+    } as User;
   }
 
   async changePassword(data: {
