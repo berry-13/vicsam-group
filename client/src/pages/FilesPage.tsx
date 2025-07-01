@@ -65,7 +65,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Table,
@@ -503,7 +502,7 @@ export const FilesPage: React.FC = () => {
     // Applica ordinamento
     if (sortConfig.column && sortConfig.direction) {
       filtered.sort((a, b) => {
-        let aValue: unknown, bValue: unknown;
+        let aValue: string | number | Date, bValue: string | number | Date;
 
         switch (sortConfig.column) {
           case "customerName":
@@ -547,210 +546,239 @@ export const FilesPage: React.FC = () => {
     return filtered;
   }, [files, searchTerm, filterType, columnFilters, sortConfig]);
 
-  // Component per visualizzazione strutturata
-  const StructuredView: React.FC<{ data: SystemData }> = ({ data }) => (
-    <ScrollArea className="h-[60vh]">
-      <div className="space-y-6 p-1">
-        {/* Informazioni Cliente */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Building className="h-5 w-5 text-primary" />
-              Informazioni Cliente
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">
-                  Nome Cliente
-                </p>
-                <p className="text-base font-semibold">
-                  {data.CustomerName || "Non specificato"}
-                </p>
+  // Component per visualizzazione strutturata ottimizzata
+  const StructuredView: React.FC<{ data: SystemData }> = ({ data }) => {
+    const [expandedExtension, setExpandedExtension] = useState<string | null>(null);
+
+    // Gestisce l'apertura/chiusura dei popup per le estensioni
+    const toggleExtensionDetails = (extensionType: string) => {
+      setExpandedExtension(expandedExtension === extensionType ? null : extensionType);
+    };
+
+    // Component per indicatore di estendibilità
+    const ExtensibilityIndicator: React.FC<{
+      label: string;
+      enabled: boolean;
+      items?: Array<{ Description: string; ClassID?: string; IDVoceTS?: number }> | string[];
+      type: string;
+    }> = ({ label, enabled, items, type }) => (
+      <div className="relative">
+        <div 
+          className={`flex items-center justify-between p-3 rounded-lg border transition-all duration-200 ${
+            enabled 
+              ? 'bg-success/5 border-success/20 hover:bg-success/10 cursor-pointer' 
+              : 'bg-muted/30 border-muted/30'
+          }`}
+          onClick={enabled && items?.length ? () => toggleExtensionDetails(type) : undefined}
+          role={enabled && items?.length ? "button" : undefined}
+          tabIndex={enabled && items?.length ? 0 : -1}
+          aria-label={`${label}${enabled ? ' - Attivo' : ' - Non attivo'}${items?.length ? '. Clicca per dettagli' : ''}`}
+        >
+          <span className="text-sm font-medium">{label}</span>
+          <div className="flex items-center gap-2">
+            <div className={`w-4 h-4 rounded-full flex items-center justify-center text-xs font-bold ${
+              enabled ? 'bg-success text-white' : 'bg-muted text-muted-foreground'
+            }`}>
+              {enabled ? '✓' : '✗'}
+            </div>
+            {enabled && items?.length && (
+              <div className="text-xs text-muted-foreground">
+                ({items.length})
               </div>
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">
-                  Partita IVA
-                </p>
-                <p className="text-base font-mono">
-                  {data.CustomerVAT || "Non specificata"}
-                </p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">
-                  Rivenditore
-                </p>
-                <p className="text-base">
-                  {data.ResellerName || "Non specificato"}
-                </p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">
-                  P.IVA Rivenditore
-                </p>
-                <p className="text-base font-mono">
-                  {data.ResellerVAT || "Non specificata"}
-                </p>
+            )}
+          </div>
+        </div>
+
+        {/* Popup con dettagli */}
+        {expandedExtension === type && enabled && items?.length && (
+          <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+            <div className="p-3 border-b bg-muted/20">
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium text-sm">{label}</h4>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0"
+                  onClick={() => setExpandedExtension(null)}
+                  aria-label="Chiudi dettagli"
+                >
+                  <X className="h-3 w-3" />
+                </Button>
               </div>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Informazioni Sistema */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Server className="h-5 w-5 text-success" />
-              Configurazione Sistema
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">
-                  Versione Applicazione
-                </p>
-                <div className="flex items-center gap-2">
-                  <p className="text-base font-semibold">
-                    {data.Version || "N/A"}
-                  </p>
-                  <Badge className={getVersionStatus(data.Version).color}>
-                    {getVersionStatus(data.Version).label}
-                  </Badge>
+            <div className="p-2 space-y-1 max-h-40 overflow-y-auto">
+              {items.map((item, index) => (
+                <div key={index} className="p-2 text-xs bg-muted/10 rounded border">
+                  {typeof item === 'string' ? (
+                    <span className="font-mono">{item}</span>
+                  ) : (
+                    <div>
+                      <div className="font-medium mb-1">{item.Description}</div>
+                      {item.ClassID && (
+                        <div className="text-muted-foreground font-mono">{item.ClassID}</div>
+                      )}
+                      {item.IDVoceTS && (
+                        <div className="text-muted-foreground">ID: {item.IDVoceTS}</div>
+                      )}
+                    </div>
+                  )}
                 </div>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">
-                  Build
-                </p>
-                <p className="text-base font-mono">{data.Build || "N/A"}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">
-                  SQL Server
-                </p>
-                <div className="flex items-center gap-2">
-                  <p className="text-base">{data.SQLServerVersion || "N/A"}</p>
-                  <Badge
-                    className={
-                      getSQLServerVersionStatus(data.SQLServerVersion).color
-                    }
-                  >
-                    {getSQLServerVersionStatus(data.SQLServerVersion).label}
-                  </Badge>
-                </div>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">
-                  Database
-                </p>
-                <p className="text-base font-mono">
-                  {data.DatabaseName || "N/A"}
-                </p>
-              </div>
+              ))}
             </div>
-
-            <Separator />
-
-            <div className="space-y-1">
-              <p className="text-sm font-medium text-muted-foreground">
-                Directory Installazione
-              </p>
-              <p className="text-sm font-mono bg-muted/50 p-2 rounded border">
-                {data.InstallationDir || "N/A"}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Funzionalità Avanzate */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Package className="h-5 w-5 text-purple-600" />
-              Funzionalità e Plugin
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                <span className="text-sm font-medium">Custom Menu</span>
-                <Badge
-                  variant={data.ExistsCustomMenuItems ? "default" : "secondary"}
-                >
-                  {data.ExistsCustomMenuItems
-                    ? `${data.CustomMenuItems?.length || 0} elementi`
-                    : "Nessuno"}
-                </Badge>
-              </div>
-              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                <span className="text-sm font-medium">Plugin Documenti</span>
-                <Badge
-                  variant={data.ExistsDocumentPlugins ? "default" : "secondary"}
-                >
-                  {data.ExistsDocumentPlugins
-                    ? `${data.DocumentPlugins?.length || 0} plugin`
-                    : "Nessuno"}
-                </Badge>
-              </div>
-              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                <span className="text-sm font-medium">
-                  RegDoc Personalizzati
-                </span>
-                <Badge
-                  variant={data.ExistsRegDocPers ? "default" : "secondary"}
-                >
-                  {data.ExistsRegDocPers ? "Presenti" : "Assenti"}
-                </Badge>
-              </div>
-              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                <span className="text-sm font-medium">File Exe Utente</span>
-                <Badge
-                  variant={
-                    data.ExistsUserfileExeFiles ? "default" : "secondary"
-                  }
-                >
-                  {data.ExistsUserfileExeFiles ? "Presenti" : "Assenti"}
-                </Badge>
-              </div>
-            </div>
-
-            {/* Custom Menu Items Details */}
-            {data.ExistsCustomMenuItems &&
-              data.CustomMenuItems &&
-              data.CustomMenuItems.length > 0 && (
-                <div className="mt-4">
-                  <h4 className="font-medium mb-3">
-                    Dettagli Custom Menu Items
-                  </h4>
-                  <div className="space-y-2 max-h-40 overflow-y-auto">
-                    {data.CustomMenuItems.map((item) => (
-                      <div
-                        key={item.IDVoceTS}
-                        className="p-2 border rounded-lg bg-white"
-                      >
-                        <div className="flex items-center gap-2 mb-1">
-                          <Badge variant="outline" className="text-xs">
-                            ID: {item.IDVoceTS}
-                          </Badge>
-                          <span className="text-sm font-medium">
-                            {item.Description}
-                          </span>
-                        </div>
-                        <p className="text-xs text-muted-foreground/70 font-mono">
-                          {item.ClassID}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-          </CardContent>
-        </Card>
+          </div>
+        )}
       </div>
-    </ScrollArea>
-  );
+    );
+
+    return (
+      <ScrollArea className="h-[60vh]">
+        <div className="p-4 space-y-6">
+          {/* Layout principale a due colonne */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            {/* Colonna sinistra - Informazioni statiche */}
+            <div className="space-y-4">
+              
+              {/* Applicazione */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base font-semibold">Applicazione</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <ApplicationIcon version={data.ApplicationVersion} size={24} />
+                    <div>
+                      <div className="font-medium">{data.ApplicationVersion || 'N/A'}</div>
+                      <div className="text-sm text-muted-foreground font-mono">
+                        {data.Version && data.Build 
+                          ? `${data.Version} – ${data.Build}`
+                          : data.Version || 'N/A'
+                        }
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Cliente */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base font-semibold flex items-center gap-2">
+                    <Building className="h-4 w-4" />
+                    Cliente
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <div className="text-sm text-muted-foreground">Ragione sociale</div>
+                    <div className="font-medium">{data.CustomerName || 'Non specificato'}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-muted-foreground">P. IVA</div>
+                    <div className="font-mono text-sm">{data.CustomerVAT || 'Non specificata'}</div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* SQL Server */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base font-semibold flex items-center gap-2">
+                    <Server className="h-4 w-4" />
+                    SQL Server
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div>
+                    <div className="text-sm text-muted-foreground">Versione</div>
+                    <div className="font-mono text-sm">{data.SQLServerVersion || 'N/A'}</div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* App Version (framework) */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base font-semibold">App Version</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="font-mono text-sm">{data.AppVersion || 'N/A'}</div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Colonna destra - Indicatori di estendibilità */}
+            <div className="space-y-4">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base font-semibold flex items-center gap-2">
+                    <Package className="h-4 w-4" />
+                    Indicatori di Estendibilità
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <ExtensibilityIndicator
+                    label="Custom Menu Items"
+                    enabled={Boolean(data.ExistsCustomMenuItems)}
+                    items={data.CustomMenuItems}
+                    type="customMenu"
+                  />
+                  
+                  <ExtensibilityIndicator
+                    label="Document Plugins"
+                    enabled={Boolean(data.ExistsDocumentPlugins)}
+                    items={data.DocumentPlugins?.map(plugin => ({ Description: plugin }))}
+                    type="documentPlugins"
+                  />
+                  
+                  <ExtensibilityIndicator
+                    label="Reg Doc Pers"
+                    enabled={Boolean(data.ExistsRegDocPers)}
+                    type="regDocPers"
+                  />
+                  
+                  <ExtensibilityIndicator
+                    label="User File EXE Files"
+                    enabled={Boolean(data.ExistsUserfileExeFiles)}
+                    type="userFileExe"
+                  />
+                </CardContent>
+              </Card>
+
+              {/* Informazioni aggiuntive */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base font-semibold">Database</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div>
+                    <div className="text-sm text-muted-foreground">Nome Database</div>
+                    <div className="font-mono text-sm">{data.DatabaseName || 'N/A'}</div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {data.InstallationDir && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base font-semibold">Installazione</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div>
+                      <div className="text-sm text-muted-foreground">Directory</div>
+                      <div className="font-mono text-xs bg-muted/50 p-2 rounded border break-all">
+                        {data.InstallationDir}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </div>
+        </div>
+      </ScrollArea>
+    );
+  };
 
   // Componente per l'icona dell'applicazione
   const ApplicationIcon: React.FC<{ version?: string; size?: number }> = ({
@@ -918,10 +946,9 @@ export const FilesPage: React.FC = () => {
 
   // Componente per filtri delle colonne
   const ColumnFilterPopover: React.FC<{
-    column: string;
     title: string;
     children: React.ReactNode;
-  }> = ({ column, title, children }) => (
+  }> = ({ title, children }) => (
     <Popover>
       <PopoverTrigger asChild>
         <Button
@@ -986,7 +1013,6 @@ export const FilesPage: React.FC = () => {
               <div className="flex items-center gap-2">
                 Cliente
                 <ColumnFilterPopover
-                  column="customerName"
                   title="Filtra per Cliente"
                 >
                   <Input
@@ -1003,7 +1029,6 @@ export const FilesPage: React.FC = () => {
               <div className="flex items-center gap-2">
                 P.IVA
                 <ColumnFilterPopover
-                  column="customerVAT"
                   title="Filtra per P.IVA"
                 >
                   <Input
@@ -1020,7 +1045,6 @@ export const FilesPage: React.FC = () => {
               <div className="flex items-center gap-2">
                 Versione
                 <ColumnFilterPopover
-                  column="version"
                   title="Filtra per Versione"
                 >
                   <div className="space-y-2 max-h-40 overflow-y-auto">
@@ -1057,7 +1081,6 @@ export const FilesPage: React.FC = () => {
               <div className="flex items-center gap-2">
                 SQL Server
                 <ColumnFilterPopover
-                  column="sqlServerVersion"
                   title="Filtra per SQL Server"
                 >
                   <div className="space-y-2 max-h-40 overflow-y-auto">
@@ -1096,7 +1119,6 @@ export const FilesPage: React.FC = () => {
               <div className="flex items-center gap-2">
                 Database
                 <ColumnFilterPopover
-                  column="databaseName"
                   title="Filtra per Database"
                 >
                   <Input
