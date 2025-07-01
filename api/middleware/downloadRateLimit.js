@@ -35,11 +35,41 @@ function anonymizeIP(ip) {
 }
 
 /**
+ * Configurazione sicura per keyGenerator in base al trust proxy
+ */
+function createSecureKeyGenerator() {
+  // Verifica se il trust proxy è abilitato
+  const trustProxy = process.env.TRUST_PROXY === 'true';
+  
+  if (trustProxy) {
+    return (req) => {
+      // Usa l'IP più specifico disponibile, fallback a req.ip
+      const forwarded = req.get('X-Forwarded-For');
+      const realIp = req.get('X-Real-IP');
+      const clientIp = realIp || (forwarded && forwarded.split(',')[0].trim()) || req.ip;
+      
+      // In sviluppo, aggiungi logging per debug
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 [DOWNLOAD RATE LIMIT] Using IP for rate limiting:', clientIp);
+      }
+      
+      return clientIp;
+    };
+  }
+  
+  // Se trust proxy è disabilitato, usa il comportamento di default
+  return undefined;
+}
+
+/**
  * Rate limiting middleware specifically for download endpoints
  */
 const downloadRateLimit = rateLimit({
   windowMs: downloadConfig.config.rateWindow,
   max: downloadConfig.config.rateLimit,
+  
+  // Configurazione sicura per trust proxy
+  keyGenerator: createSecureKeyGenerator(),
   message: {
     success: false,
     error: 'Too many download requests, please try again later',

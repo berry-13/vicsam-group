@@ -29,7 +29,7 @@ class DownloadConfig {
 
       // File mappings
       files: {
-        download: {
+        get: {
           file: process.env.DOWNLOAD_DEFAULT_FILE,
           filename: process.env.DOWNLOAD_DEFAULT_FILENAME || 'download.json',
           mimetype: process.env.DOWNLOAD_DEFAULT_MIMETYPE || 'application/json',
@@ -109,12 +109,12 @@ class DownloadConfig {
       return null;
     }
     
-    if (cleanEndpoint === 'download' && this.config.files.download.file) {
+    if (cleanEndpoint === 'get' && this.config.files.get.file) {
       return {
-        filePath: this.securePathResolve(this.config.baseDir, this.config.files.download.file),
-        fileName: this.config.files.download.filename,
-        mimeType: this.config.files.download.mimetype,
-        description: this.config.files.download.description
+        filePath: this.securePathResolve(this.config.baseDir, this.config.files.get.file),
+        fileName: this.config.files.get.filename,
+        mimeType: this.config.files.get.mimetype,
+        description: this.config.files.get.description
       };
     }
 
@@ -199,9 +199,9 @@ class DownloadConfig {
     const mappings = {};
 
     // Standard endpoints
-    const downloadMapping = this.getFileMapping('/download');
-    if (downloadMapping) {
-      mappings['/download'] = downloadMapping;
+    const getMapping = this.getFileMapping('/get');
+    if (getMapping) {
+      mappings['/get'] = getMapping;
     }
 
     const appMapping = this.getFileMapping('/app');

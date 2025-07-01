@@ -2,16 +2,19 @@ const express = require('express');
 const authRoutes = require('./authRoutes');
 const dataRoutes = require('./dataRoutes');
 const downloadRoutes = require('./downloadRoutes');
+const versionRoutes = require('./versionRoutes');
+const healthRoutes = require('./healthRoutes');
 
 const router = express.Router();
 
-// Rotte di autenticazione
 router.use('/auth', authRoutes);
 
-// Rotte per la gestione dei dati
 router.use('/data', dataRoutes);
 
-// Rotte per il download dei file
-router.use('/download', downloadRoutes);
+router.use('/', downloadRoutes);
+
+router.use('/version', versionRoutes);
+
+router.use('/', healthRoutes);
 
 module.exports = router;
