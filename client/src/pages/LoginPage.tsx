@@ -1,11 +1,35 @@
-import React from "react";
-import { Navigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { Navigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { LoginForm } from "@/components/login-form";
 import Spinner from "@/components/ui/spinner";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle, Info } from "lucide-react";
 
 export const LoginPage: React.FC = () => {
   const { isAuthenticated, loading } = useAuth();
+  const [searchParams] = useSearchParams();
+  const [redirectMessage, setRedirectMessage] = useState<string>('');
+  
+  useEffect(() => {
+    const reason = searchParams.get('reason');
+    switch (reason) {
+      case 'session_expired':
+        setRedirectMessage('La tua sessione è scaduta. Effettua nuovamente l\'accesso.');
+        break;
+      case 'auth_required':
+        setRedirectMessage('Accesso richiesto per visualizzare questa pagina.');
+        break;
+      case 'insufficient_permissions':
+        setRedirectMessage('Non hai i permessi necessari per accedere a questa risorsa.');
+        break;
+      case 'account_locked':
+        setRedirectMessage('Account temporaneamente bloccato. Riprova più tardi.');
+        break;
+      default:
+        setRedirectMessage('');
+    }
+  }, [searchParams]);
 
   // Mostra un loading durante la verifica dell'autenticazione
   if (loading) {
@@ -51,6 +75,16 @@ export const LoginPage: React.FC = () => {
 
       {/* Form di login */}
       <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
+        {redirectMessage && (
+          <div className="mb-6">
+            <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950">
+              <Info className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              <AlertDescription className="text-amber-800 dark:text-amber-200">
+                {redirectMessage}
+              </AlertDescription>
+            </Alert>
+          </div>
+        )}
         <LoginForm className="animate-in fade-in-50 slide-in-from-bottom-4 duration-700" />
       </div>
 

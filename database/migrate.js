@@ -70,13 +70,9 @@ class DatabaseMigrator {
       
       const rawDbName = process.env.DB_NAME || 'vicsam_auth';
       
-      // Valida il nome del database per prevenire SQL injection
       const dbName = this.validateDatabaseName(rawDbName);
       
-      // La connessione db è già disponibile dal modulo importato
-      
-      await db.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
-      await db.query(`USE \`${dbName}\``);
+      await db.queryWithoutDatabase(`CREATE DATABASE IF NOT EXISTS \`${dbName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
       
       console.log(`✅ [MIGRATION] Database '${dbName}' ready`);
       
@@ -103,7 +99,15 @@ class DatabaseMigrator {
         if (statement && !statement.startsWith('--') && statement !== '') {
           try {
             console.log(`🔍 [MIGRATION] Executing statement ${i + 1}/${statements.length}`);
-            await db.query(statement);
+            
+            // Use unprepared queries for DDL statements that don't support prepared statements
+            const isDDLStatement = /^\s*(CREATE\s+(TRIGGER|PROCEDURE|FUNCTION|EVENT)|DROP\s+(TRIGGER|PROCEDURE|FUNCTION|EVENT)|DELIMITER)/i.test(statement);
+            
+            if (isDDLStatement) {
+              await db.queryUnprepared(statement);
+            } else {
+              await db.query(statement);
+            }
           } catch (error) {
             // Verifica se è un errore "safe" di entità già esistente
             if (this.isSafeAlreadyExistsError(error)) {

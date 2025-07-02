@@ -49,7 +49,8 @@ const FEATURE_FLAGS = {
   ADVANCED_USER_MANAGEMENT: process.env.ENABLE_ADVANCED_USER_MANAGEMENT === 'true',
   ROLE_MANAGEMENT: process.env.ENABLE_ROLE_MANAGEMENT === 'true',
   AUDIT_ROUTES: process.env.ENABLE_AUDIT_ROUTES === 'true',
-  SESSION_MANAGEMENT: process.env.ENABLE_SESSION_MANAGEMENT === 'true'
+  SESSION_MANAGEMENT: process.env.ENABLE_SESSION_MANAGEMENT === 'true',
+  USER_REGISTRATION: process.env.ENABLE_USER_REGISTRATION === 'true' // Disabled by default for security
 };
 
 /**

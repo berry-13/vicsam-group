@@ -10,7 +10,8 @@ import {
   LogOut, 
   Menu,
   Shield,
-  Users
+  Users,
+  Settings
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -49,6 +50,13 @@ const navigation: NavigationItem[] = [
     requiredRoles: ['admin'],
     requiredPermissions: ['user_management']
   },
+  { 
+    name: 'Pannello Admin', 
+    href: '/admin', 
+    icon: Shield,
+    requiredRoles: ['admin']
+  },
+  { name: 'Impostazioni', href: '/settings', icon: Settings },
 ];
 
 const NavContent: React.FC = () => {
@@ -97,19 +105,31 @@ const NavContent: React.FC = () => {
 };
 
 const UserMenu: React.FC = () => {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="secondary" size="icon" className="rounded-full">
           <Avatar>
-            <AvatarFallback>A</AvatarFallback>
+            <AvatarFallback>
+              {(() => {
+                if (typeof user?.name === 'string' && user.name.length > 0) {
+                  return user.name.charAt(0).toUpperCase();
+                }
+                if (user?.firstName && typeof user.firstName === 'string') {
+                  return user.firstName.charAt(0).toUpperCase();
+                }
+                return 'U';
+              })()}
+            </AvatarFallback>
           </Avatar>
           <span className="sr-only">Toggle user menu</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuLabel>Admin</DropdownMenuLabel>
+        <DropdownMenuLabel>
+          {typeof user?.name === 'string' ? user.name : `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Utente'}
+        </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={logout}>
           <LogOut className="mr-2 h-4 w-4" />

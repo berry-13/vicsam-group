@@ -1,4 +1,5 @@
 import { apiService } from './api';
+import type { UserV2 } from './api';
 
 export interface User {
   id: string;
@@ -10,8 +11,8 @@ export interface User {
   isVerified: boolean;
   lastLoginAt: string | null;
   createdAt: string;
-  roles: string[];
-  roleNames: string[];
+  roles: (string | { name: string })[];
+  roleNames: (string | { name: string })[];
   permissions?: string[];
 }
 
@@ -90,14 +91,42 @@ class AuthService {
     const response = await apiService.getUserMe();
     const { user, session } = response.data;
     
-    // Merge user data with permissions from session
+    // Ensure name is a string, not an object
+    let displayName = '';
+    if (typeof user.name === 'string') {
+      displayName = user.name;
+    } else if (user.firstName && user.lastName) {
+      displayName = `${user.firstName} ${user.lastName}`;
+    } else if (user.firstName) {
+      displayName = user.firstName;
+    } else if (user.lastName) {
+      displayName = user.lastName;
+    } else {
+      displayName = user.email.split('@')[0];
+    }
+    
+    // Use server data directly, including first_name and last_name from server
+    const serverUser = user as UserV2 & {
+      first_name?: string;
+      last_name?: string;
+      is_active?: number | boolean;
+      is_verified?: number | boolean;
+      last_login_at?: string;
+      created_at?: string;
+    };
+    
     return {
-      ...user,
-      firstName: user.firstName || '',
-      lastName: user.lastName || '',
-      lastLoginAt: user.lastLoginAt || null,
-      createdAt: user.createdAt || '',
-      roleNames: user.roles, // Copy roles to roleNames for compatibility
+      id: user.id,
+      email: user.email,
+      name: displayName,
+      firstName: serverUser.first_name || user.firstName || '',
+      lastName: serverUser.last_name || user.lastName || '',
+      lastLoginAt: serverUser.last_login_at || user.lastLoginAt || null,
+      createdAt: serverUser.created_at || user.createdAt || '',
+      isActive: Boolean(serverUser.is_active ?? user.isVerified),
+      isVerified: Boolean(serverUser.is_verified ?? user.isVerified),
+      roles: user.roles,
+      roleNames: user.roles,
       permissions: session.permissions || user.permissions || []
     } as User;
   }

@@ -85,8 +85,16 @@ const dbConfig = {
   database: process.env.DB_NAME || 'vicsam_auth',
   charset: 'utf8mb4',
   multipleStatements: true,
-  acquireTimeout: 60000,
-  timeout: 60000,
+  ssl: getSSLConfig()
+};
+
+const dbConfigWithoutDatabase = {
+  host: process.env.DB_HOST || 'localhost',
+  port: process.env.DB_PORT || 3306,
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '',
+  charset: 'utf8mb4',
+  multipleStatements: true,
   ssl: getSSLConfig()
 };
 
@@ -97,9 +105,7 @@ const pool = mysql.createPool({
   ...dbConfig,
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0,
-  acquireTimeout: 60000,
-  timeout: 60000
+  queueLimit: 0
 });
 
 /**
@@ -224,6 +230,75 @@ class DatabaseService {
       if (this.logParams) {
         console.error('❌ [DB] Params:', this.filterSensitiveParams(params));
       }
+      throw new DatabaseError(`Database query failed: ${error.message}`, error.code);
+    } finally {
+      if (connection) {
+        connection.release();
+      }
+    }
+  }
+
+  /**
+   * Executes query without database selection (for database creation)
+   * @param {string} sql - Query SQL
+   * @param {Array} params - Query parameters
+   * @returns {Promise<Object>} Query result
+   */
+  async queryWithoutDatabase(sql, params = []) {
+    const start = Date.now();
+    let connection;
+    
+    try {
+      console.log('🔍 [DB] Executing query:', sql.substring(0, 100) + '...');
+      if (this.logParams) {
+        console.log('🔍 [DB] Parameters:', this.filterSensitiveParams(params));
+      }
+      
+      connection = await mysql.createConnection(dbConfigWithoutDatabase);
+      const [rows, fields] = await connection.execute(sql, params);
+      
+      const duration = Date.now() - start;
+      console.log(`✅ [DB] Query executed in ${duration}ms`);
+      
+      return { rows, fields, meta: { duration, rowCount: rows.length } };
+    } catch (error) {
+      const duration = Date.now() - start;
+      console.error(`❌ [DB] Query failed after ${duration}ms:`, error.message);
+      console.error('❌ [DB] SQL:', sql);
+      if (this.logParams) {
+        console.error('❌ [DB] Params:', this.filterSensitiveParams(params));
+      }
+      throw new DatabaseError(`Database query failed: ${error.message}`, error.code);
+    } finally {
+      if (connection) {
+        await connection.end();
+      }
+    }
+  }
+
+  /**
+   * Executes unprepared query (for DDL statements like CREATE TRIGGER, PROCEDURE, etc.)
+   * @param {string} sql - Query SQL
+   * @returns {Promise<Object>} Query result
+   */
+  async queryUnprepared(sql) {
+    const start = Date.now();
+    let connection;
+    
+    try {
+      console.log('🔍 [DB] Executing query:', sql.substring(0, 100) + '...');
+      
+      connection = await this.pool.getConnection();
+      const [rows, fields] = await connection.query(sql);
+      
+      const duration = Date.now() - start;
+      console.log(`✅ [DB] Query executed in ${duration}ms`);
+      
+      return { rows, fields, meta: { duration, rowCount: rows.length } };
+    } catch (error) {
+      const duration = Date.now() - start;
+      console.error(`❌ [DB] Query failed after ${duration}ms:`, error.message);
+      console.error('❌ [DB] SQL:', sql);
       throw new DatabaseError(`Database query failed: ${error.message}`, error.code);
     } finally {
       if (connection) {

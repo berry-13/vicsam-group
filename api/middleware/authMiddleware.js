@@ -148,6 +148,7 @@ const authenticateJWT = async (req, res, next) => {
     // Aggiunge i dati dell'utente alla richiesta
     req.user = {
       id: decoded.sub,
+      uid: decoded.uid,
       sub: decoded.sub,
       email: decoded.email,
       name: decoded.name,
@@ -719,9 +720,9 @@ const auditLogger = (action) => {
       // Log dell'audit dopo la risposta
       setImmediate(async () => {
         try {
-          if (req.user) {
+          if (req.user && req.user.uid) {
             await authService.logAuditEvent(
-              req.user.id,
+              req.user.uid,
               action,
               req.route?.path || req.path,
               req.params?.id || null,
@@ -758,17 +759,36 @@ const tokenRotationManager = {
    * Inizializza la connessione Redis
    */
   async init() {
-    if (!this.redisClient) {
+    if (process.env.DISABLE_REDIS === 'true') {
+      console.log('📝 Redis disabled via DISABLE_REDIS environment variable, using in-memory token storage');
+      this.tokenCache = new Map();
+      return;
+    }
+
+    if (!this.redisClient && !this.tokenCache) {
       try {
         this.redisClient = createClient({
           url: process.env.REDIS_URL || 'redis://localhost:6379',
           socket: {
-            reconnectStrategy: (retries) => Math.min(retries * 50, 1000)
+            reconnectStrategy: (retries) => {
+              if (retries > 3) {
+                console.log('⚠️ Redis connection failed after 3 attempts, falling back to in-memory storage');
+                return false;
+              }
+              return Math.min(retries * 50, 1000);
+            },
+            connectTimeout: 5000
           }
         });
         
         this.redisClient.on('error', (err) => {
-          console.error('Redis Client Error:', err);
+          if (err.code === 'ECONNREFUSED') {
+            console.log('⚠️ Redis not available, using in-memory token storage');
+            this.redisClient = null;
+            this.tokenCache = new Map();
+          } else {
+            console.error('Redis Client Error:', err);
+          }
         });
         
         this.redisClient.on('connect', () => {
@@ -777,8 +797,8 @@ const tokenRotationManager = {
         
         await this.redisClient.connect();
       } catch (error) {
-        console.error('Failed to initialize Redis for token rotation:', error);
-        // Fallback to in-memory storage if Redis is not available
+        console.log('⚠️ Redis not available, using in-memory token storage');
+        this.redisClient = null;
         this.tokenCache = new Map();
       }
     }

@@ -20,6 +20,25 @@ class AuthService {
   }
 
   /**
+   * Parse permissions from database JSON column
+   * MySQL JSON columns return actual JS objects/arrays, not strings
+   */
+  parsePermissions(permissions) {
+    if (Array.isArray(permissions)) {
+      return permissions;
+    }
+    if (typeof permissions === 'string') {
+      try {
+        return JSON.parse(permissions);
+      } catch (e) {
+        console.warn('❌ [AUTH] Invalid permissions JSON:', permissions);
+        return [];
+      }
+    }
+    return [];
+  }
+
+  /**
    * Inizializza le chiavi JWT
    */
   async initializeKeys() {
@@ -226,6 +245,7 @@ class AuthService {
       // Crea il payload JWT
       const jwtPayload = {
         sub: user.uuid,
+        uid: user.id,
         email: user.email,
         name: `${user.first_name} ${user.last_name}`.trim(),
         roles: userRoles.map(r => r.name),
@@ -337,6 +357,7 @@ class AuthService {
       const jti = cryptoService.generateJTI();
       const jwtPayload = {
         sub: tokenData.uuid,
+        uid: tokenData.user_id,
         email: tokenData.email,
         name: `${tokenData.first_name} ${tokenData.last_name}`.trim(),
         roles: userRoles.map(r => r.name),
@@ -691,7 +712,7 @@ class AuthService {
         name: role.name,
         displayName: role.display_name,
         description: role.description,
-        permissions: JSON.parse(role.permissions || '[]'),
+        permissions: this.parsePermissions(role.permissions),
         isSystemRole: role.is_system_role,
         userCount: role.user_count,
         createdAt: role.created_at
@@ -745,7 +766,7 @@ class AuthService {
         name: role.name,
         displayName: role.display_name,
         description: role.description,
-        permissions: JSON.parse(role.permissions || '[]'),
+        permissions: this.parsePermissions(role.permissions),
         detailedPermissions: permissionsResult.rows,
         isSystemRole: role.is_system_role,
         userCount: role.user_count,
@@ -1032,7 +1053,7 @@ class AuthService {
         name: row.name,
         displayName: row.display_name,
         description: row.description,
-        permissions: JSON.parse(row.permissions || '[]'),
+        permissions: this.parsePermissions(row.permissions),
         isSystemRole: row.is_system_role,
         assignedAt: row.assigned_at,
         expiresAt: row.expires_at,

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AlertCircle, Eye, EyeOff, Lock, Shield, Mail, User } from 'lucide-react';
+import { AlertCircle, Eye, EyeOff, Lock, Shield, Mail } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import Spinner from "@/components/ui/spinner";
@@ -23,16 +23,13 @@ export function LoginForm({
   className,
   ...props
 }: LoginFormProps) {
-  const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [hasError, setHasError] = useState(false);
-  const { login, register } = useAuth();
+  const { login } = useAuth();
   const toast = useToastContext();
 
   useEffect(() => {
@@ -65,13 +62,16 @@ export function LoginForm({
   };
 
   const getErrorType = (errorMessage: string) => {
-    if (errorMessage.includes('401') || errorMessage.includes('non autorizzato') || errorMessage.includes('password errata') || errorMessage.includes('email') || errorMessage.includes('credentials')) {
+    if (errorMessage.includes('401') || errorMessage.includes('non autorizzato') || errorMessage.includes('password errata') || errorMessage.includes('email') || errorMessage.includes('credentials') || errorMessage.includes('invalid credentials')) {
       return 'auth';
     }
-    if (errorMessage.includes('429') || errorMessage.includes('troppi tentativi') || errorMessage.includes('bloccato')) {
+    if (errorMessage.includes('429') || errorMessage.includes('troppi tentativi') || errorMessage.includes('bloccato') || errorMessage.includes('rate limit')) {
       return 'ratelimit';
     }
-    if (errorMessage.includes('network') || errorMessage.includes('connessione')) {
+    if (errorMessage.includes('423') || errorMessage.includes('account locked') || errorMessage.includes('account bloccato')) {
+      return 'locked';
+    }
+    if (errorMessage.includes('network') || errorMessage.includes('connessione') || errorMessage.includes('timeout')) {
       return 'network';
     }
     if (errorMessage.includes('validation') || errorMessage.includes('required') || errorMessage.includes('invalid')) {
@@ -85,24 +85,23 @@ export function LoginForm({
     
     switch (type) {
       case 'auth':
-        return mode === 'login' 
-          ? 'Email o password errata. Verifica e riprova.'
-          : 'Errore durante la registrazione. Controlla i dati inseriti.';
+        return 'Email o password errata. Verifica le tue credenziali e riprova.';
       case 'ratelimit':
-        return 'Troppi tentativi falliti. Riprova più tardi.';
+        return 'Troppi tentativi di accesso. Riprova tra qualche minuto.';
+      case 'locked':
+        return 'Account temporaneamente bloccato per sicurezza. Riprova più tardi.';
       case 'network':
         return 'Errore di connessione. Controlla la tua connessione internet.';
       case 'validation':
         return 'Controlla che tutti i campi siano compilati correttamente.';
       default:
-        return errorMessage || 'Si è verificato un errore imprevisto.';
+        return errorMessage || 'Si è verificato un errore imprevisto. Riprova.';
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validazione
     const emailError = validateEmail(email);
     const passwordError = validatePassword(password);
     
@@ -116,47 +115,30 @@ export function LoginForm({
       return;
     }
 
-    if (mode === 'register' && (!firstName.trim() || !lastName.trim())) {
-      setError('Nome e cognome sono richiesti per la registrazione');
-      return;
-    }
-
     setLoading(true);
     setError('');
 
     try {
-      if (mode === 'login') {
-        await login(email, password);
-        toast.success('Accesso effettuato', 'Benvenuto nel sistema!');
-      } else {
-        await register(email, password, firstName, lastName);
-        toast.success('Registrazione completata', 'Account creato con successo!');
-      }
+      await login(email, password);
+      toast.success('Accesso effettuato', 'Benvenuto nel sistema!');
       setHasError(false);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : `Errore durante ${mode === 'login' ? 'il login' : 'la registrazione'}`;
+      const errorMessage = err instanceof Error ? err.message : 'Errore durante il login';
       const processedError = getErrorMessage(errorMessage);
       setError(processedError);
       setHasError(true);
       
-      // Mostra toast di errore per rate limiting
-      if (getErrorType(errorMessage.toLowerCase()) === 'ratelimit') {
+      const errorType = getErrorType(errorMessage.toLowerCase());
+      if (errorType === 'ratelimit') {
         toast.warning('Accesso temporaneamente bloccato', 'Riprova tra qualche minuto.');
+      } else if (errorType === 'locked') {
+        toast.error('Account bloccato', 'Contatta l\'amministratore se il problema persiste.');
       }
       
       setTimeout(() => setHasError(false), 600);
     } finally {
       setLoading(false);
     }
-  };
-
-  const toggleMode = () => {
-    setMode(mode === 'login' ? 'register' : 'login');
-    setError('');
-    setEmail('');
-    setPassword('');
-    setFirstName('');
-    setLastName('');
   };
 
   return (
@@ -168,14 +150,11 @@ export function LoginForm({
               <div className="flex items-center gap-2 mb-2">
                 <Shield className="h-5 w-5 text-primary" />
                 <CardTitle className="text-xl">
-                  {mode === 'login' ? 'Accedi' : 'Registrati'}
+                  Accedi
                 </CardTitle>
               </div>
               <CardDescription>
-                {mode === 'login' 
-                  ? 'Inserisci le tue credenziali per accedere al sistema'
-                  : 'Crea un nuovo account per accedere al sistema'
-                }
+                Inserisci le tue credenziali per accedere al sistema
               </CardDescription>
             </div>
             <div className="-mt-1">
@@ -201,47 +180,6 @@ export function LoginForm({
             )}
 
             <div className="space-y-4">
-              {mode === 'register' && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName" className="text-sm font-medium">
-                      Nome
-                    </Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input 
-                        id="firstName" 
-                        type="text"
-                        value={firstName}
-                        onChange={(e) => setFirstName(e.target.value)}
-                        placeholder="Il tuo nome"
-                        className="pl-10"
-                        disabled={loading}
-                        required 
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="lastName" className="text-sm font-medium">
-                      Cognome
-                    </Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input 
-                        id="lastName" 
-                        type="text"
-                        value={lastName}
-                        onChange={(e) => setLastName(e.target.value)}
-                        placeholder="Il tuo cognome"
-                        className="pl-10"
-                        disabled={loading}
-                        required 
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-sm font-medium">
                   Email
@@ -287,7 +225,7 @@ export function LoginForm({
                     )}
                     disabled={loading}
                     required 
-                    autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                    autoComplete="current-password"
                   />
                   <button
                     type="button"
@@ -300,11 +238,6 @@ export function LoginForm({
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
-                {mode === 'register' && (
-                  <p className="text-xs text-muted-foreground">
-                    La password deve contenere almeno 8 caratteri
-                  </p>
-                )}
               </div>
 
               <Button 
@@ -313,17 +246,17 @@ export function LoginForm({
                   "w-full h-11 transition-all duration-200 login-button",
                   loading && "cursor-not-allowed"
                 )}
-                disabled={loading || !email.trim() || !password.trim() || (mode === 'register' && (!firstName.trim() || !lastName.trim()))}
+                disabled={loading || !email.trim() || !password.trim()}
               >
                 {loading ? (
                   <div className="flex items-center gap-2">
                     <Spinner className="h-4 w-4" />
-                    <span>{mode === 'login' ? 'Accesso in corso...' : 'Registrazione in corso...'}</span>
+                    <span>Accesso in corso...</span>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
                     <Shield className="h-4 w-4" />
-                    <span>{mode === 'login' ? 'Accedi' : 'Registrati'}</span>
+                    <span>Accedi</span>
                   </div>
                 )}
               </Button>
@@ -331,28 +264,12 @@ export function LoginForm({
               <div className="text-center">
                 <button
                   type="button"
-                  onClick={toggleMode}
-                  className="text-sm text-primary hover:text-primary/80 font-medium transition-colors"
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                   disabled={loading}
                 >
-                  {mode === 'login' 
-                    ? 'Non hai un account? Registrati'
-                    : 'Hai già un account? Accedi'
-                  }
+                  Hai dimenticato la password?
                 </button>
               </div>
-
-              {mode === 'login' && (
-                <div className="text-center">
-                  <button
-                    type="button"
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                    disabled={loading}
-                  >
-                    Hai dimenticato la password?
-                  </button>
-                </div>
-              )}
             </div>
           </form>
         </CardContent>
