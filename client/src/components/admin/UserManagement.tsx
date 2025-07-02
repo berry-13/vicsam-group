@@ -89,45 +89,68 @@ const UserManagement: React.FC = () => {
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
     
-    if (!formData.email.trim()) {
+    if (!formData.email?.trim()) {
       errors.email = 'Email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
       errors.email = 'Please enter a valid email address';
     }
     
-    if (!formData.firstName.trim()) {
+    if (!formData.firstName?.trim()) {
       errors.firstName = 'First name is required';
+    } else if (formData.firstName.trim().length < 2) {
+      errors.firstName = 'First name must be at least 2 characters long';
     }
     
-    if (!formData.lastName.trim()) {
+    if (!formData.lastName?.trim()) {
       errors.lastName = 'Last name is required';
+    } else if (formData.lastName.trim().length < 2) {
+      errors.lastName = 'Last name must be at least 2 characters long';
     }
     
-    if (!formData.password.trim()) {
+    if (!formData.password?.trim()) {
       errors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      errors.password = 'Password must be at least 6 characters long';
+    } else if (formData.password.length < 8) {
+      errors.password = 'Password must be at least 8 characters long';
+    }
+    
+    if (!formData.role?.trim()) {
+      errors.role = 'Role is required';
     }
     
     setFormErrors(errors);
-    return Object.keys(errors).length === 0;
+    const isValid = Object.keys(errors).length === 0;
+    console.log('Validation result:', { isValid, errors, formData });
+    return isValid;
   };
 
   const handleCreateUser = async () => {
+    console.log('Form data:', formData);
+    
     if (!validateForm()) {
+      console.log('Client-side validation failed');
       return;
     }
 
+    console.log('Client-side validation passed, creating user...');
+    
     try {
       setSaving(true);
       setError(null);
-      await authService.createUser({
-        email: formData.email,
+      setFormErrors({});
+      
+      const userData = {
+        email: formData.email.trim(),
         password: formData.password,
-        firstName: formData.firstName,
-        lastName: formData.lastName,
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
         role: formData.role
-      });
+      };
+      
+      console.log('Sending user data:', userData);
+      
+      const result = await authService.createUser(userData);
+      
+      console.log('User created successfully:', result);
       
       setIsCreateDialogOpen(false);
       setFormData({
@@ -139,9 +162,22 @@ const UserManagement: React.FC = () => {
       });
       setFormErrors({});
       await loadUsers();
-    } catch (err) {
-      const error = err as Error;
-      setError(error.message || 'Failed to create user');
+    } catch (err: any) {
+      console.error('Error creating user:', err);
+      
+      if (err.response?.data?.message) {
+        setError(err.response.data.message);
+      } else if (err.response?.data?.error) {
+        setError(err.response.data.error);
+      } else if (err.message) {
+        setError(err.message);
+      } else {
+        setError('Failed to create user. Please try again.');
+      }
+      
+      if (err.response?.data?.validationErrors) {
+        setFormErrors(err.response.data.validationErrors);
+      }
     } finally {
       setSaving(false);
     }
@@ -304,6 +340,11 @@ const UserManagement: React.FC = () => {
                           setFormErrors(prev => ({ ...prev, email: '' }));
                         }
                       }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleCreateUser();
+                        }
+                      }}
                       placeholder="user@example.com"
                       className={formErrors.email ? 'border-red-500' : ''}
                     />
@@ -320,6 +361,11 @@ const UserManagement: React.FC = () => {
                         setFormData(prev => ({ ...prev, firstName: e.target.value }));
                         if (formErrors.firstName) {
                           setFormErrors(prev => ({ ...prev, firstName: '' }));
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleCreateUser();
                         }
                       }}
                       placeholder="John"
@@ -340,6 +386,11 @@ const UserManagement: React.FC = () => {
                           setFormErrors(prev => ({ ...prev, lastName: '' }));
                         }
                       }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleCreateUser();
+                        }
+                      }}
                       placeholder="Doe"
                       className={formErrors.lastName ? 'border-red-500' : ''}
                     />
@@ -357,6 +408,11 @@ const UserManagement: React.FC = () => {
                         setFormData(prev => ({ ...prev, password: e.target.value }));
                         if (formErrors.password) {
                           setFormErrors(prev => ({ ...prev, password: '' }));
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleCreateUser();
                         }
                       }}
                       placeholder="••••••••"
