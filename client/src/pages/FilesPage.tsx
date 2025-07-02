@@ -36,9 +36,6 @@ export const FilesPage: React.FC = () => {
     content: unknown;
   } | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("table");
-  const [contentViewMode, setContentViewMode] = useState<"structured" | "raw">(
-    "structured"
-  );
   const [filterType, setFilterType] = useState<FilterType>("all");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [fileToDelete, setFileToDelete] = useState<string | null>(null);
@@ -232,8 +229,6 @@ export const FilesPage: React.FC = () => {
       <FileContentDialog
         selectedFile={selectedFile}
         files={files}
-        contentViewMode={contentViewMode}
-        setContentViewMode={setContentViewMode}
         onClose={() => setSelectedFile(null)}
       />
 

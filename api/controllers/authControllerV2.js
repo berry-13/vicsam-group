@@ -505,6 +505,242 @@ const getAuthInfo = async (req, res) => {
   }
 };
 
+/**
+ * Dettagli di un utente specifico
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+const getUserDetails = async (req, res) => {
+  try {
+    console.log('👤 [AUTH CONTROLLER] Get user details request');
+    
+    const { userId } = req.params;
+    
+    if (!userId) {
+      return res.status(400).json(
+        errorResponse('User ID is required', 400, {
+          error: 'MISSING_USER_ID'
+        })
+      );
+    }
+
+    const user = await authService.getUserById(userId);
+    
+    if (!user) {
+      return res.status(404).json(
+        errorResponse('User not found', 404, {
+          error: 'USER_NOT_FOUND'
+        })
+      );
+    }
+
+    res.json(
+      successResponse(
+        { user },
+        'User details retrieved successfully'
+      )
+    );
+    
+  } catch (error) {
+    console.error('❌ [AUTH CONTROLLER] Get user details failed:', error.message);
+    
+    res.status(500).json(
+      errorResponse('Failed to retrieve user details', 500, {
+        error: 'GET_USER_ERROR'
+      })
+    );
+  }
+};
+
+/**
+ * Aggiornamento dati utente
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+const updateUser = async (req, res) => {
+  try {
+    console.log('✏️ [AUTH CONTROLLER] Update user request');
+    
+    const { userId } = req.params;
+    const { email, firstName, lastName, isActive } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json(
+        errorResponse('User ID is required', 400, {
+          error: 'MISSING_USER_ID'
+        })
+      );
+    }
+
+    // Check if user exists
+    const existingUser = await authService.getUserById(userId);
+    if (!existingUser) {
+      return res.status(404).json(
+        errorResponse('User not found', 404, {
+          error: 'USER_NOT_FOUND'
+        })
+      );
+    }
+
+    // Check permissions - admin can update any user, users can only update themselves
+    const isAdmin = req.user.roles.includes('admin');
+    const isOwnProfile = req.user.id === userId;
+    
+    if (!isAdmin && !isOwnProfile) {
+      return res.status(403).json(
+        errorResponse('Not authorized to update this user', 403, {
+          error: 'INSUFFICIENT_PERMISSIONS'
+        })
+      );
+    }
+
+    const updateData = {};
+    if (email !== undefined) updateData.email = email;
+    if (firstName !== undefined) updateData.firstName = firstName;
+    if (lastName !== undefined) updateData.lastName = lastName;
+    if (isActive !== undefined && isAdmin) updateData.isActive = isActive;
+
+    const updatedUser = await authService.updateUser(userId, updateData);
+
+    console.log('✅ [AUTH CONTROLLER] User updated successfully');
+    
+    res.json(
+      successResponse(
+        { user: updatedUser },
+        'User updated successfully'
+      )
+    );
+    
+  } catch (error) {
+    console.error('❌ [AUTH CONTROLLER] Update user failed:', error.message);
+    
+    let statusCode = 500;
+    let errorCode = 'UPDATE_USER_ERROR';
+    
+    if (error instanceof AuthError) {
+      statusCode = error.code === 'EMAIL_EXISTS' ? 409 : 400;
+      errorCode = error.code;
+    }
+    
+    res.status(statusCode).json(
+      errorResponse(error.message, statusCode, {
+        error: errorCode
+      })
+    );
+  }
+};
+
+/**
+ * Disattivazione account utente
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+const deleteUser = async (req, res) => {
+  try {
+    console.log('🗑️ [AUTH CONTROLLER] Delete user request');
+    
+    const { userId } = req.params;
+    
+    if (!userId) {
+      return res.status(400).json(
+        errorResponse('User ID is required', 400, {
+          error: 'MISSING_USER_ID'
+        })
+      );
+    }
+
+    // Check if user exists
+    const existingUser = await authService.getUserById(userId);
+    if (!existingUser) {
+      return res.status(404).json(
+        errorResponse('User not found', 404, {
+          error: 'USER_NOT_FOUND'
+        })
+      );
+    }
+
+    // Prevent deleting admin users
+    if (existingUser.roles.includes('admin')) {
+      return res.status(403).json(
+        errorResponse('Cannot delete admin users', 403, {
+          error: 'CANNOT_DELETE_ADMIN'
+        })
+      );
+    }
+
+    await authService.deactivateUser(userId, req.user.id);
+
+    console.log('✅ [AUTH CONTROLLER] User deactivated successfully');
+    
+    res.json(
+      successResponse(
+        { success: true },
+        'User deactivated successfully'
+      )
+    );
+    
+  } catch (error) {
+    console.error('❌ [AUTH CONTROLLER] Delete user failed:', error.message);
+    
+    res.status(500).json(
+      errorResponse('Failed to deactivate user', 500, {
+        error: 'DELETE_USER_ERROR'
+      })
+    );
+  }
+};
+
+/**
+ * Attivazione account utente
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+const activateUser = async (req, res) => {
+  try {
+    console.log('✅ [AUTH CONTROLLER] Activate user request');
+    
+    const { userId } = req.params;
+    
+    if (!userId) {
+      return res.status(400).json(
+        errorResponse('User ID is required', 400, {
+          error: 'MISSING_USER_ID'
+        })
+      );
+    }
+
+    // Check if user exists
+    const existingUser = await authService.getUserById(userId);
+    if (!existingUser) {
+      return res.status(404).json(
+        errorResponse('User not found', 404, {
+          error: 'USER_NOT_FOUND'
+        })
+      );
+    }
+
+    await authService.activateUser(userId, req.user.id);
+
+    console.log('✅ [AUTH CONTROLLER] User activated successfully');
+    
+    res.json(
+      successResponse(
+        { success: true },
+        'User activated successfully'
+      )
+    );
+    
+  } catch (error) {
+    console.error('❌ [AUTH CONTROLLER] Activate user failed:', error.message);
+    
+    res.status(500).json(
+      errorResponse('Failed to activate user', 500, {
+        error: 'ACTIVATE_USER_ERROR'
+      })
+    );
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -515,5 +751,9 @@ module.exports = {
   listUsers,
   assignRole,
   listRoles,
-  getAuthInfo
+  getAuthInfo,
+  getUserDetails,
+  updateUser,
+  deleteUser,
+  activateUser
 };

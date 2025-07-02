@@ -7,33 +7,24 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Button } from "@/components/ui/button";
 import {
   FileText,
   CheckCircle,
-  AlertCircle,
-  Info,
   Code,
 } from "lucide-react";
-import { StructuredView } from "./StructuredView";
 import { ApplicationIcon } from "./ApplicationIcon";
 import { ParsedFileData } from "../types/fileTypes";
 
 interface FileContentDialogProps {
   selectedFile: { name: string; content: unknown } | null;
   files: ParsedFileData[];
-  contentViewMode: "structured" | "raw";
-  setContentViewMode: (mode: "structured" | "raw") => void;
   onClose: () => void;
 }
 
 export const FileContentDialog: React.FC<FileContentDialogProps> = ({
   selectedFile,
   files,
-  contentViewMode,
-  setContentViewMode,
   onClose,
 }) => {
   const currentFile = selectedFile
@@ -42,12 +33,12 @@ export const FileContentDialog: React.FC<FileContentDialogProps> = ({
 
   return (
     <Dialog open={!!selectedFile} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl max-h-[90vh]">
+      <DialogContent className="max-w-7xl max-h-[95vh] w-[95vw]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {currentFile?.isValidSystemData ? (
               <>
-                <CheckCircle className="h-5 w-5 text-success" />
+                <CheckCircle className="h-5 w-5 text-green-600" />
                 <ApplicationIcon
                   version={currentFile.systemData?.ApplicationVersion}
                   size={20}
@@ -56,86 +47,50 @@ export const FileContentDialog: React.FC<FileContentDialogProps> = ({
               </>
             ) : (
               <>
-                <FileText className="h-5 w-5" />
+                <FileText className="h-5 w-5 text-slate-600" />
                 {selectedFile?.name}
               </>
             )}
           </DialogTitle>
-          <DialogDescription>
-            {currentFile?.isValidSystemData && (
-              <div className="flex flex-wrap gap-4 mt-2 text-sm">
-                <span>P.IVA: {currentFile.systemData?.CustomerVAT}</span>
-                <span>Database: {currentFile.systemData?.DatabaseName}</span>
-                <span>Versione: {currentFile.systemData?.Version}</span>
+          {currentFile?.isValidSystemData && (
+            <DialogDescription className="text-sm text-slate-600 dark:text-slate-400">
+              <div className="flex flex-wrap gap-6 mt-2">
+                <span className="flex items-center gap-1">
+                  <span className="font-medium">P.IVA:</span> {currentFile.systemData?.CustomerVAT}
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="font-medium">Database:</span> {currentFile.systemData?.DatabaseName}
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="font-medium">Versione:</span> {currentFile.systemData?.Version}
+                </span>
               </div>
-            )}
-          </DialogDescription>
+            </DialogDescription>
+          )}
         </DialogHeader>
 
-        <div className="mt-4">
-          <Tabs
-            value={contentViewMode}
-            onValueChange={(value) =>
-              setContentViewMode(value as "structured" | "raw")
-            }
-          >
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger
-                value="structured"
-                className="flex items-center gap-2"
-              >
-                <Info className="h-4 w-4" />
-                Vista Strutturata
-              </TabsTrigger>
-              <TabsTrigger value="raw" className="flex items-center gap-2">
-                <Code className="h-4 w-4" />
-                JSON Raw
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="structured" className="mt-4">
-              {currentFile?.isValidSystemData ? (
-                <StructuredView data={currentFile.systemData!} />
-              ) : (
-                <Card>
-                  <CardContent className="p-8 text-center">
-                    <AlertCircle className="h-12 w-12 text-warning mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">
-                      Dati non strutturati
-                    </h3>
-                    <p className="text-muted-foreground mb-4">
-                      Questo file non contiene dati di sistema in formato
-                      riconosciuto. Utilizza la vista JSON Raw per visualizzare
-                      il contenuto completo.
-                    </p>
-                    <Button
-                      variant="outline"
-                      onClick={() => setContentViewMode("raw")}
-                    >
-                      Visualizza JSON Raw
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
-            </TabsContent>
-
-            <TabsContent value="raw" className="mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm">Contenuto JSON Raw</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ScrollArea className="h-[50vh] w-full">
-                    <pre className="text-xs bg-muted/50 p-4 rounded-lg overflow-x-auto font-mono">
+        <div className="mt-6">
+          <Card className="border-slate-200 dark:border-slate-800">
+            <CardHeader className="pb-3 bg-slate-50 dark:bg-slate-900/50">
+              <CardTitle className="flex items-center gap-2 text-base font-medium">
+                <Code className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                Contenuto File JSON
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <ScrollArea className="h-[70vh] w-full">
+                <div className="relative">
+                  <pre className="text-sm bg-slate-950 text-slate-50 p-6 m-0 overflow-x-auto font-mono leading-relaxed min-h-full">
+                    <code className="language-json">
                       {selectedFile
                         ? JSON.stringify(selectedFile.content, null, 2)
                         : "Caricamento..."}
-                    </pre>
-                  </ScrollArea>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+                    </code>
+                  </pre>
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
         </div>
       </DialogContent>
     </Dialog>

@@ -563,11 +563,42 @@ class ApiService {
     return response.data;
   }
 
-  async getAuthInfoV2(): Promise<ApiResponse<AuthInfoV2Response>> {
-    const response: AxiosResponse<ApiResponse<AuthInfoV2Response>> = await this.api.get('/v2/auth/info');
+  async getUserDetails(userId: string): Promise<ApiResponse<UserV2>> {
+    const response: AxiosResponse<ApiResponse<UserV2>> = await this.api.get(`/v2/auth/users/${userId}`);
     return response.data;
   }
 
+  async updateUser(userId: string, userData: {
+    email?: string;
+    firstName?: string;
+    lastName?: string;
+    isActive?: boolean;
+  }): Promise<ApiResponse<UserV2>> {
+    const response: AxiosResponse<ApiResponse<UserV2>> = await this.api.put(`/v2/auth/users/${userId}`, userData);
+    return response.data;
+  }
+
+  async deleteUser(userId: string): Promise<ApiResponse<{ success: boolean }>> {
+    const response: AxiosResponse<ApiResponse<{ success: boolean }>> = await this.api.delete(`/v2/auth/users/${userId}`);
+    return response.data;
+  }
+
+  async activateUser(userId: string): Promise<ApiResponse<{ success: boolean }>> {
+    const response: AxiosResponse<ApiResponse<{ success: boolean }>> = await this.api.post(`/v2/auth/users/${userId}/activate`);
+    return response.data;
+  }
+
+  async createUser(userData: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    role?: string;
+  }): Promise<ApiResponse<UserRegistrationResponse>> {
+    const response: AxiosResponse<ApiResponse<UserRegistrationResponse>> = await this.api.post('/v2/auth/register', userData);
+    return response.data;
+  }
+  
   // Gestione token
   setToken(token: string): void {
     this.bearerToken = token;
@@ -597,6 +628,11 @@ class ApiService {
 
   isAuthenticated(): boolean {
     return !!this.bearerToken;
+  }
+
+  async getAuthInfoV2(): Promise<ApiResponse<AuthInfoV2Response>> {
+    const response: AxiosResponse<ApiResponse<AuthInfoV2Response>> = await this.api.get('/v2/auth/info');
+    return response.data;
   }
 }
 

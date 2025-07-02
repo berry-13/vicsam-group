@@ -9,7 +9,11 @@ const {
   listUsers,
   assignRole,
   listRoles,
-  getAuthInfo
+  getAuthInfo,
+  getUserDetails,
+  updateUser,
+  deleteUser,
+  activateUser
 } = require('../controllers/authControllerV2');
 
 const {
@@ -244,17 +248,8 @@ router.get('/users/:userId',
     roles: ['admin', 'manager'],
     permissions: ['users.read']
   }),
-  // TODO: Validazione parametri UUID
   auditLogger('admin.get_user_details'),
-  async (req, res) => {
-    // TODO: Implementare controller per dettagli utente
-    res.status(501).json({
-      success: false,
-      error: 'Endpoint implementation in progress',
-      code: 'IMPLEMENTATION_PENDING',
-      message: 'This feature is enabled but not yet implemented. Check back in future releases.'
-    });
-  }
+  getUserDetails
 );
 
 /**
@@ -266,19 +261,9 @@ router.get('/users/:userId',
 router.put('/users/:userId',
   requireFeature('ADVANCED_USER_MANAGEMENT'),
   authenticateJWT,
-  // TODO: Middleware per verificare ownership o admin
   sanitizeInput,
-  // TODO: Schema di validazione per aggiornamento utente
   auditLogger('user.update_profile'),
-  async (req, res) => {
-    // TODO: Implementare controller per aggiornamento utente
-    res.status(501).json({
-      success: false,
-      error: 'Endpoint implementation in progress',
-      code: 'IMPLEMENTATION_PENDING',
-      message: 'This feature is enabled but not yet implemented. Check back in future releases.'
-    });
-  }
+  updateUser
 );
 
 /**
@@ -294,15 +279,7 @@ router.delete('/users/:userId',
     permissions: ['users.delete']
   }),
   auditLogger('admin.deactivate_user'),
-  async (req, res) => {
-    // TODO: Implementare controller per disattivazione utente
-    res.status(501).json({
-      success: false,
-      error: 'Endpoint implementation in progress',
-      code: 'IMPLEMENTATION_PENDING',
-      message: 'This feature is enabled but not yet implemented. Check back in future releases.'
-    });
-  }
+  deleteUser
 );
 
 /**
@@ -318,15 +295,7 @@ router.post('/users/:userId/activate',
     permissions: ['users.update']
   }),
   auditLogger('admin.activate_user'),
-  async (req, res) => {
-    // TODO: Implementare controller per attivazione utente
-    res.status(501).json({
-      success: false,
-      error: 'Endpoint implementation in progress',
-      code: 'IMPLEMENTATION_PENDING',
-      message: 'This feature is enabled but not yet implemented. Check back in future releases.'
-    });
-  }
+  activateUser
 );
 
 // ============================================================================

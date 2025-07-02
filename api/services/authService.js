@@ -603,12 +603,12 @@ class AuthService {
     try {
       console.log('👥 [AUTH] Listing users with options:', { limit, offset, search, role });
       
-      let whereConditions = ['u.is_active = TRUE'];
+      let whereConditions = ['u.is_active = 1'];
       let queryParams = [];
       
       // Filtro per ricerca
       if (search) {
-        whereConditions.push('(u.email LIKE ? OR u.first_name LIKE ? OR u.last_name LIKE ?)');
+        whereConditions.push('(LOWER(u.email) LIKE ? OR LOWER(u.first_name) LIKE ? OR LOWER(u.last_name) LIKE ?)');
         const searchPattern = `%${search.toLowerCase()}%`;
         queryParams.push(searchPattern, searchPattern, searchPattern);
       }
@@ -645,32 +645,32 @@ class AuthService {
           u.is_verified,
           u.last_login_at,
           u.created_at,
-          GROUP_CONCAT(DISTINCT r.name) as roles,
-          GROUP_CONCAT(DISTINCT r.display_name) as role_names
+          COALESCE(GROUP_CONCAT(DISTINCT r.name SEPARATOR ','), '') as roles,
+          COALESCE(GROUP_CONCAT(DISTINCT r.display_name SEPARATOR ','), '') as role_names
         FROM users u
         LEFT JOIN user_roles ur ON u.id = ur.user_id AND (ur.expires_at IS NULL OR ur.expires_at > NOW())
         LEFT JOIN roles r ON ur.role_id = r.id
         WHERE ${whereClause}
         GROUP BY u.id, u.uuid, u.email, u.first_name, u.last_name, u.is_active, u.is_verified, u.last_login_at, u.created_at
         ORDER BY u.created_at DESC
-        LIMIT ? OFFSET ?
+        LIMIT ${limit} OFFSET ${offset}
       `;
       
-      const usersResult = await db.query(usersQuery, [...queryParams, limit, offset]);
+      const usersResult = await db.query(usersQuery, queryParams);
       
       // Formatta i risultati
       const users = usersResult.rows.map(user => ({
         id: user.uuid,
-        email: user.email.toLowerCase(), // Ensure email is consistently lowercase
+        email: user.email.toLowerCase(),
         name: `${user.first_name} ${user.last_name}`.trim(),
         firstName: user.first_name,
         lastName: user.last_name,
-        isActive: user.is_active,
-        isVerified: user.is_verified,
+        isActive: Boolean(user.is_active),
+        isVerified: Boolean(user.is_verified),
         lastLoginAt: user.last_login_at,
         createdAt: user.created_at,
-        roles: user.roles ? user.roles.split(',') : [],
-        roleNames: user.role_names ? user.role_names.split(',') : []
+        roles: user.roles && user.roles.length > 0 ? user.roles.split(',') : [],
+        roleNames: user.role_names && user.role_names.length > 0 ? user.role_names.split(',') : []
       }));
       
       console.log(`✅ [AUTH] Retrieved ${users.length} users (total: ${total})`);
@@ -1109,6 +1109,221 @@ class AuthService {
       
     } catch (error) {
       console.error(`❌ [AUTH] Get user permissions failed:`, error.message);
+      throw error;
+    }
+  }
+
+  // ============================================================================
+  // USER CRUD OPERATIONS
+  // ============================================================================
+
+  /**
+   * Aggiorna i dati di un utente
+   * @param {string} userId - UUID dell'utente
+   * @param {Object} updateData - Dati da aggiornare
+   * @returns {Promise<Object>} Utente aggiornato
+   */
+  async updateUser(userId, updateData) {
+    const transaction = await db.beginTransaction();
+    
+    try {
+      console.log('✏️ [AUTH] Updating user:', userId);
+      
+      const user = await this.getUserByUuid(userId);
+      if (!user) {
+        throw new AuthError('User not found', 'USER_NOT_FOUND');
+      }
+
+      const updates = [];
+      const params = [];
+      
+      if (updateData.email !== undefined) {
+        const existingUser = await this.findUserByEmail(updateData.email);
+        if (existingUser && existingUser.uuid !== userId) {
+          throw new AuthError('Email already in use', 'EMAIL_EXISTS');
+        }
+        updates.push('email = ?');
+        params.push(updateData.email.toLowerCase());
+      }
+      
+      if (updateData.firstName !== undefined) {
+        updates.push('first_name = ?');
+        params.push(updateData.firstName);
+      }
+      
+      if (updateData.lastName !== undefined) {
+        updates.push('last_name = ?');
+        params.push(updateData.lastName);
+      }
+      
+      if (updateData.isActive !== undefined) {
+        updates.push('is_active = ?');
+        params.push(updateData.isActive ? 1 : 0);
+      }
+
+      if (updates.length === 0) {
+        throw new AuthError('No valid fields to update', 'NO_UPDATE_FIELDS');
+      }
+
+      updates.push('updated_at = NOW()');
+      params.push(user.id);
+
+      await db.query(
+        `UPDATE users SET ${updates.join(', ')} WHERE id = ?`,
+        params,
+        transaction
+      );
+
+      await this.logAuditEvent(
+        user.id,
+        'user.update',
+        'users',
+        user.id,
+        { updatedFields: Object.keys(updateData) },
+        true,
+        transaction
+      );
+
+      await transaction.commit();
+      
+      const updatedUser = await this.getUserByUuid(userId);
+      console.log('✅ [AUTH] User updated successfully');
+      
+      return updatedUser;
+      
+    } catch (error) {
+      await transaction.rollback();
+      console.error('❌ [AUTH] Update user failed:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Disattiva un utente
+   * @param {string} userId - UUID dell'utente
+   * @param {string} adminId - ID dell'admin che esegue l'operazione
+   * @returns {Promise<boolean>} Successo dell'operazione
+   */
+  async deactivateUser(userId, adminId) {
+    const transaction = await db.beginTransaction();
+    
+    try {
+      console.log('🗑️ [AUTH] Deactivating user:', userId);
+      
+      const user = await this.getUserByUuid(userId);
+      if (!user) {
+        throw new AuthError('User not found', 'USER_NOT_FOUND');
+      }
+
+      if (!user.is_active) {
+        throw new AuthError('User is already deactivated', 'USER_ALREADY_DEACTIVATED');
+      }
+
+      await db.query(
+        'UPDATE users SET is_active = 0, updated_at = NOW() WHERE id = ?',
+        [user.id],
+        transaction
+      );
+
+      await this.logAuditEvent(
+        adminId,
+        'admin.deactivate_user',
+        'users',
+        user.id,
+        { targetUser: userId },
+        true,
+        transaction
+      );
+
+      await transaction.commit();
+      
+      console.log('✅ [AUTH] User deactivated successfully');
+      return true;
+      
+    } catch (error) {
+      await transaction.rollback();
+      console.error('❌ [AUTH] Deactivate user failed:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Attiva un utente
+   * @param {string} userId - UUID dell'utente
+   * @param {string} adminId - ID dell'admin che esegue l'operazione
+   * @returns {Promise<boolean>} Successo dell'operazione
+   */
+  async activateUser(userId, adminId) {
+    const transaction = await db.beginTransaction();
+    
+    try {
+      console.log('✅ [AUTH] Activating user:', userId);
+      
+      const user = await this.getUserByUuid(userId);
+      if (!user) {
+        throw new AuthError('User not found', 'USER_NOT_FOUND');
+      }
+
+      if (user.is_active) {
+        throw new AuthError('User is already active', 'USER_ALREADY_ACTIVE');
+      }
+
+      await db.query(
+        'UPDATE users SET is_active = 1, updated_at = NOW() WHERE id = ?',
+        [user.id],
+        transaction
+      );
+
+      await this.logAuditEvent(
+        adminId,
+        'admin.activate_user',
+        'users',
+        user.id,
+        { targetUser: userId },
+        true,
+        transaction
+      );
+
+      await transaction.commit();
+      
+      console.log('✅ [AUTH] User activated successfully');
+      return true;
+      
+    } catch (error) {
+      await transaction.rollback();
+      console.error('❌ [AUTH] Activate user failed:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Ottiene un utente per UUID
+   * @param {string} userUuid - UUID dell'utente
+   * @returns {Promise<Object|null>} Utente senza dati sensibili
+   */
+  async getUserByUuid(userUuid) {
+    try {
+      const result = await db.query(`
+        SELECT 
+          id, uuid, email, first_name, last_name, 
+          is_active, is_verified, last_login_at, created_at
+        FROM users WHERE uuid = ?
+      `, [userUuid]);
+      
+      if (result.rows.length === 0) {
+        return null;
+      }
+
+      const user = result.rows[0];
+      const roles = await this.getUserRoles(user.id);
+      
+      return {
+        ...user,
+        email: user.email.toLowerCase(),
+        roles: roles.map(r => r.name)
+      };
+    } catch (error) {
+      console.error('❌ [AUTH] Get user by UUID failed:', error.message);
       throw error;
     }
   }

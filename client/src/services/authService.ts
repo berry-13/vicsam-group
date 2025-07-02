@@ -155,6 +155,37 @@ class AuthService {
     return apiService.getRoleDetails(roleName);
   }
 
+  async getUserDetails(userId: string) {
+    return apiService.getUserDetails(userId);
+  }
+
+  async updateUser(userId: string, userData: {
+    email?: string;
+    firstName?: string;
+    lastName?: string;
+    isActive?: boolean;
+  }) {
+    return apiService.updateUser(userId, userData);
+  }
+
+  async deleteUser(userId: string) {
+    return apiService.deleteUser(userId);
+  }
+
+  async activateUser(userId: string) {
+    return apiService.activateUser(userId);
+  }
+
+  async createUser(userData: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    role?: string;
+  }) {
+    return apiService.createUser(userData);
+  }
+
   // Authentication info
   async getAuthInfo() {
     return apiService.getAuthInfoV2();
