@@ -51,8 +51,8 @@ export const StructuredView: React.FC<StructuredViewProps> = ({ data }) => {
       </div>
 
       {expandedExtension === type && enabled && items?.length && (
-        <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
-          <div className="p-3 border-b bg-muted/20">
+        <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+          <div className="p-3 border-b bg-popover">
             <div className="flex items-center justify-between">
               <h4 className="font-medium text-sm">{label}</h4>
               <Button

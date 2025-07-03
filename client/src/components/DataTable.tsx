@@ -180,7 +180,7 @@ export const DataTable: React.FC<DataTableProps> = ({
             <SortableTableHead column="applicationVersion" className="w-16">
               App
             </SortableTableHead>
-            <SortableTableHead column="customerName" className="min-w-[200px]">
+            <SortableTableHead column="customerName" className="min-w-[120px]">
               <div className="flex items-center gap-2">
                 Cliente
                 <ColumnFilterPopover title="Filtra per Cliente">
@@ -244,7 +244,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                 </ColumnFilterPopover>
               </div>
             </SortableTableHead>
-            <SortableTableHead column="version" className="w-28">
+            <SortableTableHead column="version" className="w-56">
               <div className="flex items-center gap-2">
                 Version
                 <ColumnFilterPopover title="Filtra per Versione">

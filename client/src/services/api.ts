@@ -166,10 +166,6 @@ export interface ApiInfo {
     data: Record<string, string>;
   };
   authentication: string;
-  rateLimit: {
-    windowMs: number;
-    maxRequests: number;
-  };
 }
 
 export interface DataStats {

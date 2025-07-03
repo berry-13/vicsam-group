@@ -147,7 +147,6 @@ function logServerStartup(PORT, corsOptions, rateLimitConfig) {
   console.log(`💊 Health check: http://localhost:${PORT}/health`);
   console.log(`⚡ Ambiente: ${NODE_ENV}`);
   console.log(`📦 Versione: ${getSimpleVersion()}`);
-  console.log(`🛡️  Sicurezza: Rate limiting ${rateLimitConfig.max} req/${rateLimitConfig.windowMs}ms`);
   console.log(`🌍 CORS: ${corsOptions.origin === true ? 'Tutte le origini (dev)' : corsOptions.origin || 'Disabilitato'}`);
   console.log(`📁 Client React: ${checkClientBuild() ? 'Disponibile' : 'Non trovato (API-only)'}`);
   console.log('🚀 ============================\n');

@@ -7,10 +7,15 @@ export const useFilters = () => {
     customerName: "",
     osProductName: "",
     version: [],
+    build: [],
     sqlServerVersion: [],
     appVersion: "",
+    databaseName: "",
+    versioneFiscale: [],
+    installationDir: "",
+    resellerName: "",
+    resellerVAT: "",
     hasExtensions: null,
-    status: [],
   });
 
   const handleColumnFilterChange = useCallback((
@@ -26,22 +31,32 @@ export const useFilters = () => {
       customerName: "",
       osProductName: "",
       version: [],
+      build: [],
       sqlServerVersion: [],
       appVersion: "",
+      databaseName: "",
+      versioneFiscale: [],
+      installationDir: "",
+      resellerName: "",
+      resellerVAT: "",
       hasExtensions: null,
-      status: [],
     });
   }, []);
 
-  const hasActiveFilters = 
+  const hasActiveFilters =
     columnFilters.applicationVersion.length > 0 ||
     columnFilters.customerName ||
     columnFilters.osProductName ||
     columnFilters.version.length > 0 ||
+    columnFilters.build.length > 0 ||
     columnFilters.sqlServerVersion.length > 0 ||
     columnFilters.appVersion ||
-    columnFilters.hasExtensions !== null ||
-    columnFilters.status.length > 0;
+    columnFilters.databaseName ||
+    columnFilters.versioneFiscale.length > 0 ||
+    columnFilters.installationDir ||
+    columnFilters.resellerName ||
+    columnFilters.resellerVAT ||
+    columnFilters.hasExtensions !== null;
 
   return {
     columnFilters,

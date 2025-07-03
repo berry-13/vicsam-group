@@ -41,8 +41,6 @@ const {
   validateAssignRole
 } = require('../utils/authValidation');
 
-const { loginRateLimit, strictLoginRateLimit } = require('../middleware/rateLimiting');
-
 const router = express.Router();
 
 // ============================================================================
@@ -111,7 +109,6 @@ router.get('/info', getAuthInfo);
  * @access Public (con rate limiting)
  */
 router.post('/register',
-  loginRateLimit, // Rate limiting per prevenire spam
   sanitizeInput,
   validateJoi(registerSchema),
   auditLogger('user.register_attempt'),
@@ -124,8 +121,6 @@ router.post('/register',
  * @access Public (con rate limiting)
  */
 router.post('/login',
-  loginRateLimit,
-  strictLoginRateLimit, // Rate limiting più severo per login
   sanitizeInput,
   validateJoi(loginSchema),
   auditLogger('user.login_attempt'),

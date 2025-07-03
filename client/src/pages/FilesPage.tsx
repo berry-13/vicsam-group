@@ -14,7 +14,7 @@ import {
 import { AlertTriangle } from "lucide-react";
 import Spinner from "@/components/ui/spinner";
 
-import { ParsedFileData, ViewMode, FilterType } from "../types/fileTypes";
+import { ParsedFileData, ViewMode } from "../types/fileTypes";
 import { parseSystemData } from "../utils/fileUtils";
 import { useFilteredAndSortedFiles, useSorting, useFilters } from "../hooks";
 import {
@@ -36,7 +36,6 @@ export const FilesPage: React.FC = () => {
     content: unknown;
   } | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("table");
-  const [filterType, setFilterType] = useState<FilterType>("all");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [fileToDelete, setFileToDelete] = useState<string | null>(null);
 
@@ -51,34 +50,29 @@ export const FilesPage: React.FC = () => {
   const loadFiles = useCallback(async () => {
     try {
       const data = await apiService.getFiles();
-
-      const parsedFiles: ParsedFileData[] = await Promise.all(
+      const parsedFiles: ParsedFileData[] = (await Promise.all(
         data.files.map(async (file) => {
           try {
             const fileContent = await apiService.getFileContent(file.name);
             const { systemData, isValidSystemData } = parseSystemData(
               fileContent.content
             );
-
             return {
               ...file,
               systemData,
               isValidSystemData,
             };
-          } catch (error) {
-            console.error(`Errore nel caricamento di ${file.name}:`, error);
+          } catch {
             return {
               ...file,
               isValidSystemData: false,
             };
           }
         })
-      );
-
+      )).filter(Boolean);
       setFiles(parsedFiles);
-    } catch (error) {
-      console.error("Errore nel caricamento file:", error);
-    } finally {
+    } catch {}
+    finally {
       setLoading(false);
       setRefreshing(false);
     }
@@ -97,17 +91,13 @@ export const FilesPage: React.FC = () => {
     try {
       const data = await apiService.getFileContent(filename);
       setSelectedFile({ name: data.filename, content: data.content });
-    } catch (error) {
-      console.error("Errore nel caricamento contenuto file:", error);
-    }
+    } catch {}
   };
 
   const handleDownload = async (filename: string) => {
     try {
       await apiService.downloadFile(filename);
-    } catch (error) {
-      console.error("Errore nel download file:", error);
-    }
+    } catch {}
   };
 
   const handleDelete = (filename: string) => {
@@ -117,14 +107,12 @@ export const FilesPage: React.FC = () => {
 
   const handleConfirmDelete = async () => {
     if (!fileToDelete) return;
-
     try {
       await apiService.deleteFile(fileToDelete);
       setFiles(files.filter((f) => f.name !== fileToDelete));
       setDeleteDialogOpen(false);
       setFileToDelete(null);
-    } catch (error) {
-      console.error("Errore nella cancellazione file:", error);
+    } catch {
       setDeleteDialogOpen(false);
       setFileToDelete(null);
     }
@@ -141,12 +129,11 @@ export const FilesPage: React.FC = () => {
     resetSort();
   };
 
-  const hasFilters = Boolean(searchTerm || filterType !== "all" || hasActiveFilters);
+  const hasFilters = Boolean(searchTerm || hasActiveFilters);
 
   const filteredAndSortedFiles = useFilteredAndSortedFiles(
     files,
     searchTerm,
-    filterType,
     columnFilters,
     sortConfig
   );
@@ -178,8 +165,6 @@ export const FilesPage: React.FC = () => {
       <Controls
         searchTerm={searchTerm}
         setSearchTerm={setSearchTerm}
-        filterType={filterType}
-        setFilterType={setFilterType}
         columnFilters={columnFilters}
         onColumnFilterChange={handleColumnFilterChange}
         viewMode={viewMode}
@@ -188,6 +173,7 @@ export const FilesPage: React.FC = () => {
         onRefresh={handleRefresh}
         onClearFilters={clearAllFilters}
         hasActiveFilters={hasFilters}
+        files={files}
       />
 
       {filteredAndSortedFiles.length === 0 ? (

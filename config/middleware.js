@@ -5,10 +5,9 @@
 const helmet = require('helmet');
 const cors = require('cors');
 const express = require('express');
-const rateLimit = require('express-rate-limit');
 
 const { getCorsOptions } = require('./corsConfig');
-const { getRateLimitConfig, getBodyParserOptions, getServerConfig } = require('./serverConfig');
+const { getBodyParserOptions, getServerConfig } = require('./serverConfig');
 const { requestLogger } = require('../api/middleware/common');
 
 /**
@@ -17,7 +16,6 @@ const { requestLogger } = require('../api/middleware/common');
 function setupMiddleware(app) {
   const { isDevelopment, trustProxy } = getServerConfig();
   const corsOptions = getCorsOptions();
-  const rateLimitConfig = getRateLimitConfig();
   const bodyParserOptions = getBodyParserOptions();
 
   // Configurazione proxy per rate limiting dietro reverse proxy
@@ -96,10 +94,6 @@ function setupMiddleware(app) {
   // Configurazione CORS
   app.use(cors(corsOptions));
 
-  // Rate limiting configurabile per ambiente
-  const limiter = rateLimit(rateLimitConfig);
-  app.use('/api', limiter);
-
   // Debug middleware per sviluppo
   if (isDevelopment) {
     app.use((req, res, next) => {
@@ -124,8 +118,7 @@ function setupMiddleware(app) {
   }));
 
   return {
-    corsOptions,
-    rateLimitConfig
+    corsOptions
   };
 }
 

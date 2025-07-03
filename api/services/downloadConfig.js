@@ -23,10 +23,6 @@ class DownloadConfig {
       minCompressSize: this.parseNumber(process.env.DOWNLOAD_MIN_COMPRESS_SIZE, 1024), // 1KB
       cacheMaxAge: this.parseNumber(process.env.DOWNLOAD_CACHE_MAX_AGE, 3600), // 1 hour
 
-      // Security settings
-      rateLimit: this.parseNumber(process.env.DOWNLOAD_RATE_LIMIT, 100),
-      rateWindow: this.parseNumber(process.env.DOWNLOAD_RATE_WINDOW, 15 * 60 * 1000), // 15 minutes
-
       // File mappings for URL shortener / file hosting
       files: {
         get: {
@@ -79,14 +75,6 @@ class DownloadConfig {
 
     if (this.config.cacheMaxAge < 0) {
       errors.push('DOWNLOAD_CACHE_MAX_AGE must be a positive number');
-    }
-
-    if (this.config.rateLimit < 1) {
-      errors.push('DOWNLOAD_RATE_LIMIT must be at least 1');
-    }
-
-    if (this.config.rateWindow < 1000) {
-      errors.push('DOWNLOAD_RATE_WINDOW must be at least 1000ms');
     }
 
     if (errors.length > 0) {
@@ -229,8 +217,6 @@ class DownloadConfig {
       cacheTimeout: this.config.cacheTimeout,
       minCompressSize: this.config.minCompressSize,
       cacheMaxAge: this.config.cacheMaxAge,
-      rateLimit: this.config.rateLimit,
-      rateWindow: this.config.rateWindow,
       logEnabled: this.config.logEnabled,
       logLevel: this.config.logLevel,
       endpointCount: Object.keys(this.getAllFileMappings()).length

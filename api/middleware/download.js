@@ -1,5 +1,4 @@
 const compression = require('compression');
-const rateLimit = require('express-rate-limit');
 
 /**
  * Download-specific middleware for performance optimization
@@ -21,7 +20,7 @@ function createSecureKeyGenerator() {
       
       // In sviluppo, aggiungi logging per debug
       if (process.env.NODE_ENV === 'development') {
-        console.log('🔍 [DOWNLOAD RATE LIMIT] Using IP for rate limiting:', clientIp);
+        console.log('🔍 [DOWNLOAD] Using IP:', clientIp);
       }
       
       return clientIp;
@@ -58,27 +57,6 @@ const downloadCompression = compression({
   }
 });
 
-// Rate limiting for downloads - more generous than API
-const downloadRateLimit = rateLimit({
-  windowMs: 1 * 60 * 1000, // 1 minute
-  max: 10, // 10 downloads per minute per IP
-  standardHeaders: true,
-  legacyHeaders: false,
-  
-  // Configurazione sicura per trust proxy
-  keyGenerator: createSecureKeyGenerator(),
-  message: {
-    success: false,
-    error: 'Too many download requests, please try again later',
-    retryAfter: '1 minute',
-    timestamp: new Date().toISOString()
-  },
-  skip: (req) => {
-    // Skip rate limiting for health checks
-    return req.path.includes('/health') || req.path.includes('/info');
-  }
-});
-
 // Security headers specifically for file downloads
 const downloadSecurityHeaders = (req, res, next) => {
   res.set({
@@ -111,7 +89,6 @@ const downloadMonitoring = (req, res, next) => {
 
 module.exports = {
   downloadCompression,
-  downloadRateLimit,
   downloadSecurityHeaders,
   downloadMonitoring
 };

@@ -57,48 +57,6 @@ function getServerConfig() {
 }
 
 /**
- * Configurazione rate limiting
- */
-function getRateLimitConfig() {
-  const { isProduction, trustProxy } = getServerConfig();
-  
-  const config = {
-    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || (isProduction ? 15 * 60 * 1000 : 60 * 1000), // 15min prod, 1min dev
-    max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || (isProduction ? 100 : 1000), // 100 prod, 1000 dev
-    message: {
-      success: false,
-      error: 'Troppe richieste, riprova più tardi',
-      timestamp: new Date().toISOString()
-    },
-    standardHeaders: true,
-    legacyHeaders: false,
-    skip: (req) => {
-      return req.path === '/health';
-    }
-  };
-
-  // Configurazione sicura per rate limiting con trust proxy
-  if (trustProxy) {
-    // Quando trust proxy è abilitato, usa una configurazione più sicura
-    config.keyGenerator = (req) => {
-      // Usa l'IP più specifico disponibile, fallback a req.ip
-      const forwarded = req.get('X-Forwarded-For');
-      const realIp = req.get('X-Real-IP');
-      const clientIp = realIp || forwarded?.split(',')[0].trim() || req.ip;
-      
-      // In sviluppo, aggiungi logging per debug
-      if (process.env.NODE_ENV === 'development') {
-        console.log('🔍 [RATE LIMIT] Using IP for rate limiting:', clientIp);
-      }
-      
-      return clientIp;
-    };
-  }
-
-  return config;
-}
-
-/**
  * Configurazione body parser
  */
 function getBodyParserOptions() {
@@ -124,7 +82,6 @@ function getStaticOptions() {
 
 module.exports = {
   getServerConfig,
-  getRateLimitConfig,
   getBodyParserOptions,
   getStaticOptions,
   getPathConfig

@@ -65,9 +65,6 @@ export function LoginForm({
     if (errorMessage.includes('401') || errorMessage.includes('non autorizzato') || errorMessage.includes('password errata') || errorMessage.includes('email') || errorMessage.includes('credentials') || errorMessage.includes('invalid credentials')) {
       return 'auth';
     }
-    if (errorMessage.includes('429') || errorMessage.includes('troppi tentativi') || errorMessage.includes('bloccato') || errorMessage.includes('rate limit')) {
-      return 'ratelimit';
-    }
     if (errorMessage.includes('423') || errorMessage.includes('account locked') || errorMessage.includes('account bloccato')) {
       return 'locked';
     }
@@ -82,12 +79,9 @@ export function LoginForm({
 
   const getErrorMessage = (errorMessage: string) => {
     const type = getErrorType(errorMessage.toLowerCase());
-    
     switch (type) {
       case 'auth':
         return 'Email o password errata. Verifica le tue credenziali e riprova.';
-      case 'ratelimit':
-        return 'Troppi tentativi di accesso. Riprova tra qualche minuto.';
       case 'locked':
         return 'Account temporaneamente bloccato per sicurezza. Riprova più tardi.';
       case 'network':
@@ -101,23 +95,18 @@ export function LoginForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     const emailError = validateEmail(email);
     const passwordError = validatePassword(password);
-    
     if (emailError) {
       setError(emailError);
       return;
     }
-    
     if (passwordError) {
       setError(passwordError);
       return;
     }
-
     setLoading(true);
     setError('');
-
     try {
       await login(email, password);
       toast.success('Accesso effettuato', 'Benvenuto nel sistema!');
@@ -127,14 +116,10 @@ export function LoginForm({
       const processedError = getErrorMessage(errorMessage);
       setError(processedError);
       setHasError(true);
-      
       const errorType = getErrorType(errorMessage.toLowerCase());
-      if (errorType === 'ratelimit') {
-        toast.warning('Accesso temporaneamente bloccato', 'Riprova tra qualche minuto.');
-      } else if (errorType === 'locked') {
+      if (errorType === 'locked') {
         toast.error('Account bloccato', 'Contatta l\'amministratore se il problema persiste.');
       }
-      
       setTimeout(() => setHasError(false), 600);
     } finally {
       setLoading(false);

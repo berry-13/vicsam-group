@@ -45,10 +45,15 @@ export interface ColumnFilter {
   customerName: string;
   osProductName: string;
   version: string[];
+  build: string[];
   sqlServerVersion: string[];
   appVersion: string;
+  databaseName: string;
+  versioneFiscale: string[];
+  installationDir: string;
+  resellerName: string;
+  resellerVAT: string;
   hasExtensions: boolean | null;
-  status: string[];
 }
 
 export interface SortConfig {
