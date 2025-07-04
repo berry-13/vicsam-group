@@ -293,6 +293,20 @@ export const DataTable: React.FC<DataTableProps> = ({
                 </ColumnFilterPopover>
               </div>
             </SortableTableHead>
+            <SortableTableHead column="modified" className="w-32">
+              <div className="flex items-center gap-2">
+                Ultima modifica
+                <ColumnFilterPopover title="Filtra per data">
+                  <Input
+                    placeholder="Data modifica..."
+                    value={columnFilters.modified}
+                    onChange={(e) =>
+                      onColumnFilterChange("modified", e.target.value)
+                    }
+                  />
+                </ColumnFilterPopover>
+              </div>
+            </SortableTableHead>
             <TableHead className="w-20">Azioni</TableHead>
           </TableRow>
         </TableHeader>
@@ -350,6 +364,11 @@ export const DataTable: React.FC<DataTableProps> = ({
               <TableCell>
                 <span className="text-sm font-mono">
                   {file.systemData?.AppVersion || "-"}
+                </span>
+              </TableCell>
+              <TableCell>
+                <span className="text-sm">
+                  {file.modified ? new Date(file.modified).toLocaleString() : "-"}
                 </span>
               </TableCell>
               <TableCell>

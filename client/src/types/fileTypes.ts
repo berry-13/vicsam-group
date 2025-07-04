@@ -54,6 +54,7 @@ export interface ColumnFilter {
   resellerName: string;
   resellerVAT: string;
   hasExtensions: boolean | null;
+  modified: string;
 }
 
 export interface SortConfig {
