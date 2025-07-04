@@ -22,8 +22,8 @@ export interface AuthResponse {
 export interface UserV2 {
   id: string;
   email: string;
-  name: string;
-  roles: string[];
+  name: string | Record<string, unknown>;
+  roles: (string | { name: string })[];
   permissions?: string[];
   isVerified: boolean;
 }
@@ -166,10 +166,6 @@ export interface ApiInfo {
     data: Record<string, string>;
   };
   authentication: string;
-  rateLimit: {
-    windowMs: number;
-    maxRequests: number;
-  };
 }
 
 export interface DataStats {
@@ -219,44 +215,99 @@ class ApiService {
       return config;
     });
 
-    // Interceptor per gestire le risposte
+    // Enhanced response interceptor with automatic token refresh
     this.api.interceptors.response.use(
       (response) => response,
-      (error) => {
-        console.error('Errore API:', error);
+      async (error) => {
+        console.error('🔴 [API ERROR]:', error);
         
-        // Gestione errori di autenticazione
-        if (error.response?.status === 401) {
+        const originalRequest = error.config;
+        
+        // Check if this is a 401 error and we haven't already tried to refresh
+        if (error.response?.status === 401 && !originalRequest._retry) {
+          originalRequest._retry = true;
+          
+          try {
+            // Try to refresh the token
+            const refreshToken = localStorage.getItem('vicsam_refresh_token');
+            if (refreshToken && !window.location.pathname.includes('/login')) {
+              console.log('🔄 [AUTH] Attempting automatic token refresh...');
+              
+              const refreshResponse = await axios.post(`${this.api.defaults.baseURL}/auth/refresh`, {
+                refreshToken
+              });
+              
+              if (refreshResponse.data.success) {
+                const newAuthData = refreshResponse.data.data;
+                
+                // Update stored tokens
+                localStorage.setItem('vicsam_token', newAuthData.accessToken);
+                localStorage.setItem('vicsam_refresh_token', newAuthData.refreshToken || refreshToken);
+                this.bearerToken = newAuthData.accessToken;
+                
+                // Retry the original request with new token
+                originalRequest.headers.Authorization = `Bearer ${newAuthData.accessToken}`;
+                console.log('✅ [AUTH] Token refreshed, retrying original request');
+                
+                return this.api(originalRequest);
+              }
+            }
+          } catch (refreshError) {
+            console.error('❌ [AUTH] Token refresh failed:', refreshError);
+          }
+          
+          // If refresh failed or no refresh token, clear auth and redirect
           this.clearAuth();
-          // Non reindirizzare automaticamente se siamo già nella pagina di login
           if (!window.location.pathname.includes('/login')) {
-            window.location.href = '/login';
+            console.log('🚪 [AUTH] Redirecting to login page');
+            // Use a custom event to notify the app about auth failure
+            window.dispatchEvent(new CustomEvent('auth:logout', { 
+              detail: { reason: 'token_expired' } 
+            }));
+            window.location.href = '/login?reason=session_expired';
           }
         }
         
-        // Crea un messaggio di errore più specifico
+        // Enhanced error message handling
         let errorMessage = 'Si è verificato un errore imprevisto';
         
         if (error.response) {
-          // Errore del server con risposta
           const status = error.response.status;
           const serverMessage = error.response.data?.error || error.response.data?.message;
+          const errorCode = error.response.data?.data?.error;
           
           switch (status) {
             case 400:
-              errorMessage = serverMessage || 'Richiesta non valida';
+              if (errorCode === 'INVALID_CREDENTIALS' || errorCode === 'MISSING_CREDENTIALS') {
+                errorMessage = 'Email o password non valida';
+              } else if (errorCode === 'VALIDATION_ERROR') {
+                errorMessage = 'Dati inseriti non validi';
+              } else {
+                errorMessage = serverMessage || 'Richiesta non valida';
+              }
               break;
             case 401:
-              errorMessage = 'Password errata o sessione scaduta';
+              if (errorCode === 'INVALID_CREDENTIALS') {
+                errorMessage = 'Email o password errata';
+              } else if (errorCode === 'ACCOUNT_LOCKED') {
+                errorMessage = 'Account temporaneamente bloccato per sicurezza';
+              } else if (errorCode === 'ACCOUNT_DISABLED') {
+                errorMessage = 'Account disabilitato. Contatta l\'amministratore';
+              } else {
+                errorMessage = 'Sessione scaduta. Effettua nuovamente l\'accesso';
+              }
               break;
             case 403:
-              errorMessage = 'Accesso negato';
+              errorMessage = 'Accesso negato. Non hai i permessi necessari';
               break;
             case 404:
               errorMessage = 'Risorsa non trovata';
               break;
+            case 423:
+              errorMessage = 'Account bloccato per sicurezza. Riprova più tardi';
+              break;
             case 429:
-              errorMessage = 'Troppi tentativi. Riprova più tardi';
+              errorMessage = 'Troppi tentativi. Riprova tra qualche minuto';
               break;
             case 500:
               errorMessage = 'Errore interno del server. Riprova più tardi';
@@ -264,21 +315,30 @@ class ApiService {
             case 502:
             case 503:
             case 504:
-              errorMessage = 'Servizio temporaneamente non disponibile';
+              errorMessage = 'Servizio temporaneamente non disponibile. Riprova più tardi';
               break;
             default:
               errorMessage = serverMessage || `Errore del server (${status})`;
           }
         } else if (error.request) {
-          // Errore di rete
+          // Network error
           errorMessage = 'Errore di connessione. Verifica la tua connessione internet';
         } else {
-          // Altro tipo di errore
           errorMessage = error.message || 'Errore imprevisto';
         }
         
-        const enhancedError = new Error(errorMessage);
+        interface EnhancedError extends Error {
+          originalError?: unknown;
+          status?: number;
+          errorCode?: string;
+        }
+        
+        const enhancedError: EnhancedError = new Error(errorMessage);
         enhancedError.name = error.name;
+        enhancedError.originalError = error;
+        enhancedError.status = error.response?.status;
+        enhancedError.errorCode = error.response?.data?.data?.error;
+        
         return Promise.reject(enhancedError);
       }
     );
@@ -499,11 +559,42 @@ class ApiService {
     return response.data;
   }
 
-  async getAuthInfoV2(): Promise<ApiResponse<AuthInfoV2Response>> {
-    const response: AxiosResponse<ApiResponse<AuthInfoV2Response>> = await this.api.get('/v2/auth/info');
+  async getUserDetails(userId: string): Promise<ApiResponse<UserV2>> {
+    const response: AxiosResponse<ApiResponse<UserV2>> = await this.api.get(`/v2/auth/users/${userId}`);
     return response.data;
   }
 
+  async updateUser(userId: string, userData: {
+    email?: string;
+    firstName?: string;
+    lastName?: string;
+    isActive?: boolean;
+  }): Promise<ApiResponse<UserV2>> {
+    const response: AxiosResponse<ApiResponse<UserV2>> = await this.api.put(`/v2/auth/users/${userId}`, userData);
+    return response.data;
+  }
+
+  async deleteUser(userId: string): Promise<ApiResponse<{ success: boolean }>> {
+    const response: AxiosResponse<ApiResponse<{ success: boolean }>> = await this.api.delete(`/v2/auth/users/${userId}`);
+    return response.data;
+  }
+
+  async activateUser(userId: string): Promise<ApiResponse<{ success: boolean }>> {
+    const response: AxiosResponse<ApiResponse<{ success: boolean }>> = await this.api.post(`/v2/auth/users/${userId}/activate`);
+    return response.data;
+  }
+
+  async createUser(userData: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    role?: string;
+  }): Promise<ApiResponse<UserRegistrationResponse>> {
+    const response: AxiosResponse<ApiResponse<UserRegistrationResponse>> = await this.api.post('/v2/auth/register', userData);
+    return response.data;
+  }
+  
   // Gestione token
   setToken(token: string): void {
     this.bearerToken = token;
@@ -533,6 +624,11 @@ class ApiService {
 
   isAuthenticated(): boolean {
     return !!this.bearerToken;
+  }
+
+  async getAuthInfoV2(): Promise<ApiResponse<AuthInfoV2Response>> {
+    const response: AxiosResponse<ApiResponse<AuthInfoV2Response>> = await this.api.get('/v2/auth/info');
+    return response.data;
   }
 }
 

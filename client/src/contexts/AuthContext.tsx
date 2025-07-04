@@ -6,7 +6,6 @@ interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, firstName: string, lastName: string, role?: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshAuth: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
@@ -95,7 +94,41 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     };
 
+    // Listen for custom auth events
+    const handleAuthLogout = (event: CustomEvent) => {
+      console.log('🚪 [AUTH] Received logout event:', event.detail);
+      setError('Sessione scaduta. Effettua nuovamente l\'accesso.');
+      logout();
+    };
+
+    const handlePageFocus = async () => {
+      // Check auth status when user returns to the page
+      const storedToken = localStorage.getItem('vicsam_token');
+      if (storedToken) {
+        try {
+          await authService.getMe();
+        } catch {
+          console.warn('❌ Auth check failed on page focus, attempting refresh');
+          try {
+            await refreshAuth();
+          } catch {
+            console.warn('❌ Auth refresh failed on page focus');
+          }
+        }
+      }
+    };
+
+    // Add event listeners
+    window.addEventListener('auth:logout', handleAuthLogout as EventListener);
+    window.addEventListener('focus', handlePageFocus);
+
     initializeAuth();
+
+    // Cleanup event listeners
+    return () => {
+      window.removeEventListener('auth:logout', handleAuthLogout as EventListener);
+      window.removeEventListener('focus', handlePageFocus);
+    };
   }, []); // Run only once on mount
 
   const login = async (email: string, password: string) => {
@@ -124,30 +157,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
     } catch (error) {
       setError((error as Error).message || 'Errore durante il login');
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const register = async (email: string, password: string, firstName: string, lastName: string, role?: string) => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      await authService.register({
-        email,
-        password,
-        firstName,
-        lastName,
-        role
-      });
-      
-      // Auto-login after registration
-      await login(email, password);
-      
-    } catch (error) {
-      setError((error as Error).message || 'Errore durante la registrazione');
       throw error;
     } finally {
       setLoading(false);
@@ -296,7 +305,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const hasRole = (role: string): boolean => {
-    return user?.roles?.includes(role) || false;
+    if (!user?.roles) return false;
+    
+    return user.roles.some((userRole: string | { name: string }) => {
+      if (typeof userRole === 'string') {
+        return userRole === role;
+      }
+      if (typeof userRole === 'object' && userRole.name) {
+        return userRole.name === role;
+      }
+      return false;
+    });
   };
 
   const hasPermission = (permission: string): boolean => {
@@ -313,7 +332,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isAuthenticated,
     user,
     login,
-    register,
     logout,
     refreshAuth,
     changePassword,

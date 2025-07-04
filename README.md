@@ -13,7 +13,7 @@ La piattaforma VicSam Group è una soluzione ottimizzata che include:
 - 🚀 **Performance ottimizzate** con caching e compressione
 - 📊 **Sistema completo di gestione utenti** con ruoli e permessi
 - 🧪 **API REST** ben documentate
-- 🔄 **Rate limiting** e protezione anti-abuse
+- 🔄 **Protezione anti-abuse**
 
 ### File Hosting Features
 - 📦 **ZIP Downloads** via `/get` endpoint
@@ -99,9 +99,8 @@ mkdir files
 graph TB
     A[React Frontend] --> B[Express Server]
     B --> C[Middleware Stack]
-    C --> D[Rate Limiting]
-    C --> E[Dual Authentication]
-    C --> F[CORS & Security]
+    C --> D[Dual Authentication]
+    C --> E[CORS & Security]
     B --> G[API Routes]
     G --> H[Auth Controller]
     G --> I[Data Controller]
@@ -389,10 +388,6 @@ API_PASSWORD=your-api-password
 BEARER_TOKEN=your-bearer-token
 API_KEY=optional-api-key
 
-# Rate Limiting
-RATE_LIMIT_WINDOW_MS=900000
-RATE_LIMIT_MAX_REQUESTS=100
-
 # CORS
 CORS_ORIGIN=*
 ```
@@ -618,15 +613,13 @@ L'API implementa multiple misure di sicurezza:
 graph TD
     A[Request] --> B[Helmet Headers]
     B --> C[CORS Policy]
-    C --> D[Rate Limiting]
-    D --> E[JWT Validation]
-    E --> F[Input Validation]
-    F --> G[Controller Logic]
+    C --> D[JWT Validation]
+    D --> E[Input Validation]
+    E --> F[Controller Logic]
 ```
 
 - **Helmet**: Headers di sicurezza HTTP
 - **CORS**: Controllo origine richieste
-- **Rate Limiting**: Protezione da attacchi DDoS
 - **JWT**: Token sicuri per autenticazione
 - **Validation**: Validazione input con Joi
 

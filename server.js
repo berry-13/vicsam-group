@@ -70,7 +70,7 @@ const { PORT, NODE_ENV } = getServerConfig();
 
 logServerConfiguration();
 
-const { corsOptions, rateLimitConfig } = setupMiddleware(app);
+const { corsOptions } = setupMiddleware(app);
 
 // ============================================================================
 // ROUTES CONFIGURATION
@@ -190,7 +190,7 @@ async function startServer() {
     
     // Avvia il server HTTP
     const server = app.listen(PORT, () => {
-      logServerStartup(PORT, corsOptions, rateLimitConfig);
+      logServerStartup(PORT, corsOptions);
       
       console.log('\n🎉 [SERVER] Vicsam Group Platform started successfully!');
       console.log('📚 [SERVER] Available endpoints:');

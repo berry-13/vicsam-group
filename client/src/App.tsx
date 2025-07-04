@@ -16,6 +16,7 @@ import { SaveDataPage } from "./pages/SaveDataPage";
 import { StatsPage } from "./pages/StatsPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import UserManagementPage from "./pages/UserManagementPage";
+import AdminPanel from "./pages/AdminPanel";
 import "./index.css";
 
 /**
@@ -50,6 +51,14 @@ function App() {
                   element={
                     <ProtectedRoute requiredRoles={['admin']} requiredPermissions={['user_management']}>
                       <UserManagementPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="admin" 
+                  element={
+                    <ProtectedRoute requiredRoles={['admin']}>
+                      <AdminPanel />
                     </ProtectedRoute>
                   } 
                 />

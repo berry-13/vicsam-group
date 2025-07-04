@@ -1,4 +1,3 @@
-const rateLimit = require('express-rate-limit');
 const downloadConfig = require('../services/downloadConfig');
 
 /**
@@ -50,7 +49,7 @@ function createSecureKeyGenerator() {
       
       // In sviluppo, aggiungi logging per debug
       if (process.env.NODE_ENV === 'development') {
-        console.log('🔍 [DOWNLOAD RATE LIMIT] Using IP for rate limiting:', clientIp);
+        console.log('🔍 [DOWNLOAD] Using IP:', clientIp);
       }
       
       return clientIp;
@@ -61,36 +60,4 @@ function createSecureKeyGenerator() {
   return undefined;
 }
 
-/**
- * Rate limiting middleware specifically for download endpoints
- */
-const downloadRateLimit = rateLimit({
-  windowMs: downloadConfig.config.rateWindow,
-  max: downloadConfig.config.rateLimit,
-  
-  // Configurazione sicura per trust proxy
-  keyGenerator: createSecureKeyGenerator(),
-  message: {
-    success: false,
-    error: 'Too many download requests, please try again later',
-    retryAfter: Math.ceil(downloadConfig.config.rateWindow / 1000),
-    timestamp: new Date().toISOString()
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-  keyGenerator: (req) => {
-    // Use IP address as the key for rate limiting
-    return req.ip;
-  },
-  skip: (req) => {
-    // Skip rate limiting for health checks
-    return req.path.includes('/health');
-  },
-  handler: (req, res, next, options) => {
-    const anonymizedIP = anonymizeIP(req.ip);
-    console.log(`[RATE LIMIT] Download rate limit exceeded for IP: ${anonymizedIP}`);
-    res.status(options.statusCode).json(options.message);
-  }
-});
-
-module.exports = downloadRateLimit;
+module.exports = {};

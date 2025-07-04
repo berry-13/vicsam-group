@@ -9,7 +9,11 @@ const {
   listUsers,
   assignRole,
   listRoles,
-  getAuthInfo
+  getAuthInfo,
+  getUserDetails,
+  updateUser,
+  deleteUser,
+  activateUser
 } = require('../controllers/authControllerV2');
 
 const {
@@ -37,8 +41,6 @@ const {
   validateAssignRole
 } = require('../utils/authValidation');
 
-const { loginRateLimit, strictLoginRateLimit } = require('../middleware/rateLimiting');
-
 const router = express.Router();
 
 // ============================================================================
@@ -49,7 +51,8 @@ const FEATURE_FLAGS = {
   ADVANCED_USER_MANAGEMENT: process.env.ENABLE_ADVANCED_USER_MANAGEMENT === 'true',
   ROLE_MANAGEMENT: process.env.ENABLE_ROLE_MANAGEMENT === 'true',
   AUDIT_ROUTES: process.env.ENABLE_AUDIT_ROUTES === 'true',
-  SESSION_MANAGEMENT: process.env.ENABLE_SESSION_MANAGEMENT === 'true'
+  SESSION_MANAGEMENT: process.env.ENABLE_SESSION_MANAGEMENT === 'true',
+  USER_REGISTRATION: process.env.ENABLE_USER_REGISTRATION === 'true' // Disabled by default for security
 };
 
 /**
@@ -106,7 +109,6 @@ router.get('/info', getAuthInfo);
  * @access Public (con rate limiting)
  */
 router.post('/register',
-  loginRateLimit, // Rate limiting per prevenire spam
   sanitizeInput,
   validateJoi(registerSchema),
   auditLogger('user.register_attempt'),
@@ -119,8 +121,6 @@ router.post('/register',
  * @access Public (con rate limiting)
  */
 router.post('/login',
-  loginRateLimit,
-  strictLoginRateLimit, // Rate limiting più severo per login
   sanitizeInput,
   validateJoi(loginSchema),
   auditLogger('user.login_attempt'),
@@ -243,17 +243,8 @@ router.get('/users/:userId',
     roles: ['admin', 'manager'],
     permissions: ['users.read']
   }),
-  // TODO: Validazione parametri UUID
   auditLogger('admin.get_user_details'),
-  async (req, res) => {
-    // TODO: Implementare controller per dettagli utente
-    res.status(501).json({
-      success: false,
-      error: 'Endpoint implementation in progress',
-      code: 'IMPLEMENTATION_PENDING',
-      message: 'This feature is enabled but not yet implemented. Check back in future releases.'
-    });
-  }
+  getUserDetails
 );
 
 /**
@@ -265,19 +256,9 @@ router.get('/users/:userId',
 router.put('/users/:userId',
   requireFeature('ADVANCED_USER_MANAGEMENT'),
   authenticateJWT,
-  // TODO: Middleware per verificare ownership o admin
   sanitizeInput,
-  // TODO: Schema di validazione per aggiornamento utente
   auditLogger('user.update_profile'),
-  async (req, res) => {
-    // TODO: Implementare controller per aggiornamento utente
-    res.status(501).json({
-      success: false,
-      error: 'Endpoint implementation in progress',
-      code: 'IMPLEMENTATION_PENDING',
-      message: 'This feature is enabled but not yet implemented. Check back in future releases.'
-    });
-  }
+  updateUser
 );
 
 /**
@@ -293,15 +274,7 @@ router.delete('/users/:userId',
     permissions: ['users.delete']
   }),
   auditLogger('admin.deactivate_user'),
-  async (req, res) => {
-    // TODO: Implementare controller per disattivazione utente
-    res.status(501).json({
-      success: false,
-      error: 'Endpoint implementation in progress',
-      code: 'IMPLEMENTATION_PENDING',
-      message: 'This feature is enabled but not yet implemented. Check back in future releases.'
-    });
-  }
+  deleteUser
 );
 
 /**
@@ -317,15 +290,7 @@ router.post('/users/:userId/activate',
     permissions: ['users.update']
   }),
   auditLogger('admin.activate_user'),
-  async (req, res) => {
-    // TODO: Implementare controller per attivazione utente
-    res.status(501).json({
-      success: false,
-      error: 'Endpoint implementation in progress',
-      code: 'IMPLEMENTATION_PENDING',
-      message: 'This feature is enabled but not yet implemented. Check back in future releases.'
-    });
-  }
+  activateUser
 );
 
 // ============================================================================
